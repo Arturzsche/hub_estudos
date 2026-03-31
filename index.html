@@ -23,7 +23,8 @@
             <button class="nav-btn active" data-target="dashboard">Visão Geral</button>
             <button class="nav-btn" data-target="timer">Cronômetro</button>
             <button class="nav-btn" data-target="tasks">Matérias</button>
-        </nav>
+            <button class="nav-btn" data-target="review">Revisão</button>
+            <button class="nav-btn" data-target="exam">Prova</button> </nav>
 
         <div class="header-right">
             <button id="theme-toggle" title="Alternar Tema">Tema</button>
@@ -33,7 +34,6 @@
     <main>
         <section id="dashboard" class="view active">
             <div class="container dashboard-grid">
-                
                 <div class="main-panel">
                     <div class="progress-card">
                         <div class="progress-header">
@@ -84,24 +84,24 @@
                             <p><span id="streak-display">0</span> dias</p>
                         </div>
                     </div>
-
                     <div class="stat-card">
                         <div class="stat-info">
                             <h3>Recorde Diário</h3>
                             <p id="record-day-display">00:00</p>
                         </div>
                     </div>
-
                     <div class="stat-card">
                         <div class="stat-info">
                             <h3>Melhor Semana</h3>
                             <p id="record-week-display">00:00</p>
                         </div>
                     </div>
-
                     <div class="stat-card outline">
                         <div class="stat-info">
-                            <h3>Estudo Hoje</h3>
+                            <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                                <h3>Estudo Hoje</h3>
+                                <span id="today-state-icon" title="Estado Mental do Dia" style="font-size: 1.2rem;">😐</span>
+                            </div>
                             <p id="total-time-display" class="highlight">00:00:00</p>
                             <span class="sub-text" id="sessions-display">0 sessões hoje</span>
                         </div>
@@ -113,6 +113,15 @@
         <section id="timer" class="view">
             <div class="container timer-container">
                 
+                <div class="mental-state-selector">
+                    <p>Como você está se sentindo para esta sessão?</p>
+                    <div class="state-buttons">
+                        <button class="state-btn" data-state="tired" title="Cansado">😴 Cansado</button>
+                        <button class="state-btn active" data-state="normal" title="Normal">😐 Normal</button>
+                        <button class="state-btn" data-state="focused" title="Focado">🔥 Focado</button>
+                    </div>
+                </div>
+
                 <div class="stopwatch">
                     <h1 id="time-display">
                         <span id="time-main">00:00:00</span><span id="time-ms">.00</span>
@@ -138,6 +147,58 @@
             <div class="container container-small">
                 <h2>Disciplinas do Edital</h2>
                 <ul class="task-list" id="task-list"></ul>
+            </div>
+        </section>
+
+        <section id="review" class="view">
+            <div class="container dashboard-grid">
+                <div class="main-panel">
+                    <h2>Bloco de Anotações Rápido</h2>
+                    <textarea id="quick-notes" placeholder="Ideias, erros, mapas mentais textuais... Salva automaticamente a cada letra digitada."></textarea>
+                </div>
+                <div class="side-panel">
+                    <h2>Sistema de Revisão</h2>
+                    <div class="review-input-group">
+                        <input type="text" id="review-input" placeholder="Novo tópico para revisar...">
+                        <button id="btn-add-review" class="btn primary" style="padding: 0 1.5rem;">Adicionar</button>
+                    </div>
+                    <div class="reviews-section">
+                        <h3>Para Hoje <span class="badge" style="background: var(--text-main); color: var(--surface-color);">Foco</span></h3>
+                        <ul class="task-list" id="review-list-today" style="margin-bottom: 2rem;"></ul>
+                        <h3>Próximas Revisões</h3>
+                        <ul class="task-list" id="review-list-upcoming"></ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="exam" class="view">
+            <div class="container timer-container">
+                
+                <div id="exam-setup" style="text-align: center;">
+                    <h2 style="font-size: 2rem; margin-bottom: 0.5rem; color: var(--text-main);">Simulação de Prova</h2>
+                    <p style="color: var(--text-muted); margin-bottom: 3rem;">O site será bloqueado. Sem acesso a anotações. Apenas você e o tempo.</p>
+                    
+                    <div class="exam-presets">
+                        <button class="btn secondary exam-preset active" data-time="3600">1 Hora</button>
+                        <button class="btn secondary exam-preset" data-time="7200">2 Horas</button>
+                        <button class="btn secondary exam-preset" data-time="10800">3 Horas</button>
+                        <button class="btn secondary exam-preset" data-time="14400">4 Horas</button>
+                    </div>
+                    
+                    <button id="btn-start-exam" class="btn primary" style="margin-top: 3rem; font-size: 1.1rem; padding: 1rem 3rem;">Iniciar Simulado</button>
+                </div>
+
+                <div id="exam-running" style="display: none; text-align: center; width: 100%; height: 100%; flex-direction: column; justify-content: center; align-items: center;">
+                    <h2 id="exam-warning-text" style="color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.2em; font-size: 0.9rem;">Modo Foco Total Ativo</h2>
+                    
+                    <div class="stopwatch">
+                        <h1 id="exam-time-display" style="font-size: 10rem; letter-spacing: -6px;">00:00:00</h1>
+                    </div>
+                    
+                    <button id="btn-give-up-exam" class="btn danger" style="margin-top: 3rem; opacity: 0.5; transition: opacity 0.3s;">Abandonar Simulado</button>
+                </div>
+
             </div>
         </section>
     </main>
