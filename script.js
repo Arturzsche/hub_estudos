@@ -1,6 +1,8 @@
 let timerInterval;
+let msElapsed = 0; // Novo: rastreando por milissegundos
 let secondsElapsed = 0;
 let isRunning = false;
+let lastTickTime = 0; // Novo: tempo do último tick para maior precisão
 let chartInstance = null;
 
 let appData = {
@@ -22,9 +24,11 @@ let appData = {
 };
 
 const elements = {
-    timeDisplay: document.getElementById('time-display'),
-    btnStart: document.getElementById('btn-start'),
-    btnPause: document.getElementById('btn-pause'),
+    timeMain: document.getElementById('time-main'),
+    timeMs: document.getElementById('time-ms'),
+    btnToggle: document.getElementById('btn-toggle'),
+    iconPlay: document.getElementById('icon-play'),
+    iconPause: document.getElementById('icon-pause'),
     btnReset: document.getElementById('btn-reset'),
     totalTimeDisplay: document.getElementById('total-time-display'),
     sessionsDisplay: document.getElementById('sessions-display'),
@@ -38,7 +42,7 @@ const elements = {
     dailyProgressFill: document.getElementById('daily-progress-fill'),
     dailyPercentage: document.getElementById('daily-percentage'),
     heatmapGrid: document.getElementById('heatmap-grid'),
-    macFullscreenBtn: document.getElementById('mac-fullscreen-btn') // NOVO: Botão Verde
+    macFullscreenBtn: document.getElementById('mac-fullscreen-btn')
 };
 
 function init() {
@@ -64,18 +68,37 @@ function getTodayDate() {
     return today.toISOString().split('T')[0];
 }
 
-function formatTime(totalSeconds) {
-    const h = String(Math.floor(totalSeconds / 3600)).padStart(2, '0');
-    const m = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, '0');
-    const s = String(totalSeconds % 60).padStart(2, '0');
-    return `${h}:${m}:${s}`;
-}
-
+// Formata o texto em horas/minutos para a aba Visão Geral
 function formatHoursText(totalSeconds) {
     const h = Math.floor(totalSeconds / 3600);
     const m = Math.floor((totalSeconds % 3600) / 60);
     if (h === 0) return `${m}m`;
     return `${h}h ${m}m`;
+}
+
+// Atualiza a visualização do cronômetro principal e milissegundos
+function updateTimerDisplay() {
+    const totalSeconds = Math.floor(msElapsed / 1000);
+    const h = String(Math.floor(totalSeconds / 3600)).padStart(2, '0');
+    const m = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, '0');
+    const s = String(totalSeconds % 60).padStart(2, '0');
+    
+    // Calcula os milissegundos para mostrar apenas dois dígitos (centésimos)
+    const ms = String(Math.floor((msElapsed % 1000) / 10)).padStart(2, '0');
+
+    elements.timeMain.textContent = `${h}:${m}:${s}`;
+    elements.timeMs.textContent = `.${ms}`;
+}
+
+// Altera o ícone visível no botão (Play / Pause)
+function updateToggleBtn() {
+    if (isRunning) {
+        elements.iconPlay.style.display = 'none';
+        elements.iconPause.style.display = 'block';
+    } else {
+        elements.iconPlay.style.display = 'block';
+        elements.iconPause.style.display = 'none';
+    }
 }
 
 function loadData() {
@@ -177,7 +200,12 @@ function updateUI() {
     const today = getTodayDate();
     const todayData = appData.history[today];
 
-    elements.totalTimeDisplay.textContent = formatTime(todayData.time);
+    // O formatTime antigo usado para o painel de visão geral (para formatar as 00:00:00 padrão)
+    const h = String(Math.floor(todayData.time / 3600)).padStart(2, '0');
+    const m = String(Math.floor((todayData.time % 3600) / 60)).padStart(2, '0');
+    const s = String(todayData.time % 60).padStart(2, '0');
+    elements.totalTimeDisplay.textContent = `${h}:${m}:${s}`;
+    
     elements.sessionsDisplay.textContent = `${todayData.sessions} sessões hoje`;
     elements.streakDisplay.textContent = appData.streak;
     elements.recordDayDisplay.textContent = formatHoursText(appData.recordDay);
@@ -196,32 +224,38 @@ function updateUI() {
 }
 
 function loadTimerState() {
-    secondsElapsed = parseInt(localStorage.getItem('currentSessionSeconds')) || 0;
+    msElapsed = parseInt(localStorage.getItem('currentSessionMs')) || 0;
+    secondsElapsed = Math.floor(msElapsed / 1000);
+    
     const wasRunning = localStorage.getItem('isTimerRunning') === 'true';
     const lastTick = parseInt(localStorage.getItem('lastTick')) || Date.now();
 
     if (wasRunning) {
-        const missedSeconds = Math.floor((Date.now() - lastTick) / 1000);
+        const missedMs = Date.now() - lastTick;
+        const missedSeconds = Math.floor(missedMs / 1000);
+        
         if (missedSeconds > 0 && missedSeconds < 43200) { 
-            secondsElapsed += missedSeconds;
+            msElapsed += missedMs;
+            secondsElapsed = Math.floor(msElapsed / 1000);
             const today = getTodayDate();
             appData.history[today].time += missedSeconds;
             saveData();
         }
         startTimer(); 
     } else {
-        elements.timeDisplay.textContent = formatTime(secondsElapsed);
-        if (secondsElapsed > 0) elements.btnStart.textContent = "Retomar";
+        updateTimerDisplay();
     }
+    updateToggleBtn();
 }
 
 function startTimer() {
     if (isRunning) return;
     isRunning = true;
+    updateToggleBtn();
     
     const today = getTodayDate();
     
-    if (secondsElapsed === 0 && localStorage.getItem('isTimerRunning') !== 'true') {
+    if (msElapsed === 0 && localStorage.getItem('isTimerRunning') !== 'true') {
         appData.history[today].sessions++;
         
         if (appData.lastStudyDate !== today) {
@@ -240,30 +274,43 @@ function startTimer() {
     }
 
     localStorage.setItem('isTimerRunning', 'true');
+    lastTickTime = Date.now();
 
+    // Rodando em aprox. 60fps (16ms) para animação suave dos milissegundos
     timerInterval = setInterval(() => {
-        secondsElapsed++;
-        appData.history[today].time++;
-        elements.timeDisplay.textContent = formatTime(secondsElapsed);
-        
-        localStorage.setItem('currentSessionSeconds', secondsElapsed);
-        localStorage.setItem('lastTick', Date.now().toString());
-        saveData(); 
+        const now = Date.now();
+        const delta = now - lastTickTime;
+        lastTickTime = now;
+        msElapsed += delta;
 
-        if (secondsElapsed % 60 === 0) calculateRecords();
-        updateUI();
-    }, 1000);
-    
-    elements.btnStart.textContent = "Retomar";
+        updateTimerDisplay();
+
+        // Só atualiza os dados reais do app quando passar de 1 segundo inteiro
+        const newSecondsElapsed = Math.floor(msElapsed / 1000);
+        if (newSecondsElapsed > secondsElapsed) {
+            const diff = newSecondsElapsed - secondsElapsed;
+            secondsElapsed = newSecondsElapsed;
+            appData.history[today].time += diff;
+
+            localStorage.setItem('currentSessionMs', msElapsed.toString());
+            localStorage.setItem('lastTick', now.toString());
+            
+            if (secondsElapsed % 5 === 0) saveData(); 
+
+            if (secondsElapsed % 60 === 0) calculateRecords();
+            updateUI();
+        }
+    }, 16);
 }
 
 function pauseTimer() {
     if (!isRunning) return;
     isRunning = false;
     clearInterval(timerInterval);
+    updateToggleBtn();
     
     localStorage.setItem('isTimerRunning', 'false');
-    localStorage.setItem('currentSessionSeconds', secondsElapsed);
+    localStorage.setItem('currentSessionMs', msElapsed.toString());
     localStorage.setItem('lastTick', Date.now().toString());
 
     calculateRecords();
@@ -273,17 +320,19 @@ function pauseTimer() {
 
 function resetTimer() {
     pauseTimer();
+    msElapsed = 0;
     secondsElapsed = 0;
     
-    localStorage.setItem('currentSessionSeconds', '0');
+    localStorage.setItem('currentSessionMs', '0');
     localStorage.setItem('isTimerRunning', 'false');
     
-    elements.timeDisplay.textContent = formatTime(secondsElapsed);
-    elements.btnStart.textContent = "Iniciar Sessão";
+    updateTimerDisplay();
 }
 
-elements.btnStart.addEventListener('click', startTimer);
-elements.btnPause.addEventListener('click', pauseTimer);
+elements.btnToggle.addEventListener('click', () => {
+    if (isRunning) pauseTimer();
+    else startTimer();
+});
 elements.btnReset.addEventListener('click', resetTimer);
 
 function getChartData() {
@@ -363,7 +412,6 @@ elements.focusToggle.addEventListener('click', () => {
     document.body.classList.add('focus-active');
 });
 
-// Lógica do Botão Verde (Mac OS) para Tela Cheia
 elements.macFullscreenBtn.addEventListener('click', () => {
     if (!document.fullscreenElement) {
         document.documentElement.requestFullscreen().catch(err => {
@@ -423,7 +471,7 @@ document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'hidden') {
         saveData();
         if (isRunning) {
-            localStorage.setItem('currentSessionSeconds', secondsElapsed);
+            localStorage.setItem('currentSessionMs', msElapsed.toString());
             localStorage.setItem('lastTick', Date.now().toString());
         }
     }
