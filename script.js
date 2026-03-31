@@ -20,10 +20,7 @@ let appData = {
         { id: 5, name: "Regimento Interno", completed: false },
         { id: 6, name: "Português", completed: false },
         { id: 7, name: "Prova Discursiva", completed: false }
-    ],
-    // NOVOS CAMPOS:
-    quickNotes: "",
-    reviews: [] // { id, text, createdAt, nextDate, level } (level 1=1d, 2=7d, 3=30d)
+    ]
 };
 
 const elements = {
@@ -46,17 +43,12 @@ const elements = {
     dailyPercentage: document.getElementById('daily-percentage'),
     heatmapGrid: document.getElementById('heatmap-grid'),
     macFullscreenBtn: document.getElementById('mac-fullscreen-btn'),
+    // Elementos do Modal de Limpeza
     btnOpenClear: document.getElementById('btn-open-clear'),
     modalClear: document.getElementById('clear-modal'),
     btnClearToday: document.getElementById('btn-clear-today'),
     btnClearAll: document.getElementById('btn-clear-all'),
-    btnCancelClear: document.getElementById('btn-cancel-clear'),
-    // Elementos da nova aba de Revisão
-    quickNotes: document.getElementById('quick-notes'),
-    reviewInput: document.getElementById('review-input'),
-    btnAddReview: document.getElementById('btn-add-review'),
-    reviewListToday: document.getElementById('review-list-today'),
-    reviewListUpcoming: document.getElementById('review-list-upcoming')
+    btnCancelClear: document.getElementById('btn-cancel-clear')
 };
 
 function init() {
@@ -68,7 +60,6 @@ function init() {
     setupNavigation();
     initChart();
     setupClearModal();
-    setupReviewSystem(); // Inicializa o sistema novo
     
     if (localStorage.getItem('theme') === 'light') {
         document.body.classList.remove('dark-mode');
@@ -123,10 +114,6 @@ function loadData() {
         appData.recordDay = parsedSaved.recordDay || 0;
         appData.recordWeek = parsedSaved.recordWeek || 0;
         appData.dailyGoalSeconds = parsedSaved.dailyGoalSeconds || 14400; 
-        
-        // Carrega as anotações e as revisões
-        appData.quickNotes = parsedSaved.quickNotes || "";
-        appData.reviews = parsedSaved.reviews || [];
     }
     
     const today = getTodayDate();
@@ -413,24 +400,42 @@ function setupNavigation() {
     if (btnToClick) btnToClick.click();
 }
 
+// --- CONFIGURAÇÃO DO MODAL DE LIMPEZA ---
 function setupClearModal() {
-    elements.btnOpenClear.addEventListener('click', () => elements.modalClear.classList.add('active'));
-    elements.btnCancelClear.addEventListener('click', () => elements.modalClear.classList.remove('active'));
+    elements.btnOpenClear.addEventListener('click', () => {
+        elements.modalClear.classList.add('active');
+    });
 
+    elements.btnCancelClear.addEventListener('click', () => {
+        elements.modalClear.classList.remove('active');
+    });
+
+    // Limpar Apenas Hoje
     elements.btnClearToday.addEventListener('click', () => {
         const today = getTodayDate();
         if (appData.history[today]) {
             appData.history[today] = { time: 0, sessions: 0 };
-            saveData(); calculateRecords(); updateUI(); resetTimer(); 
+            saveData();
+            calculateRecords();
+            updateUI();
+            resetTimer(); 
         }
         elements.modalClear.classList.remove('active');
     });
 
+    // Zerar Todo o Histórico
     elements.btnClearAll.addEventListener('click', () => {
-        appData.history = {}; appData.streak = 0; appData.lastStudyDate = null; appData.recordDay = 0; appData.recordWeek = 0;
+        appData.history = {};
+        appData.streak = 0;
+        appData.lastStudyDate = null;
+        appData.recordDay = 0;
+        appData.recordWeek = 0;
         const today = getTodayDate();
         appData.history[today] = { time: 0, sessions: 0 };
-        saveData(); calculateRecords(); updateUI(); resetTimer(); 
+        saveData();
+        calculateRecords();
+        updateUI();
+        resetTimer(); 
         elements.modalClear.classList.remove('active');
     });
 }
@@ -477,134 +482,7 @@ function renderTasks() {
     });
 }
 
-// --- SISTEMA DE REVISÃO E ANOTAÇÕES ---
-function setupReviewSystem() {
-    // Carrega notas salvas
-    elements.quickNotes.value = appData.quickNotes;
-
-    // Auto-salvamento do Bloco de Notas a cada tecla digitada
-    elements.quickNotes.addEventListener('input', (e) => {
-        appData.quickNotes = e.target.value;
-        saveData();
-    });
-
-    // Adicionar Nova Revisão
-    elements.btnAddReview.addEventListener('click', () => {
-        const text = elements.reviewInput.value.trim();
-        if (text) {
-            const today = getTodayDate();
-            const nextDate = calculateNextReviewDate(today, 1); // Level 1 = Amanhã
-            
-            appData.reviews.push({
-                id: Date.now(),
-                text: text,
-                nextDate: nextDate,
-                level: 1 // 1: +1 dia, 2: +7 dias, 3: +30 dias
-            });
-            
-            elements.reviewInput.value = '';
-            saveData();
-            renderReviews();
-        }
-    });
-
-    // Permite adicionar com Enter
-    elements.reviewInput.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') elements.btnAddReview.click();
-    });
-
-    renderReviews();
-}
-
-function calculateNextReviewDate(baseDateStr, daysToAdd) {
-    const [y, m, d] = baseDateStr.split('-');
-    const dateObj = new Date(y, m - 1, d);
-    dateObj.setDate(dateObj.getDate() + daysToAdd);
-    
-    const newY = dateObj.getFullYear();
-    const newM = String(dateObj.getMonth() + 1).padStart(2, '0');
-    const newD = String(dateObj.getDate()).padStart(2, '0');
-    return `${newY}-${newM}-${newD}`;
-}
-
-function renderReviews() {
-    elements.reviewListToday.innerHTML = '';
-    elements.reviewListUpcoming.innerHTML = '';
-    
-    const today = getTodayDate();
-    let hasToday = false;
-    let hasUpcoming = false;
-
-    // Limpa revisões que já passaram do nível 3
-    appData.reviews = appData.reviews.filter(r => r.level <= 3);
-
-    // Ordena por data
-    const sortedReviews = [...appData.reviews].sort((a, b) => a.nextDate.localeCompare(b.nextDate));
-
-    sortedReviews.forEach(review => {
-        const isTodayOrPast = review.nextDate <= today;
-        const li = document.createElement('li');
-        li.className = 'task-item';
-        
-        let levelText = review.level === 1 ? "1 Dia" : review.level === 2 ? "7 Dias" : "30 Dias";
-        
-        li.innerHTML = `
-            <div class="review-item-content">
-                <span class="badge">${levelText}</span>
-                <span class="review-item-text">${review.text}</span>
-            </div>
-            <button class="icon-btn-small" style="color: ${isTodayOrPast ? 'var(--text-main)' : 'var(--danger-color)'}" title="${isTodayOrPast ? 'Marcar como Revisado' : 'Excluir Revisão'}">
-                <svg viewBox="0 0 24 24" width="18" height="18">
-                    ${isTodayOrPast 
-                        ? '<path fill="currentColor" d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>' // Ícone de Check
-                        : '<path fill="currentColor" d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>' // Ícone de X
-                    }
-                </svg>
-            </button>
-        `;
-
-        const btnAction = li.querySelector('button');
-        btnAction.addEventListener('click', () => {
-            if (isTodayOrPast) {
-                // Avança o nível da revisão
-                if (review.level === 1) {
-                    review.level = 2;
-                    review.nextDate = calculateNextReviewDate(today, 7);
-                } else if (review.level === 2) {
-                    review.level = 3;
-                    review.nextDate = calculateNextReviewDate(today, 30);
-                } else {
-                    review.level = 4; // Será filtrado no próximo render
-                }
-            } else {
-                // Se for futura e clicou no botão (X), exclui
-                appData.reviews = appData.reviews.filter(r => r.id !== review.id);
-            }
-            saveData();
-            renderReviews();
-        });
-
-        if (isTodayOrPast) {
-            elements.reviewListToday.appendChild(li);
-            hasToday = true;
-        } else {
-            // Mostra a data em vez do badge para itens futuros
-            const [y, m, d] = review.nextDate.split('-');
-            li.querySelector('.badge').textContent = `${d}/${m}`;
-            elements.reviewListUpcoming.appendChild(li);
-            hasUpcoming = true;
-        }
-    });
-
-    if (!hasToday) elements.reviewListToday.innerHTML = '<p style="color: var(--text-muted); font-size: 0.9rem; padding: 1rem 0;">Nenhuma revisão pendente para hoje. Bom trabalho!</p>';
-    if (!hasUpcoming) elements.reviewListUpcoming.innerHTML = '<p style="color: var(--text-muted); font-size: 0.9rem; padding: 1rem 0;">Não há revisões programadas no momento.</p>';
-}
-
 document.addEventListener('keydown', (e) => {
-    // Bloqueia os atalhos se o usuário estiver digitando no bloco de notas ou no input de revisão
-    const isTyping = document.activeElement.tagName === 'TEXTAREA' || document.activeElement.tagName === 'INPUT';
-    if (isTyping) return;
-
     const isTimerActive = document.getElementById('timer').classList.contains('active');
     if (!isTimerActive) return;
 
