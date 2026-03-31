@@ -42,7 +42,13 @@ const elements = {
     dailyProgressFill: document.getElementById('daily-progress-fill'),
     dailyPercentage: document.getElementById('daily-percentage'),
     heatmapGrid: document.getElementById('heatmap-grid'),
-    macFullscreenBtn: document.getElementById('mac-fullscreen-btn') 
+    macFullscreenBtn: document.getElementById('mac-fullscreen-btn'),
+    // Elementos do Modal de Limpeza
+    btnOpenClear: document.getElementById('btn-open-clear'),
+    modalClear: document.getElementById('clear-modal'),
+    btnClearToday: document.getElementById('btn-clear-today'),
+    btnClearAll: document.getElementById('btn-clear-all'),
+    btnCancelClear: document.getElementById('btn-cancel-clear')
 };
 
 function init() {
@@ -53,6 +59,7 @@ function init() {
     renderTasks();
     setupNavigation();
     initChart();
+    setupClearModal();
     
     if (localStorage.getItem('theme') === 'light') {
         document.body.classList.remove('dark-mode');
@@ -80,7 +87,6 @@ function updateTimerDisplay() {
     const h = String(Math.floor(totalSeconds / 3600)).padStart(2, '0');
     const m = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, '0');
     const s = String(totalSeconds % 60).padStart(2, '0');
-    
     const ms = String(Math.floor((msElapsed % 1000) / 10)).padStart(2, '0');
 
     elements.timeMain.textContent = `${h}:${m}:${s}`;
@@ -394,6 +400,46 @@ function setupNavigation() {
     if (btnToClick) btnToClick.click();
 }
 
+// --- CONFIGURAÇÃO DO MODAL DE LIMPEZA ---
+function setupClearModal() {
+    elements.btnOpenClear.addEventListener('click', () => {
+        elements.modalClear.classList.add('active');
+    });
+
+    elements.btnCancelClear.addEventListener('click', () => {
+        elements.modalClear.classList.remove('active');
+    });
+
+    // Limpar Apenas Hoje
+    elements.btnClearToday.addEventListener('click', () => {
+        const today = getTodayDate();
+        if (appData.history[today]) {
+            appData.history[today] = { time: 0, sessions: 0 };
+            saveData();
+            calculateRecords();
+            updateUI();
+            resetTimer(); 
+        }
+        elements.modalClear.classList.remove('active');
+    });
+
+    // Zerar Todo o Histórico
+    elements.btnClearAll.addEventListener('click', () => {
+        appData.history = {};
+        appData.streak = 0;
+        appData.lastStudyDate = null;
+        appData.recordDay = 0;
+        appData.recordWeek = 0;
+        const today = getTodayDate();
+        appData.history[today] = { time: 0, sessions: 0 };
+        saveData();
+        calculateRecords();
+        updateUI();
+        resetTimer(); 
+        elements.modalClear.classList.remove('active');
+    });
+}
+
 elements.themeToggle.addEventListener('click', () => {
     document.body.classList.toggle('dark-mode');
     const isDark = document.body.classList.contains('dark-mode');
@@ -411,7 +457,6 @@ elements.macFullscreenBtn.addEventListener('click', () => {
     }
 });
 
-// Clique no botão também faz o toggle do Modo Foco
 elements.focusToggle.addEventListener('click', () => {
     document.body.classList.toggle('focus-active');
 });
@@ -437,7 +482,6 @@ function renderTasks() {
     });
 }
 
-// --- ATALHOS DE TECLADO ---
 document.addEventListener('keydown', (e) => {
     const isTimerActive = document.getElementById('timer').classList.contains('active');
     if (!isTimerActive) return;
@@ -451,11 +495,11 @@ document.addEventListener('keydown', (e) => {
         resetTimer();
     }
     if (e.code === 'Enter') {
-        e.preventDefault(); // Evita ativar outros botões focados acidentalmente
-        document.body.classList.toggle('focus-active'); // Toggle: Entra ou Sai
+        e.preventDefault(); 
+        document.body.classList.toggle('focus-active'); 
     }
     if (e.code === 'Escape') {
-        document.body.classList.remove('focus-active'); // Apenas sai
+        document.body.classList.remove('focus-active'); 
     }
 });
 

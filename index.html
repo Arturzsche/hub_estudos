@@ -47,7 +47,12 @@
 
                     <div class="chart-wrapper">
                         <div class="panel-header">
-                            <h2>Histórico de Estudos (Últimos 7 dias)</h2>
+                            <div style="display: flex; align-items: center; gap: 0.8rem;">
+                                <h2>Histórico de Estudos (Últimos 7 dias)</h2>
+                                <button id="btn-open-clear" class="icon-btn-small" title="Limpar Dados">
+                                    <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M16 9v10H8V9h8m-1.5-6h-5l-1 1H5v2h14V4h-3.5l-1-1zM18 7H6v12c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7z"/></svg>
+                                </button>
+                            </div>
                             <div class="total-badge">
                                 <span class="label">TOTAL ACUMULADO</span>
                                 <span id="total-accumulated">0h 0m</span>
@@ -136,6 +141,18 @@
             </div>
         </section>
     </main>
+
+    <div id="clear-modal" class="modal-overlay">
+        <div class="modal-content">
+            <h2>Limpar Histórico</h2>
+            <p>O que você deseja apagar? Esta ação não pode ser desfeita.</p>
+            <div class="modal-options">
+                <button id="btn-clear-today" class="btn secondary">Apagar Apenas Hoje</button>
+                <button id="btn-clear-all" class="btn danger">Zerar Tudo</button>
+                <button id="btn-cancel-clear" class="btn primary">Cancelar</button>
+            </div>
+        </div>
+    </div>
 
     <script src="script.js"></script>
 </body>
