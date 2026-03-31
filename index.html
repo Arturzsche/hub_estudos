@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Foco & Métricas</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="dark-mode"> <header id="main-header">
+        <div class="logo">MÉTRICAS<span>.</span></div>
+        <nav>
+            <button class="nav-btn active" data-target="dashboard">Visão Geral</button>
+            <button class="nav-btn" data-target="timer">Cronômetro</button>
+            <button class="nav-btn" data-target="tasks">Checklist</button>
+        </nav>
+        <button id="theme-toggle" title="Alternar Tema">🌓</button>
+    </header>
+
+    <main>
+        <section id="dashboard" class="view active">
+            <div class="container dashboard-grid">
+                
+                <div class="main-panel">
+                    <div class="panel-header">
+                        <h2>Histórico de Estudos (Últimos 7 dias)</h2>
+                        <div class="total-badge">
+                            <span class="label">TOTAL ACUMULADO</span>
+                            <span id="total-accumulated">0h 0m</span>
+                        </div>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="weeklyChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="side-panel">
+                    <div class="stat-card streak-card">
+                        <span class="icon">🔥</span>
+                        <div class="stat-info">
+                            <h3>Ofensiva</h3>
+                            <p><span id="streak-display">0</span> dias</p>
+                        </div>
+                    </div>
+
+                    <div class="stat-card">
+                        <span class="icon">🕒</span>
+                        <div class="stat-info">
+                            <h3>Recorde Diário</h3>
+                            <p id="record-day-display">00:00</p>
+                        </div>
+                    </div>
+
+                    <div class="stat-card">
+                        <span class="icon">📈</span>
+                        <div class="stat-info">
+                            <h3>Melhor Semana</h3>
+                            <p id="record-week-display">00:00</p>
+                        </div>
+                    </div>
+
+                    <div class="stat-card outline">
+                        <div class="stat-info">
+                            <h3>Estudo Hoje</h3>
+                            <p id="total-time-display" class="highlight">00:00:00</p>
+                            <span class="sub-text" id="sessions-display">0 sessões hoje</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="timer" class="view">
+            <div class="container timer-container">
+                <button id="focus-toggle" title="Modo Foco">🔍 ATIVAR MODO FOCO</button>
+                
+                <div class="stopwatch">
+                    <h1 id="time-display">00:00:00</h1>
+                </div>
+                
+                <div class="controls">
+                    <button id="btn-start" class="btn primary">Iniciar Sessão</button>
+                    <button id="btn-pause" class="btn secondary">Pausar</button>
+                    <button id="btn-reset" class="btn danger">Zerar</button>
+                </div>
+            </div>
+        </section>
+
+        <section id="tasks" class="view">
+            <div class="container container-small">
+                <h2>Roteiro de Revisão</h2>
+                <ul class="task-list" id="task-list"></ul>
+            </div>
+        </section>
+    </main>
+
+    <script src="script.js"></script>
+</body>
+</html>

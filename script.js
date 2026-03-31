@@ -1,0 +1,397 @@
+// --- ESTADOS E DADOS ---
+let timerInterval;
+let secondsElapsed = 0;
+let isRunning = false;
+let chartInstance = null;
+
+// Estrutura de dados principal armazenada no localStorage
+let appData = {
+    history: {}, 
+    streak: 0,
+    lastStudyDate: null,
+    recordDay: 0,
+    recordWeek: 0,
+    tasks: [
+        { id: 1, name: "Revisão de Doutrina", completed: false },
+        { id: 2, name: "Resolução de Questões (Banca)", completed: false },
+        { id: 3, name: "Leitura de Lei Seca", completed: false },
+        { id: 4, name: "Informativos STF/STJ", completed: false }
+    ]
+};
+
+// --- ELEMENTOS DOM ---
+const elements = {
+    timeDisplay: document.getElementById('time-display'),
+    btnStart: document.getElementById('btn-start'),
+    btnPause: document.getElementById('btn-pause'),
+    btnReset: document.getElementById('btn-reset'),
+    totalTimeDisplay: document.getElementById('total-time-display'),
+    sessionsDisplay: document.getElementById('sessions-display'),
+    streakDisplay: document.getElementById('streak-display'),
+    recordDayDisplay: document.getElementById('record-day-display'),
+    recordWeekDisplay: document.getElementById('record-week-display'),
+    totalAccumulated: document.getElementById('total-accumulated'),
+    taskList: document.getElementById('task-list'),
+    themeToggle: document.getElementById('theme-toggle'),
+    focusToggle: document.getElementById('focus-toggle')
+};
+
+// --- INICIALIZAÇÃO ---
+function init() {
+    loadData();
+    checkStreak();
+    calculateRecords();
+    updateUI();
+    renderTasks();
+    setupNavigation();
+    initChart();
+    
+    if (localStorage.getItem('theme') === 'light') {
+        document.body.classList.remove('dark-mode');
+    }
+
+    // Recupera o estado do cronômetro caso a página tenha sido atualizada
+    loadTimerState();
+}
+
+// --- UTILITÁRIOS DE DATA E TEMPO ---
+function getTodayDate() {
+    const today = new Date();
+    const offset = today.getTimezoneOffset();
+    today.setMinutes(today.getMinutes() - offset);
+    return today.toISOString().split('T')[0];
+}
+
+function formatTime(totalSeconds) {
+    const h = String(Math.floor(totalSeconds / 3600)).padStart(2, '0');
+    const m = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, '0');
+    const s = String(totalSeconds % 60).padStart(2, '0');
+    return `${h}:${m}:${s}`;
+}
+
+function formatHoursText(totalSeconds) {
+    const h = Math.floor(totalSeconds / 3600);
+    const m = Math.floor((totalSeconds % 3600) / 60);
+    if (h === 0) return `${m}m`;
+    return `${h}h ${m}m`;
+}
+
+// --- GERENCIAMENTO DE DADOS ---
+function loadData() {
+    const saved = localStorage.getItem('studyAppData');
+    if (saved) {
+        appData = { ...appData, ...JSON.parse(saved) };
+    }
+    const today = getTodayDate();
+    if (!appData.history[today]) {
+        appData.history[today] = { time: 0, sessions: 0 };
+        appData.tasks.forEach(t => t.completed = false);
+    }
+}
+
+function saveData() {
+    localStorage.setItem('studyAppData', JSON.stringify(appData));
+}
+
+function checkStreak() {
+    const today = getTodayDate();
+    const lastDateStr = appData.lastStudyDate;
+    if (!lastDateStr) return;
+
+    const todayDate = new Date(today);
+    const lastDate = new Date(lastDateStr);
+    const diffTime = Math.abs(todayDate - lastDate);
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+    if (diffDays > 1) {
+        appData.streak = 0; 
+    }
+}
+
+function calculateRecords() {
+    let maxDay = 0;
+    let totalAcumulado = 0;
+
+    for (const date in appData.history) {
+        const time = appData.history[date].time;
+        totalAcumulado += time;
+        if (time > maxDay) maxDay = time;
+    }
+    appData.recordDay = maxDay;
+
+    let maxWeek = 0;
+    const dates = Object.keys(appData.history).sort();
+    
+    for (let i = 0; i < dates.length; i++) {
+        let currentWeekTime = 0;
+        let start = new Date(dates[i]);
+        
+        for (let j = 0; j < 7; j++) {
+            let checkDate = new Date(start);
+            checkDate.setDate(checkDate.getDate() + j);
+            let checkDateStr = checkDate.toISOString().split('T')[0];
+            if (appData.history[checkDateStr]) {
+                currentWeekTime += appData.history[checkDateStr].time;
+            }
+        }
+        if (currentWeekTime > maxWeek) maxWeek = currentWeekTime;
+    }
+    appData.recordWeek = maxWeek;
+}
+
+function updateUI() {
+    const today = getTodayDate();
+    const todayData = appData.history[today];
+
+    elements.totalTimeDisplay.textContent = formatTime(todayData.time);
+    elements.sessionsDisplay.textContent = `${todayData.sessions} sessões hoje`;
+    
+    elements.streakDisplay.textContent = appData.streak;
+    elements.recordDayDisplay.textContent = formatHoursText(appData.recordDay);
+    elements.recordWeekDisplay.textContent = formatHoursText(appData.recordWeek);
+    
+    let totalAccumulatedSeconds = Object.values(appData.history).reduce((acc, curr) => acc + curr.time, 0);
+    elements.totalAccumulated.textContent = formatHoursText(totalAccumulatedSeconds);
+    
+    if (chartInstance) updateChartData();
+}
+
+// --- RECUPERAÇÃO DE ESTADO (ANTI-REFRESH) ---
+function loadTimerState() {
+    secondsElapsed = parseInt(localStorage.getItem('currentSessionSeconds')) || 0;
+    const wasRunning = localStorage.getItem('isTimerRunning') === 'true';
+    const lastTick = parseInt(localStorage.getItem('lastTick')) || Date.now();
+
+    if (wasRunning) {
+        const missedSeconds = Math.floor((Date.now() - lastTick) / 1000);
+        
+        if (missedSeconds > 0 && missedSeconds < 43200) { 
+            secondsElapsed += missedSeconds;
+            const today = getTodayDate();
+            appData.history[today].time += missedSeconds;
+            saveData();
+        }
+        startTimer(); 
+    } else {
+        elements.timeDisplay.textContent = formatTime(secondsElapsed);
+        if (secondsElapsed > 0) {
+            elements.btnStart.textContent = "Retomar";
+        }
+    }
+}
+
+// --- LÓGICA DO CRONÔMETRO ---
+function startTimer() {
+    if (isRunning) return;
+    isRunning = true;
+    
+    const today = getTodayDate();
+    
+    if (secondsElapsed === 0 && localStorage.getItem('isTimerRunning') !== 'true') {
+        appData.history[today].sessions++;
+        
+        if (appData.lastStudyDate !== today) {
+            if (appData.lastStudyDate) {
+                const lastDate = new Date(appData.lastStudyDate);
+                const currDate = new Date(today);
+                const diff = (currDate - lastDate) / (1000 * 60 * 60 * 24);
+                if (diff <= 1) appData.streak++;
+                else appData.streak = 1;
+            } else {
+                appData.streak = 1;
+            }
+            appData.lastStudyDate = today;
+        }
+    }
+
+    localStorage.setItem('isTimerRunning', 'true');
+
+    timerInterval = setInterval(() => {
+        secondsElapsed++;
+        appData.history[today].time++;
+        elements.timeDisplay.textContent = formatTime(secondsElapsed);
+        
+        localStorage.setItem('currentSessionSeconds', secondsElapsed);
+        localStorage.setItem('lastTick', Date.now().toString());
+        saveData(); 
+
+        if (secondsElapsed % 60 === 0) calculateRecords();
+        updateUI();
+    }, 1000);
+    
+    elements.btnStart.textContent = "Retomar";
+}
+
+function pauseTimer() {
+    if (!isRunning) return;
+    isRunning = false;
+    clearInterval(timerInterval);
+    
+    localStorage.setItem('isTimerRunning', 'false');
+    localStorage.setItem('currentSessionSeconds', secondsElapsed);
+    localStorage.setItem('lastTick', Date.now().toString());
+
+    calculateRecords();
+    saveData();
+    updateUI();
+}
+
+function resetTimer() {
+    pauseTimer();
+    secondsElapsed = 0;
+    
+    localStorage.setItem('currentSessionSeconds', '0');
+    localStorage.setItem('isTimerRunning', 'false');
+    
+    elements.timeDisplay.textContent = formatTime(secondsElapsed);
+    elements.btnStart.textContent = "Iniciar Sessão";
+}
+
+elements.btnStart.addEventListener('click', startTimer);
+elements.btnPause.addEventListener('click', pauseTimer);
+elements.btnReset.addEventListener('click', resetTimer);
+
+// --- GRÁFICO (Chart.js) ---
+function getChartData() {
+    const labels = [];
+    const data = [];
+    const today = new Date();
+    
+    for (let i = 6; i >= 0; i--) {
+        const d = new Date(today);
+        d.setDate(today.getDate() - i);
+        const dateStr = d.toISOString().split('T')[0];
+        
+        const dayName = d.toLocaleDateString('pt-BR', { weekday: 'short' });
+        labels.push(dayName.toUpperCase());
+        
+        const seconds = appData.history[dateStr] ? appData.history[dateStr].time : 0;
+        data.push(seconds / 3600);
+    }
+    
+    return { labels, data };
+}
+
+function initChart() {
+    const ctx = document.getElementById('weeklyChart').getContext('2d');
+    const { labels, data } = getChartData();
+    
+    const textColor = getComputedStyle(document.body).getPropertyValue('--text-muted').trim() || '#94a3b8';
+    const barColor = getComputedStyle(document.body).getPropertyValue('--accent-color').trim() || '#3b82f6';
+
+    chartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Horas',
+                data: data,
+                backgroundColor: barColor,
+                borderRadius: 4,
+                barThickness: 24
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const hours = Math.floor(context.raw);
+                            const minutes = Math.round((context.raw - hours) * 60);
+                            return `${hours}h ${minutes}m`;
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: { 
+                    beginAtZero: true, 
+                    grid: { color: 'rgba(148, 163, 184, 0.1)', borderColor: 'transparent' },
+                    ticks: { color: textColor, stepSize: 1 }
+                },
+                x: { 
+                    grid: { display: false },
+                    ticks: { color: textColor, font: { family: 'Inter', weight: 500 } }
+                }
+            }
+        }
+    });
+}
+
+function updateChartData() {
+    const { labels, data } = getChartData();
+    chartInstance.data.labels = labels;
+    chartInstance.data.datasets[0].data = data;
+    
+    const barColor = getComputedStyle(document.body).getPropertyValue('--accent-color').trim();
+    chartInstance.data.datasets[0].backgroundColor = barColor;
+    
+    chartInstance.update();
+}
+
+// --- NAVEGAÇÃO E TEMA ---
+function setupNavigation() {
+    const navButtons = document.querySelectorAll('.nav-btn');
+    const views = document.querySelectorAll('.view');
+
+    navButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+            navButtons.forEach(b => b.classList.remove('active'));
+            views.forEach(v => v.classList.remove('active'));
+            
+            btn.classList.add('active');
+            const targetId = btn.getAttribute('data-target');
+            document.getElementById(targetId).classList.add('active');
+            
+            // NOVO: Salva a aba escolhida no localStorage
+            localStorage.setItem('activeView', targetId);
+        });
+    });
+
+    // NOVO: Recupera a aba salva ao carregar a página
+    const savedView = localStorage.getItem('activeView') || 'dashboard';
+    const btnToClick = document.querySelector(`.nav-btn[data-target="${savedView}"]`);
+    if (btnToClick) {
+        btnToClick.click();
+    }
+}
+
+elements.themeToggle.addEventListener('click', () => {
+    document.body.classList.toggle('dark-mode');
+    const isDark = document.body.classList.contains('dark-mode');
+    localStorage.setItem('theme', isDark ? 'dark' : 'light');
+    if (chartInstance) updateChartData();
+});
+
+elements.focusToggle.addEventListener('click', () => {
+    document.body.classList.toggle('focus-active');
+    elements.focusToggle.textContent = document.body.classList.contains('focus-active') ? "SAIR DO FOCO" : "🔍 ATIVAR MODO FOCO";
+});
+
+// --- TAREFAS ---
+function renderTasks() {
+    elements.taskList.innerHTML = '';
+    appData.tasks.forEach(task => {
+        const li = document.createElement('li');
+        li.className = `task-item ${task.completed ? 'completed' : ''}`;
+        
+        li.innerHTML = `
+            <input type="checkbox" id="task-${task.id}" ${task.completed ? 'checked' : ''}>
+            <label for="task-${task.id}">${task.name}</label>
+        `;
+        
+        li.querySelector('input').addEventListener('change', (e) => {
+            task.completed = e.target.checked;
+            li.classList.toggle('completed', task.completed);
+            saveData();
+        });
+        
+        elements.taskList.appendChild(li);
+    });
+}
+
+// Inicia a aplicação
+init();
