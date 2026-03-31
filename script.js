@@ -1,8 +1,8 @@
 let timerInterval;
-let msElapsed = 0; // Novo: rastreando por milissegundos
+let msElapsed = 0; 
 let secondsElapsed = 0;
 let isRunning = false;
-let lastTickTime = 0; // Novo: tempo do último tick para maior precisão
+let lastTickTime = 0; 
 let chartInstance = null;
 
 let appData = {
@@ -38,11 +38,11 @@ const elements = {
     totalAccumulated: document.getElementById('total-accumulated'),
     taskList: document.getElementById('task-list'),
     themeToggle: document.getElementById('theme-toggle'),
-    focusToggle: document.getElementById('focus-toggle'),
+    focusToggle: document.getElementById('focus-toggle'), // Atualizado para o novo botão de ícone
     dailyProgressFill: document.getElementById('daily-progress-fill'),
     dailyPercentage: document.getElementById('daily-percentage'),
     heatmapGrid: document.getElementById('heatmap-grid'),
-    macFullscreenBtn: document.getElementById('mac-fullscreen-btn')
+    macFullscreenBtn: document.getElementById('mac-fullscreen-btn') 
 };
 
 function init() {
@@ -68,7 +68,6 @@ function getTodayDate() {
     return today.toISOString().split('T')[0];
 }
 
-// Formata o texto em horas/minutos para a aba Visão Geral
 function formatHoursText(totalSeconds) {
     const h = Math.floor(totalSeconds / 3600);
     const m = Math.floor((totalSeconds % 3600) / 60);
@@ -76,21 +75,18 @@ function formatHoursText(totalSeconds) {
     return `${h}h ${m}m`;
 }
 
-// Atualiza a visualização do cronômetro principal e milissegundos
 function updateTimerDisplay() {
     const totalSeconds = Math.floor(msElapsed / 1000);
     const h = String(Math.floor(totalSeconds / 3600)).padStart(2, '0');
     const m = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, '0');
     const s = String(totalSeconds % 60).padStart(2, '0');
     
-    // Calcula os milissegundos para mostrar apenas dois dígitos (centésimos)
     const ms = String(Math.floor((msElapsed % 1000) / 10)).padStart(2, '0');
 
     elements.timeMain.textContent = `${h}:${m}:${s}`;
     elements.timeMs.textContent = `.${ms}`;
 }
 
-// Altera o ícone visível no botão (Play / Pause)
 function updateToggleBtn() {
     if (isRunning) {
         elements.iconPlay.style.display = 'none';
@@ -200,7 +196,6 @@ function updateUI() {
     const today = getTodayDate();
     const todayData = appData.history[today];
 
-    // O formatTime antigo usado para o painel de visão geral (para formatar as 00:00:00 padrão)
     const h = String(Math.floor(todayData.time / 3600)).padStart(2, '0');
     const m = String(Math.floor((todayData.time % 3600) / 60)).padStart(2, '0');
     const s = String(todayData.time % 60).padStart(2, '0');
@@ -276,7 +271,6 @@ function startTimer() {
     localStorage.setItem('isTimerRunning', 'true');
     lastTickTime = Date.now();
 
-    // Rodando em aprox. 60fps (16ms) para animação suave dos milissegundos
     timerInterval = setInterval(() => {
         const now = Date.now();
         const delta = now - lastTickTime;
@@ -285,7 +279,6 @@ function startTimer() {
 
         updateTimerDisplay();
 
-        // Só atualiza os dados reais do app quando passar de 1 segundo inteiro
         const newSecondsElapsed = Math.floor(msElapsed / 1000);
         if (newSecondsElapsed > secondsElapsed) {
             const diff = newSecondsElapsed - secondsElapsed;
@@ -329,11 +322,17 @@ function resetTimer() {
     updateTimerDisplay();
 }
 
+// Eventos de Clique nos Botões
 elements.btnToggle.addEventListener('click', () => {
     if (isRunning) pauseTimer();
     else startTimer();
 });
 elements.btnReset.addEventListener('click', resetTimer);
+
+// Evento do Modo Foco via Botão
+elements.focusToggle.addEventListener('click', () => {
+    document.body.classList.add('focus-active');
+});
 
 function getChartData() {
     const labels = [];
@@ -406,10 +405,6 @@ elements.themeToggle.addEventListener('click', () => {
     const isDark = document.body.classList.contains('dark-mode');
     localStorage.setItem('theme', isDark ? 'dark' : 'light');
     if (chartInstance) updateChartData();
-});
-
-elements.focusToggle.addEventListener('click', () => {
-    document.body.classList.add('focus-active');
 });
 
 elements.macFullscreenBtn.addEventListener('click', () => {
