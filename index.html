@@ -23,7 +23,7 @@
             <button class="nav-btn active" data-target="dashboard">Visão Geral</button>
             <button class="nav-btn" data-target="timer">Cronômetro</button>
             <button class="nav-btn" data-target="tasks">Matérias</button>
-        </nav>
+            <button class="nav-btn" data-target="review">Revisão</button> </nav>
 
         <div class="header-right">
             <button id="theme-toggle" title="Alternar Tema">Tema</button>
@@ -33,7 +33,6 @@
     <main>
         <section id="dashboard" class="view active">
             <div class="container dashboard-grid">
-                
                 <div class="main-panel">
                     <div class="progress-card">
                         <div class="progress-header">
@@ -84,21 +83,18 @@
                             <p><span id="streak-display">0</span> dias</p>
                         </div>
                     </div>
-
                     <div class="stat-card">
                         <div class="stat-info">
                             <h3>Recorde Diário</h3>
                             <p id="record-day-display">00:00</p>
                         </div>
                     </div>
-
                     <div class="stat-card">
                         <div class="stat-info">
                             <h3>Melhor Semana</h3>
                             <p id="record-week-display">00:00</p>
                         </div>
                     </div>
-
                     <div class="stat-card outline">
                         <div class="stat-info">
                             <h3>Estudo Hoje</h3>
@@ -112,13 +108,11 @@
 
         <section id="timer" class="view">
             <div class="container timer-container">
-                
                 <div class="stopwatch">
                     <h1 id="time-display">
                         <span id="time-main">00:00:00</span><span id="time-ms">.00</span>
                     </h1>
                 </div>
-                
                 <div class="controls">
                     <button id="btn-toggle" class="icon-btn" title="Iniciar/Pausar (Espaço)">
                         <svg id="icon-play" viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M8 5v14l11-7z"/></svg>
@@ -138,6 +132,34 @@
             <div class="container container-small">
                 <h2>Disciplinas do Edital</h2>
                 <ul class="task-list" id="task-list"></ul>
+            </div>
+        </section>
+
+        <section id="review" class="view">
+            <div class="container dashboard-grid">
+                
+                <div class="main-panel">
+                    <h2>Bloco de Anotações Rápido</h2>
+                    <textarea id="quick-notes" placeholder="Ideias, erros, mapas mentais textuais... Salva automaticamente a cada letra digitada."></textarea>
+                </div>
+
+                <div class="side-panel">
+                    <h2>Sistema de Revisão</h2>
+                    
+                    <div class="review-input-group">
+                        <input type="text" id="review-input" placeholder="Novo tópico para revisar...">
+                        <button id="btn-add-review" class="btn primary" style="padding: 0 1.5rem;">Adicionar</button>
+                    </div>
+
+                    <div class="reviews-section">
+                        <h3>Para Hoje <span class="badge" style="background: var(--text-main); color: var(--surface-color);">Foco</span></h3>
+                        <ul class="task-list" id="review-list-today" style="margin-bottom: 2rem;"></ul>
+
+                        <h3>Próximas Revisões</h3>
+                        <ul class="task-list" id="review-list-upcoming"></ul>
+                    </div>
+                </div>
+
             </div>
         </section>
     </main>
