@@ -20,21 +20,20 @@
         </div>
         
         <nav class="header-center">
-            <button class="nav-btn active" data-target="dashboard">VISÃO GERAL</button>
-            <button class="nav-btn" data-target="timer">CRONÔMETRO</button>
-            <button class="nav-btn" data-target="tasks">MATÉRIAS</button>
-            <button class="nav-btn" data-target="review">REVISÃO</button>
-            <button class="nav-btn" data-target="exam">PROVA</button>
+            <button class="nav-btn active" data-target="dashboard">Visão Geral</button>
+            <button class="nav-btn" data-target="timer">Cronômetro</button>
+            <button class="nav-btn" data-target="tasks">Matérias</button>
         </nav>
 
         <div class="header-right">
-            <button id="theme-toggle" title="Alternar Tema">TEMA</button>
+            <button id="theme-toggle" title="Alternar Tema">Tema</button>
         </div>
     </header>
 
     <main>
         <section id="dashboard" class="view active">
             <div class="container dashboard-grid">
+                
                 <div class="main-panel">
                     <div class="progress-card">
                         <div class="progress-header">
@@ -85,24 +84,24 @@
                             <p><span id="streak-display">0</span> dias</p>
                         </div>
                     </div>
+
                     <div class="stat-card">
                         <div class="stat-info">
                             <h3>Recorde Diário</h3>
                             <p id="record-day-display">00:00</p>
                         </div>
                     </div>
+
                     <div class="stat-card">
                         <div class="stat-info">
                             <h3>Melhor Semana</h3>
                             <p id="record-week-display">00:00</p>
                         </div>
                     </div>
+
                     <div class="stat-card outline">
                         <div class="stat-info">
-                            <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
-                                <h3>Estudo Hoje</h3>
-                                <span id="today-state-icon" title="Estado Mental" style="font-size: 1.2rem;">😐</span>
-                            </div>
+                            <h3>Estudo Hoje</h3>
                             <p id="total-time-display" class="highlight">00:00:00</p>
                             <span class="sub-text" id="sessions-display">0 sessões hoje</span>
                         </div>
@@ -114,17 +113,6 @@
         <section id="timer" class="view">
             <div class="container timer-container">
                 
-                <div class="mental-state-selector" id="mental-selector">
-                    <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em;">Estado Mental Hoje</p>
-                    <div class="state-buttons">
-                        <button class="state-btn" data-state="tired" title="Cansado">😴</button>
-                        <button class="state-btn active" data-state="normal" title="Normal">😐</button>
-                        <button class="state-btn" data-state="focused" title="Focado">🔥</button>
-                    </div>
-                </div>
-
-                <button id="focus-toggle" class="btn-outline-small" title="Modo Foco (Enter)">ATIVAR MODO FOCO</button>
-                
                 <div class="stopwatch">
                     <h1 id="time-display">
                         <span id="time-main">00:00:00</span><span id="time-ms">.00</span>
@@ -133,11 +121,14 @@
                 
                 <div class="controls">
                     <button id="btn-toggle" class="icon-btn" title="Iniciar/Pausar (Espaço)">
-                        <svg id="icon-play" viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M8 5v14l11-7z"/></svg>
-                        <svg id="icon-pause" viewBox="0 0 24 24" width="20" height="20" style="display: none;"><path fill="currentColor" d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+                        <svg id="icon-play" viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M8 5v14l11-7z"/></svg>
+                        <svg id="icon-pause" viewBox="0 0 24 24" width="24" height="24" style="display: none;"><path fill="currentColor" d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
                     </button>
                     <button id="btn-reset" class="icon-btn" title="Zerar (Delete)">
-                        <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"/></svg>
+                        <svg viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"/></svg>
+                    </button>
+                    <button id="focus-toggle" class="icon-btn" title="Modo Foco (Enter)">
+                        <svg viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg>
                     </button>
                 </div>
             </div>
@@ -145,60 +136,8 @@
 
         <section id="tasks" class="view">
             <div class="container container-small">
-                <h2 style="margin-bottom: 2rem;">Disciplinas do Edital</h2>
+                <h2>Disciplinas do Edital</h2>
                 <ul class="task-list" id="task-list"></ul>
-            </div>
-        </section>
-
-        <section id="review" class="view">
-            <div class="container dashboard-grid">
-                <div class="main-panel">
-                    <h2 style="margin-bottom: 1.5rem;">Bloco Rápido</h2>
-                    <textarea id="quick-notes" placeholder="Anotações e erros. Salva automaticamente."></textarea>
-                </div>
-                <div class="side-panel">
-                    <h2 style="margin-bottom: 1.5rem;">Repetição Espaçada</h2>
-                    <div class="review-input-group">
-                        <input type="text" id="review-input" placeholder="Novo tópico...">
-                        <button id="btn-add-review" class="btn primary">Add</button>
-                    </div>
-                    <div class="reviews-section">
-                        <h3>Para Hoje <span class="badge" style="background: var(--text-main); color: var(--surface-color);">Ação</span></h3>
-                        <ul class="task-list" id="review-list-today" style="margin-bottom: 2rem;"></ul>
-                        <h3>Próximas</h3>
-                        <ul class="task-list" id="review-list-upcoming"></ul>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <section id="exam" class="view">
-            <div class="container timer-container">
-                
-                <div id="exam-setup" style="text-align: center;">
-                    <h2 class="exam-title">SIMULAÇÃO DE PROVA</h2>
-                    <p class="exam-subtitle">O site será bloqueado. Sem acesso a anotações. Apenas você e o tempo.</p>
-                    
-                    <div class="exam-presets">
-                        <button class="exam-preset active" data-time="3600">1 HORA</button>
-                        <button class="exam-preset" data-time="7200">2 HORAS</button>
-                        <button class="exam-preset" data-time="10800">3 HORAS</button>
-                        <button class="exam-preset" data-time="14400">4 HORAS</button>
-                    </div>
-                    
-                    <button id="btn-start-exam" class="btn-solid-large">INICIAR SIMULADO</button>
-                </div>
-
-                <div id="exam-running" style="display: none; text-align: center; flex-direction: column; align-items: center; justify-content: center; width: 100%;">
-                    <p id="exam-warning-text" style="color: var(--text-muted); letter-spacing: 0.1em; text-transform: uppercase; font-size: 0.9rem; margin-bottom: 2rem;">Foco Total Ativo</p>
-                    
-                    <div class="stopwatch">
-                        <h1 id="exam-time-display" style="font-size: 10rem; letter-spacing: -6px; margin: 0; line-height: 1;">00:00:00</h1>
-                    </div>
-                    
-                    <button id="btn-give-up-exam" class="btn-outline-small" style="margin-top: 4rem; opacity: 0.5; color: var(--danger-color); border-color: var(--danger-color);">ABANDONAR</button>
-                </div>
-
             </div>
         </section>
     </main>
