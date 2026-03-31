@@ -28,12 +28,12 @@ body { background-color: var(--bg-color); color: var(--text-main); min-height: 1
 h1, h2, h3 { font-weight: 500; letter-spacing: -0.02em; }
 h2 { font-size: 1.25rem; margin-bottom: 1rem; color: var(--text-muted); }
 
-/* Animação do Cabeçalho sumindo */
+/* Animação do Cabeçalho sumindo (Mais lenta e suave) */
 header { 
     display: flex; justify-content: space-between; align-items: center; padding: 1rem 2rem; 
     background-color: var(--surface-color); border-bottom: 1px solid var(--border-color); 
     max-height: 100px; overflow: hidden;
-    transition: max-height 0.6s ease, padding 0.6s ease, opacity 0.5s ease, border-color 0.6s ease;
+    transition: max-height 1.2s ease, padding 1.2s ease, opacity 1s ease, border-color 1.2s ease;
 }
 
 body.focus-active header { 
@@ -48,13 +48,13 @@ nav { display: flex; gap: 0.5rem; }
 #theme-toggle { background: transparent; border: 1px solid var(--border-color); color: var(--text-main); padding: 0.4rem 1rem; border-radius: var(--radius); font-size: 0.75rem; text-transform: uppercase; font-weight: 500; cursor: pointer; transition: var(--transition); }
 #theme-toggle:hover { background: var(--border-color); }
 
-main { flex: 1; padding: 2rem 1rem; display: flex; justify-content: center; transition: padding 0.6s ease; }
-body.focus-active main { padding: 0; } /* Remove espaçamentos no modo foco */
+main { flex: 1; padding: 2rem 1rem; display: flex; justify-content: center; transition: padding 1.2s ease; }
+body.focus-active main { padding: 0; } 
 
 .container { width: 100%; max-width: 1000px; }
 .container-small { max-width: 600px; }
 .view { display: none; }
-.view.active { display: block; animation: fadeIn 0.3s ease; }
+.view.active { display: block; animation: fadeIn 0.4s ease; }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
 .dashboard-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 1.5rem; }
@@ -74,23 +74,23 @@ body.focus-active main { padding: 0; } /* Remove espaçamentos no modo foco */
 .stat-info .sub-text { font-size: 0.85rem; color: var(--text-muted); }
 
 /* Container do Cronômetro */
-.timer-container { text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 70vh; transition: height 0.6s ease; }
+.timer-container { text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 70vh; transition: height 1.2s ease; }
 body.focus-active .timer-container { height: 100vh; }
 
-/* Animação do Tempo (Bounce/Crescimento) */
-.stopwatch { transition: transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1); }
-body.focus-active .stopwatch { transform: scale(1.6); }
+/* Nova Animação do Tempo (Lenta, fluida e cinematográfica) */
+.stopwatch { transition: transform 1.5s cubic-bezier(0.22, 1, 0.36, 1); }
+body.focus-active .stopwatch { transform: scale(1.4); }
 .stopwatch h1 { font-size: 8rem; font-weight: 300; font-variant-numeric: tabular-nums; margin: 2rem 0; letter-spacing: -4px; color: var(--text-main); }
 
-/* Animação dos Botões Sumindo (Desfoque e queda) */
+/* Nova Animação dos Botões Sumindo (Fade suave) */
 .controls, #focus-toggle { 
-    transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1); 
-    opacity: 1; filter: blur(0); transform: translateY(0) scale(1); 
+    transition: opacity 0.8s ease, filter 0.8s ease, transform 0.8s ease; 
+    opacity: 1; filter: blur(0); transform: translateY(0); 
 }
 
 body.focus-active .controls, 
 body.focus-active #focus-toggle { 
-    opacity: 0; filter: blur(10px); transform: translateY(30px) scale(0.9); 
+    opacity: 0; filter: blur(4px); transform: translateY(10px); 
     pointer-events: none; position: absolute; visibility: hidden; 
 }
 
