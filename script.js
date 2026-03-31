@@ -38,7 +38,7 @@ const elements = {
     totalAccumulated: document.getElementById('total-accumulated'),
     taskList: document.getElementById('task-list'),
     themeToggle: document.getElementById('theme-toggle'),
-    focusToggle: document.getElementById('focus-toggle'), // Atualizado para o novo botão de ícone
+    focusToggle: document.getElementById('focus-toggle'), 
     dailyProgressFill: document.getElementById('daily-progress-fill'),
     dailyPercentage: document.getElementById('daily-percentage'),
     heatmapGrid: document.getElementById('heatmap-grid'),
@@ -322,17 +322,11 @@ function resetTimer() {
     updateTimerDisplay();
 }
 
-// Eventos de Clique nos Botões
 elements.btnToggle.addEventListener('click', () => {
     if (isRunning) pauseTimer();
     else startTimer();
 });
 elements.btnReset.addEventListener('click', resetTimer);
-
-// Evento do Modo Foco via Botão
-elements.focusToggle.addEventListener('click', () => {
-    document.body.classList.add('focus-active');
-});
 
 function getChartData() {
     const labels = [];
@@ -417,6 +411,11 @@ elements.macFullscreenBtn.addEventListener('click', () => {
     }
 });
 
+// Clique no botão também faz o toggle do Modo Foco
+elements.focusToggle.addEventListener('click', () => {
+    document.body.classList.toggle('focus-active');
+});
+
 function renderTasks() {
     elements.taskList.innerHTML = '';
     appData.tasks.forEach(task => {
@@ -438,6 +437,7 @@ function renderTasks() {
     });
 }
 
+// --- ATALHOS DE TECLADO ---
 document.addEventListener('keydown', (e) => {
     const isTimerActive = document.getElementById('timer').classList.contains('active');
     if (!isTimerActive) return;
@@ -450,10 +450,12 @@ document.addEventListener('keydown', (e) => {
     if (e.code === 'Delete') {
         resetTimer();
     }
-    if (e.code === 'Enter' || e.code === 'Escape') {
-        if (document.body.classList.contains('focus-active')) {
-            document.body.classList.remove('focus-active');
-        }
+    if (e.code === 'Enter') {
+        e.preventDefault(); // Evita ativar outros botões focados acidentalmente
+        document.body.classList.toggle('focus-active'); // Toggle: Entra ou Sai
+    }
+    if (e.code === 'Escape') {
+        document.body.classList.remove('focus-active'); // Apenas sai
     }
 });
 
