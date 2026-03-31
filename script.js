@@ -364,10 +364,9 @@ elements.themeToggle.addEventListener('click', () => {
     if (chartInstance) updateChartData();
 });
 
+// Entrar no modo foco apenas pelo botão
 elements.focusToggle.addEventListener('click', () => {
-    document.body.classList.toggle('focus-active');
-    // Removido o emoji na troca do texto
-    elements.focusToggle.textContent = document.body.classList.contains('focus-active') ? "SAIR DO FOCO" : "ATIVAR MODO FOCO";
+    document.body.classList.add('focus-active');
 });
 
 function renderTasks() {
@@ -390,5 +389,31 @@ function renderTasks() {
         elements.taskList.appendChild(li);
     });
 }
+
+// --- ATALHOS DE TECLADO ---
+document.addEventListener('keydown', (e) => {
+    // Só aplica os atalhos se o cronômetro estiver visível
+    const isTimerActive = document.getElementById('timer').classList.contains('active');
+    if (!isTimerActive) return;
+
+    // Espaço: Iniciar/Pausar
+    if (e.code === 'Space') {
+        e.preventDefault(); // Evita rolar a tela
+        if (isRunning) pauseTimer();
+        else startTimer();
+    }
+
+    // Delete: Zerar
+    if (e.code === 'Delete') {
+        resetTimer();
+    }
+
+    // Enter ou Esc: Sair do Modo Foco
+    if (e.code === 'Enter' || e.code === 'Escape') {
+        if (document.body.classList.contains('focus-active')) {
+            document.body.classList.remove('focus-active');
+        }
+    }
+});
 
 init();
