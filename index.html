@@ -8,12 +8,13 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
-<body class="dark-mode"> <header id="main-header">
+<body class="dark-mode">
+    <header id="main-header">
         <div class="logo">MÉTRICAS<span>.</span></div>
         <nav>
             <button class="nav-btn active" data-target="dashboard">Visão Geral</button>
             <button class="nav-btn" data-target="timer">Cronômetro</button>
-            <button class="nav-btn" data-target="tasks">Checklist</button>
+            <button class="nav-btn" data-target="tasks">Matérias</button>
         </nav>
         <button id="theme-toggle" title="Alternar Tema">🌓</button>
     </header>
@@ -21,7 +22,6 @@
     <main>
         <section id="dashboard" class="view active">
             <div class="container dashboard-grid">
-                
                 <div class="main-panel">
                     <div class="panel-header">
                         <h2>Histórico de Estudos (Últimos 7 dias)</h2>
@@ -43,7 +43,6 @@
                             <p><span id="streak-display">0</span> dias</p>
                         </div>
                     </div>
-
                     <div class="stat-card">
                         <span class="icon">🕒</span>
                         <div class="stat-info">
@@ -51,7 +50,6 @@
                             <p id="record-day-display">00:00</p>
                         </div>
                     </div>
-
                     <div class="stat-card">
                         <span class="icon">📈</span>
                         <div class="stat-info">
@@ -59,7 +57,6 @@
                             <p id="record-week-display">00:00</p>
                         </div>
                     </div>
-
                     <div class="stat-card outline">
                         <div class="stat-info">
                             <h3>Estudo Hoje</h3>
@@ -74,11 +71,9 @@
         <section id="timer" class="view">
             <div class="container timer-container">
                 <button id="focus-toggle" title="Modo Foco">🔍 ATIVAR MODO FOCO</button>
-                
                 <div class="stopwatch">
                     <h1 id="time-display">00:00:00</h1>
                 </div>
-                
                 <div class="controls">
                     <button id="btn-start" class="btn primary">Iniciar Sessão</button>
                     <button id="btn-pause" class="btn secondary">Pausar</button>
@@ -89,7 +84,7 @@
 
         <section id="tasks" class="view">
             <div class="container container-small">
-                <h2>Roteiro de Revisão</h2>
+                <h2>Disciplinas do Edital</h2>
                 <ul class="task-list" id="task-list"></ul>
             </div>
         </section>

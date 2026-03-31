@@ -1,10 +1,8 @@
-// --- ESTADOS E DADOS ---
 let timerInterval;
 let secondsElapsed = 0;
 let isRunning = false;
 let chartInstance = null;
 
-// Estrutura de dados principal armazenada no localStorage
 let appData = {
     history: {}, 
     streak: 0,
@@ -12,14 +10,16 @@ let appData = {
     recordDay: 0,
     recordWeek: 0,
     tasks: [
-        { id: 1, name: "Revisão de Doutrina", completed: false },
-        { id: 2, name: "Resolução de Questões (Banca)", completed: false },
-        { id: 3, name: "Leitura de Lei Seca", completed: false },
-        { id: 4, name: "Informativos STF/STJ", completed: false }
+        { id: 1, name: "Direito Administrativo", completed: false },
+        { id: 2, name: "Controle Externo", completed: false },
+        { id: 3, name: "Administração Financeira e Orçamentária", completed: false },
+        { id: 4, name: "Lei Orgânica", completed: false },
+        { id: 5, name: "Regimento Interno", completed: false },
+        { id: 6, name: "Português", completed: false },
+        { id: 7, name: "Prova Discursiva", completed: false }
     ]
 };
 
-// --- ELEMENTOS DOM ---
 const elements = {
     timeDisplay: document.getElementById('time-display'),
     btnStart: document.getElementById('btn-start'),
@@ -36,7 +36,6 @@ const elements = {
     focusToggle: document.getElementById('focus-toggle')
 };
 
-// --- INICIALIZAÇÃO ---
 function init() {
     loadData();
     checkStreak();
@@ -50,11 +49,9 @@ function init() {
         document.body.classList.remove('dark-mode');
     }
 
-    // Recupera o estado do cronômetro caso a página tenha sido atualizada
     loadTimerState();
 }
 
-// --- UTILITÁRIOS DE DATA E TEMPO ---
 function getTodayDate() {
     const today = new Date();
     const offset = today.getTimezoneOffset();
@@ -76,16 +73,23 @@ function formatHoursText(totalSeconds) {
     return `${h}h ${m}m`;
 }
 
-// --- GERENCIAMENTO DE DADOS ---
 function loadData() {
     const saved = localStorage.getItem('studyAppData');
     if (saved) {
-        appData = { ...appData, ...JSON.parse(saved) };
+        const parsedSaved = JSON.parse(saved);
+        if (parsedSaved.tasks) {
+            appData.tasks = parsedSaved.tasks;
+        }
+        appData.history = parsedSaved.history || {};
+        appData.streak = parsedSaved.streak || 0;
+        appData.lastStudyDate = parsedSaved.lastStudyDate || null;
+        appData.recordDay = parsedSaved.recordDay || 0;
+        appData.recordWeek = parsedSaved.recordWeek || 0;
     }
+    
     const today = getTodayDate();
     if (!appData.history[today]) {
         appData.history[today] = { time: 0, sessions: 0 };
-        appData.tasks.forEach(t => t.completed = false);
     }
 }
 
@@ -156,7 +160,6 @@ function updateUI() {
     if (chartInstance) updateChartData();
 }
 
-// --- RECUPERAÇÃO DE ESTADO (ANTI-REFRESH) ---
 function loadTimerState() {
     secondsElapsed = parseInt(localStorage.getItem('currentSessionSeconds')) || 0;
     const wasRunning = localStorage.getItem('isTimerRunning') === 'true';
@@ -180,7 +183,6 @@ function loadTimerState() {
     }
 }
 
-// --- LÓGICA DO CRONÔMETRO ---
 function startTimer() {
     if (isRunning) return;
     isRunning = true;
@@ -251,7 +253,6 @@ elements.btnStart.addEventListener('click', startTimer);
 elements.btnPause.addEventListener('click', pauseTimer);
 elements.btnReset.addEventListener('click', resetTimer);
 
-// --- GRÁFICO (Chart.js) ---
 function getChartData() {
     const labels = [];
     const data = [];
@@ -332,7 +333,6 @@ function updateChartData() {
     chartInstance.update();
 }
 
-// --- NAVEGAÇÃO E TEMA ---
 function setupNavigation() {
     const navButtons = document.querySelectorAll('.nav-btn');
     const views = document.querySelectorAll('.view');
@@ -346,12 +346,10 @@ function setupNavigation() {
             const targetId = btn.getAttribute('data-target');
             document.getElementById(targetId).classList.add('active');
             
-            // NOVO: Salva a aba escolhida no localStorage
             localStorage.setItem('activeView', targetId);
         });
     });
 
-    // NOVO: Recupera a aba salva ao carregar a página
     const savedView = localStorage.getItem('activeView') || 'dashboard';
     const btnToClick = document.querySelector(`.nav-btn[data-target="${savedView}"]`);
     if (btnToClick) {
@@ -371,7 +369,6 @@ elements.focusToggle.addEventListener('click', () => {
     elements.focusToggle.textContent = document.body.classList.contains('focus-active') ? "SAIR DO FOCO" : "🔍 ATIVAR MODO FOCO";
 });
 
-// --- TAREFAS ---
 function renderTasks() {
     elements.taskList.innerHTML = '';
     appData.tasks.forEach(task => {
@@ -393,5 +390,4 @@ function renderTasks() {
     });
 }
 
-// Inicia a aplicação
 init();
