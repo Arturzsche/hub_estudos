@@ -9,6 +9,7 @@ let appData = {
     lastStudyDate: null,
     recordDay: 0,
     recordWeek: 0,
+    dailyGoalSeconds: 14400, // NOVO: Meta Diária de 4 horas (4 * 60 * 60)
     tasks: [
         { id: 1, name: "Direito Administrativo", completed: false },
         { id: 2, name: "Controle Externo", completed: false },
@@ -33,7 +34,10 @@ const elements = {
     totalAccumulated: document.getElementById('total-accumulated'),
     taskList: document.getElementById('task-list'),
     themeToggle: document.getElementById('theme-toggle'),
-    focusToggle: document.getElementById('focus-toggle')
+    focusToggle: document.getElementById('focus-toggle'),
+    dailyProgressFill: document.getElementById('daily-progress-fill'), // NOVO
+    dailyPercentage: document.getElementById('daily-percentage'),       // NOVO
+    heatmapGrid: document.getElementById('heatmap-grid')                // NOVO
 };
 
 function init() {
@@ -85,6 +89,7 @@ function loadData() {
         appData.lastStudyDate = parsedSaved.lastStudyDate || null;
         appData.recordDay = parsedSaved.recordDay || 0;
         appData.recordWeek = parsedSaved.recordWeek || 0;
+        appData.dailyGoalSeconds = parsedSaved.dailyGoalSeconds || 14400; 
     }
     
     const today = getTodayDate();
@@ -143,6 +148,40 @@ function calculateRecords() {
     appData.recordWeek = maxWeek;
 }
 
+// NOVO: Função para renderizar o Heatmap de 30 dias
+function renderHeatmap() {
+    elements.heatmapGrid.innerHTML = '';
+    const today = new Date();
+    
+    // Mostra os últimos 30 dias
+    for(let i = 29; i >= 0; i--) {
+        let d = new Date(today);
+        d.setDate(today.getDate() - i);
+        let dateStr = d.toISOString().split('T')[0];
+        let time = appData.history[dateStr] ? appData.history[dateStr].time : 0;
+        
+        let cell = document.createElement('div');
+        cell.className = 'heatmap-cell';
+        
+        // Define o nível de cor baseado no tempo estudado (Gamificação)
+        if (time === 0) {
+            cell.classList.add('level-0');
+        } else if (time < 3600) { // Menos de 1h
+            cell.classList.add('level-1');
+        } else if (time < 10800) { // Menos de 3h
+            cell.classList.add('level-2');
+        } else { // 3h ou mais
+            cell.classList.add('level-3');
+        }
+
+        // Formata data brasileira para o tooltip
+        const dateBR = d.toLocaleDateString('pt-BR');
+        cell.setAttribute('title', `${dateBR}: ${formatHoursText(time)}`);
+        
+        elements.heatmapGrid.appendChild(cell);
+    }
+}
+
 function updateUI() {
     const today = getTodayDate();
     const todayData = appData.history[today];
@@ -157,7 +196,14 @@ function updateUI() {
     let totalAccumulatedSeconds = Object.values(appData.history).reduce((acc, curr) => acc + curr.time, 0);
     elements.totalAccumulated.textContent = formatHoursText(totalAccumulatedSeconds);
     
+    // NOVO: Atualiza Barra de Progresso Diário
+    let percentage = (todayData.time / appData.dailyGoalSeconds) * 100;
+    if (percentage > 100) percentage = 100;
+    elements.dailyProgressFill.style.width = `${percentage}%`;
+    elements.dailyPercentage.textContent = `${Math.floor(percentage)}%`;
+
     if (chartInstance) updateChartData();
+    renderHeatmap(); // NOVO: Atualiza heatmap
 }
 
 function loadTimerState() {
@@ -289,7 +335,7 @@ function initChart() {
                 data: data,
                 backgroundColor: barColor,
                 borderRadius: 4,
-                barThickness: 24
+                barThickness: 45 // BARRAS MAIS LARGAS
             }]
         },
         options: {
@@ -311,11 +357,11 @@ function initChart() {
                 y: { 
                     beginAtZero: true, 
                     grid: { color: 'rgba(150, 150, 150, 0.1)', borderColor: 'transparent' },
-                    ticks: { color: textColor, stepSize: 1 }
+                    ticks: { color: textColor, stepSize: 1, font: { size: 13 } } // FONTES MAIORES
                 },
                 x: { 
                     grid: { display: false },
-                    ticks: { color: textColor, font: { family: 'Inter', weight: 500 } }
+                    ticks: { color: textColor, font: { family: 'Inter', weight: 600, size: 13 } } // FONTES MAIORES
                 }
             }
         }
@@ -364,7 +410,6 @@ elements.themeToggle.addEventListener('click', () => {
     if (chartInstance) updateChartData();
 });
 
-// Entrar no modo foco apenas pelo botão
 elements.focusToggle.addEventListener('click', () => {
     document.body.classList.add('focus-active');
 });
@@ -392,23 +437,17 @@ function renderTasks() {
 
 // --- ATALHOS DE TECLADO ---
 document.addEventListener('keydown', (e) => {
-    // Só aplica os atalhos se o cronômetro estiver visível
     const isTimerActive = document.getElementById('timer').classList.contains('active');
     if (!isTimerActive) return;
 
-    // Espaço: Iniciar/Pausar
     if (e.code === 'Space') {
-        e.preventDefault(); // Evita rolar a tela
+        e.preventDefault(); 
         if (isRunning) pauseTimer();
         else startTimer();
     }
-
-    // Delete: Zerar
     if (e.code === 'Delete') {
         resetTimer();
     }
-
-    // Enter ou Esc: Sair do Modo Foco
     if (e.code === 'Enter' || e.code === 'Escape') {
         if (document.body.classList.contains('focus-active')) {
             document.body.classList.remove('focus-active');

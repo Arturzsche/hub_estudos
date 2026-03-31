@@ -22,16 +22,43 @@
     <main>
         <section id="dashboard" class="view active">
             <div class="container dashboard-grid">
+                
                 <div class="main-panel">
-                    <div class="panel-header">
-                        <h2>Histórico de Estudos (Últimos 7 dias)</h2>
-                        <div class="total-badge">
-                            <span class="label">TOTAL ACUMULADO</span>
-                            <span id="total-accumulated">0h 0m</span>
+                    <div class="progress-card">
+                        <div class="progress-header">
+                            <h3>Progresso Diário (Meta: 4h)</h3>
+                            <span id="daily-percentage">0%</span>
+                        </div>
+                        <div class="progress-bar-bg">
+                            <div class="progress-bar-fill" id="daily-progress-fill"></div>
                         </div>
                     </div>
-                    <div class="chart-container">
-                        <canvas id="weeklyChart"></canvas>
+
+                    <div class="chart-wrapper">
+                        <div class="panel-header">
+                            <h2>Histórico de Estudos (Últimos 7 dias)</h2>
+                            <div class="total-badge">
+                                <span class="label">TOTAL ACUMULADO</span>
+                                <span id="total-accumulated">0h 0m</span>
+                            </div>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="weeklyChart"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="heatmap-card">
+                        <h2>Consistência (Últimos 30 dias)</h2>
+                        <div class="heatmap-grid" id="heatmap-grid">
+                            </div>
+                        <div class="heatmap-legend">
+                            <span>Menos</span>
+                            <div class="legend-cell level-0"></div>
+                            <div class="legend-cell level-1"></div>
+                            <div class="legend-cell level-2"></div>
+                            <div class="legend-cell level-3"></div>
+                            <span>Mais</span>
+                        </div>
                     </div>
                 </div>
 
@@ -42,18 +69,21 @@
                             <p><span id="streak-display">0</span> dias</p>
                         </div>
                     </div>
+
                     <div class="stat-card">
                         <div class="stat-info">
                             <h3>Recorde Diário</h3>
                             <p id="record-day-display">00:00</p>
                         </div>
                     </div>
+
                     <div class="stat-card">
                         <div class="stat-info">
                             <h3>Melhor Semana</h3>
                             <p id="record-week-display">00:00</p>
                         </div>
                     </div>
+
                     <div class="stat-card outline">
                         <div class="stat-info">
                             <h3>Estudo Hoje</h3>
@@ -68,9 +98,11 @@
         <section id="timer" class="view">
             <div class="container timer-container">
                 <button id="focus-toggle" title="Modo Foco">ATIVAR MODO FOCO</button>
+                
                 <div class="stopwatch">
                     <h1 id="time-display">00:00:00</h1>
                 </div>
+                
                 <div class="controls">
                     <button id="btn-start" class="btn primary">Iniciar Sessão</button>
                     <button id="btn-pause" class="btn secondary">Pausar</button>
