@@ -3,20 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistema de Foco & Métricas</title>
+    <title>MeusEstudos.com</title>
     <link rel="stylesheet" href="style.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body class="dark-mode">
     <header id="main-header">
-        <div class="logo">MÉTRICAS<span>.</span></div>
+        <div class="logo">MeusEstudos.com</div>
         <nav>
             <button class="nav-btn active" data-target="dashboard">Visão Geral</button>
             <button class="nav-btn" data-target="timer">Cronômetro</button>
             <button class="nav-btn" data-target="tasks">Matérias</button>
         </nav>
-        <button id="theme-toggle" title="Alternar Tema">🌓</button>
+        <button id="theme-toggle" title="Alternar Tema">Tema</button>
     </header>
 
     <main>
@@ -37,21 +37,18 @@
 
                 <div class="side-panel">
                     <div class="stat-card streak-card">
-                        <span class="icon">🔥</span>
                         <div class="stat-info">
                             <h3>Ofensiva</h3>
                             <p><span id="streak-display">0</span> dias</p>
                         </div>
                     </div>
                     <div class="stat-card">
-                        <span class="icon">🕒</span>
                         <div class="stat-info">
                             <h3>Recorde Diário</h3>
                             <p id="record-day-display">00:00</p>
                         </div>
                     </div>
                     <div class="stat-card">
-                        <span class="icon">📈</span>
                         <div class="stat-info">
                             <h3>Melhor Semana</h3>
                             <p id="record-week-display">00:00</p>
@@ -70,7 +67,7 @@
 
         <section id="timer" class="view">
             <div class="container timer-container">
-                <button id="focus-toggle" title="Modo Foco">🔍 ATIVAR MODO FOCO</button>
+                <button id="focus-toggle" title="Modo Foco">ATIVAR MODO FOCO</button>
                 <div class="stopwatch">
                     <h1 id="time-display">00:00:00</h1>
                 </div>

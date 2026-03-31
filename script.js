@@ -277,8 +277,8 @@ function initChart() {
     const ctx = document.getElementById('weeklyChart').getContext('2d');
     const { labels, data } = getChartData();
     
-    const textColor = getComputedStyle(document.body).getPropertyValue('--text-muted').trim() || '#94a3b8';
-    const barColor = getComputedStyle(document.body).getPropertyValue('--accent-color').trim() || '#3b82f6';
+    const textColor = getComputedStyle(document.body).getPropertyValue('--text-muted').trim() || '#999999';
+    const barColor = getComputedStyle(document.body).getPropertyValue('--accent-color').trim() || '#ffffff';
 
     chartInstance = new Chart(ctx, {
         type: 'bar',
@@ -310,7 +310,7 @@ function initChart() {
             scales: {
                 y: { 
                     beginAtZero: true, 
-                    grid: { color: 'rgba(148, 163, 184, 0.1)', borderColor: 'transparent' },
+                    grid: { color: 'rgba(150, 150, 150, 0.1)', borderColor: 'transparent' },
                     ticks: { color: textColor, stepSize: 1 }
                 },
                 x: { 
@@ -366,7 +366,8 @@ elements.themeToggle.addEventListener('click', () => {
 
 elements.focusToggle.addEventListener('click', () => {
     document.body.classList.toggle('focus-active');
-    elements.focusToggle.textContent = document.body.classList.contains('focus-active') ? "SAIR DO FOCO" : "🔍 ATIVAR MODO FOCO";
+    // Removido o emoji na troca do texto
+    elements.focusToggle.textContent = document.body.classList.contains('focus-active') ? "SAIR DO FOCO" : "ATIVAR MODO FOCO";
 });
 
 function renderTasks() {
