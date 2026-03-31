@@ -23,23 +23,34 @@ body.dark-mode {
 
 * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
 
-body { background-color: var(--bg-color); color: var(--text-main); min-height: 100vh; display: flex; flex-direction: column; }
+/* Adicionado 'perspective' para ativar a profundidade 3D em todo o site */
+body { 
+    background-color: var(--bg-color); 
+    color: var(--text-main); 
+    min-height: 100vh; 
+    display: flex; 
+    flex-direction: column; 
+    perspective: 1500px; 
+}
 
 h1, h2, h3 { font-weight: 500; letter-spacing: -0.02em; }
 h2 { font-size: 1.25rem; margin-bottom: 1rem; color: var(--text-muted); }
 
-/* Animação do Cabeçalho: Desliza para cima (Snappy & Clean) */
+/* --- EFEITO 3D DO CABEÇALHO --- */
 header { 
     display: flex; justify-content: space-between; align-items: center; padding: 1rem 2rem; 
     background-color: var(--surface-color); border-bottom: 1px solid var(--border-color); 
     max-height: 100px; overflow: hidden;
-    transform: translateY(0);
-    transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    transform-origin: top center; /* O eixo de rotação fica no topo da tela */
+    transform: rotateX(0deg);
+    opacity: 1;
+    transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.4s ease, max-height 0.4s ease 0.2s, padding 0.4s ease 0.2s;
 }
 
 body.focus-active header { 
-    transform: translateY(-100%);
-    max-height: 0; padding-top: 0; padding-bottom: 0; opacity: 0; border-bottom-color: transparent;
+    transform: rotateX(90deg); /* Dobra 90 graus para dentro da tela, como uma dobradiça */
+    opacity: 0; 
+    max-height: 0; padding-top: 0; padding-bottom: 0; border-bottom-color: transparent;
 }
 
 .logo { font-size: 1.1rem; font-weight: 600; letter-spacing: -0.02em; color: var(--text-main); }
@@ -75,32 +86,40 @@ body.focus-active main { padding: 0; }
 .stat-info .highlight { font-size: 2.2rem; font-weight: 500; color: var(--text-main); }
 .stat-info .sub-text { font-size: 0.85rem; color: var(--text-muted); }
 
-/* Container do Cronómetro */
-.timer-container { text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 70vh; transition: height 0.5s cubic-bezier(0.4, 0, 0.2, 1); }
+
+/* --- EFEITO 3D DO CRONÔMETRO --- */
+.timer-container { 
+    text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center; 
+    height: 70vh; transition: height 0.5s ease; 
+    transform-style: preserve-3d; /* Permite elementos filhos se moverem no eixo Z */
+}
 body.focus-active .timer-container { height: 100vh; }
 
-/* Animação do Tempo: Fica no tamanho original, mas "respira" o espaçamento */
-.stopwatch { transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1); transform: translateY(0); }
-body.focus-active .stopwatch { transform: translateY(-20px); }
+.stopwatch { 
+    transition: transform 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.1); /* Curva levemente elástica para dar impacto físico */
+}
+body.focus-active .stopwatch { 
+    transform: scale(1.3) translateZ(50px); /* Cronômetro vem em sua direção */
+}
 
 .stopwatch h1 { 
     font-size: 8rem; font-weight: 300; font-variant-numeric: tabular-nums; margin: 2rem 0; 
     letter-spacing: -4px; color: var(--text-main); 
-    transition: letter-spacing 0.6s cubic-bezier(0.4, 0, 0.2, 1); 
-}
-body.focus-active .stopwatch h1 {
-    letter-spacing: -1px; /* Os números expandem ligeiramente, dando um ar sofisticado */
 }
 
-/* Animação dos Botões: Deslizam para baixo e apagam rapidamente */
+
+/* --- EFEITO 3D DOS BOTÕES --- */
 .controls, #focus-toggle { 
-    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); 
-    opacity: 1; transform: translateY(0); 
+    transform-origin: center;
+    transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.4s ease; 
+    transform: rotateX(0deg) translateZ(0);
+    opacity: 1; 
 }
 
 body.focus-active .controls, 
 body.focus-active #focus-toggle { 
-    opacity: 0; transform: translateY(40px); 
+    transform: rotateX(-90deg) translateZ(-100px); /* Botões dobram para o "chão" e afundam */
+    opacity: 0; 
     pointer-events: none; position: absolute; visibility: hidden; 
 }
 
@@ -125,5 +144,6 @@ body.focus-active #focus-toggle {
 @media (max-width: 800px) {
     .dashboard-grid { grid-template-columns: 1fr; }
     .stopwatch h1 { font-size: 4rem; }
+    body.focus-active .stopwatch { transform: scale(1.1) translateZ(0); } /* Ajuste para mobile */
     header { flex-direction: column; gap: 1rem; }
 }
