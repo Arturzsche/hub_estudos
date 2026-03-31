@@ -9,7 +9,7 @@ let appData = {
     lastStudyDate: null,
     recordDay: 0,
     recordWeek: 0,
-    dailyGoalSeconds: 14400, // NOVO: Meta Diária de 4 horas (4 * 60 * 60)
+    dailyGoalSeconds: 14400, 
     tasks: [
         { id: 1, name: "Direito Administrativo", completed: false },
         { id: 2, name: "Controle Externo", completed: false },
@@ -35,9 +35,10 @@ const elements = {
     taskList: document.getElementById('task-list'),
     themeToggle: document.getElementById('theme-toggle'),
     focusToggle: document.getElementById('focus-toggle'),
-    dailyProgressFill: document.getElementById('daily-progress-fill'), // NOVO
-    dailyPercentage: document.getElementById('daily-percentage'),       // NOVO
-    heatmapGrid: document.getElementById('heatmap-grid')                // NOVO
+    dailyProgressFill: document.getElementById('daily-progress-fill'),
+    dailyPercentage: document.getElementById('daily-percentage'),
+    heatmapGrid: document.getElementById('heatmap-grid'),
+    macFullscreenBtn: document.getElementById('mac-fullscreen-btn') // NOVO: Botão Verde
 };
 
 function init() {
@@ -81,9 +82,7 @@ function loadData() {
     const saved = localStorage.getItem('studyAppData');
     if (saved) {
         const parsedSaved = JSON.parse(saved);
-        if (parsedSaved.tasks) {
-            appData.tasks = parsedSaved.tasks;
-        }
+        if (parsedSaved.tasks) appData.tasks = parsedSaved.tasks;
         appData.history = parsedSaved.history || {};
         appData.streak = parsedSaved.streak || 0;
         appData.lastStudyDate = parsedSaved.lastStudyDate || null;
@@ -110,10 +109,11 @@ function checkStreak() {
     const todayDate = new Date(today);
     const lastDate = new Date(lastDateStr);
     const diffTime = Math.abs(todayDate - lastDate);
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
 
     if (diffDays > 1) {
         appData.streak = 0; 
+        saveData(); 
     }
 }
 
@@ -148,12 +148,10 @@ function calculateRecords() {
     appData.recordWeek = maxWeek;
 }
 
-// NOVO: Função para renderizar o Heatmap de 30 dias
 function renderHeatmap() {
     elements.heatmapGrid.innerHTML = '';
     const today = new Date();
     
-    // Mostra os últimos 30 dias
     for(let i = 29; i >= 0; i--) {
         let d = new Date(today);
         d.setDate(today.getDate() - i);
@@ -163,18 +161,11 @@ function renderHeatmap() {
         let cell = document.createElement('div');
         cell.className = 'heatmap-cell';
         
-        // Define o nível de cor baseado no tempo estudado (Gamificação)
-        if (time === 0) {
-            cell.classList.add('level-0');
-        } else if (time < 3600) { // Menos de 1h
-            cell.classList.add('level-1');
-        } else if (time < 10800) { // Menos de 3h
-            cell.classList.add('level-2');
-        } else { // 3h ou mais
-            cell.classList.add('level-3');
-        }
+        if (time === 0) cell.classList.add('level-0');
+        else if (time < 3600) cell.classList.add('level-1');
+        else if (time < 10800) cell.classList.add('level-2');
+        else cell.classList.add('level-3');
 
-        // Formata data brasileira para o tooltip
         const dateBR = d.toLocaleDateString('pt-BR');
         cell.setAttribute('title', `${dateBR}: ${formatHoursText(time)}`);
         
@@ -188,7 +179,6 @@ function updateUI() {
 
     elements.totalTimeDisplay.textContent = formatTime(todayData.time);
     elements.sessionsDisplay.textContent = `${todayData.sessions} sessões hoje`;
-    
     elements.streakDisplay.textContent = appData.streak;
     elements.recordDayDisplay.textContent = formatHoursText(appData.recordDay);
     elements.recordWeekDisplay.textContent = formatHoursText(appData.recordWeek);
@@ -196,14 +186,13 @@ function updateUI() {
     let totalAccumulatedSeconds = Object.values(appData.history).reduce((acc, curr) => acc + curr.time, 0);
     elements.totalAccumulated.textContent = formatHoursText(totalAccumulatedSeconds);
     
-    // NOVO: Atualiza Barra de Progresso Diário
     let percentage = (todayData.time / appData.dailyGoalSeconds) * 100;
     if (percentage > 100) percentage = 100;
     elements.dailyProgressFill.style.width = `${percentage}%`;
     elements.dailyPercentage.textContent = `${Math.floor(percentage)}%`;
 
     if (chartInstance) updateChartData();
-    renderHeatmap(); // NOVO: Atualiza heatmap
+    renderHeatmap(); 
 }
 
 function loadTimerState() {
@@ -213,7 +202,6 @@ function loadTimerState() {
 
     if (wasRunning) {
         const missedSeconds = Math.floor((Date.now() - lastTick) / 1000);
-        
         if (missedSeconds > 0 && missedSeconds < 43200) { 
             secondsElapsed += missedSeconds;
             const today = getTodayDate();
@@ -223,9 +211,7 @@ function loadTimerState() {
         startTimer(); 
     } else {
         elements.timeDisplay.textContent = formatTime(secondsElapsed);
-        if (secondsElapsed > 0) {
-            elements.btnStart.textContent = "Retomar";
-        }
+        if (secondsElapsed > 0) elements.btnStart.textContent = "Retomar";
     }
 }
 
@@ -242,13 +228,14 @@ function startTimer() {
             if (appData.lastStudyDate) {
                 const lastDate = new Date(appData.lastStudyDate);
                 const currDate = new Date(today);
-                const diff = (currDate - lastDate) / (1000 * 60 * 60 * 24);
+                const diff = Math.round((currDate - lastDate) / (1000 * 60 * 60 * 24));
                 if (diff <= 1) appData.streak++;
                 else appData.streak = 1;
             } else {
                 appData.streak = 1;
             }
             appData.lastStudyDate = today;
+            saveData(); 
         }
     }
 
@@ -308,61 +295,29 @@ function getChartData() {
         const d = new Date(today);
         d.setDate(today.getDate() - i);
         const dateStr = d.toISOString().split('T')[0];
-        
         const dayName = d.toLocaleDateString('pt-BR', { weekday: 'short' });
         labels.push(dayName.toUpperCase());
-        
         const seconds = appData.history[dateStr] ? appData.history[dateStr].time : 0;
         data.push(seconds / 3600);
     }
-    
     return { labels, data };
 }
 
 function initChart() {
     const ctx = document.getElementById('weeklyChart').getContext('2d');
     const { labels, data } = getChartData();
-    
     const textColor = getComputedStyle(document.body).getPropertyValue('--text-muted').trim() || '#999999';
     const barColor = getComputedStyle(document.body).getPropertyValue('--accent-color').trim() || '#ffffff';
 
     chartInstance = new Chart(ctx, {
         type: 'bar',
-        data: {
-            labels: labels,
-            datasets: [{
-                label: 'Horas',
-                data: data,
-                backgroundColor: barColor,
-                borderRadius: 4,
-                barThickness: 45 // BARRAS MAIS LARGAS
-            }]
-        },
+        data: { labels: labels, datasets: [{ label: 'Horas', data: data, backgroundColor: barColor, borderRadius: 4, barThickness: 45 }] },
         options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: { display: false },
-                tooltip: {
-                    callbacks: {
-                        label: function(context) {
-                            const hours = Math.floor(context.raw);
-                            const minutes = Math.round((context.raw - hours) * 60);
-                            return `${hours}h ${minutes}m`;
-                        }
-                    }
-                }
-            },
+            responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { display: false }, tooltip: { callbacks: { label: function(context) { const hours = Math.floor(context.raw); const minutes = Math.round((context.raw - hours) * 60); return `${hours}h ${minutes}m`; } } } },
             scales: {
-                y: { 
-                    beginAtZero: true, 
-                    grid: { color: 'rgba(150, 150, 150, 0.1)', borderColor: 'transparent' },
-                    ticks: { color: textColor, stepSize: 1, font: { size: 13 } } // FONTES MAIORES
-                },
-                x: { 
-                    grid: { display: false },
-                    ticks: { color: textColor, font: { family: 'Inter', weight: 600, size: 13 } } // FONTES MAIORES
-                }
+                y: { beginAtZero: true, grid: { color: 'rgba(150, 150, 150, 0.1)', borderColor: 'transparent' }, ticks: { color: textColor, stepSize: 1, font: { size: 13 } } },
+                x: { grid: { display: false }, ticks: { color: textColor, font: { family: 'Inter', weight: 600, size: 13 } } }
             }
         }
     });
@@ -372,10 +327,8 @@ function updateChartData() {
     const { labels, data } = getChartData();
     chartInstance.data.labels = labels;
     chartInstance.data.datasets[0].data = data;
-    
     const barColor = getComputedStyle(document.body).getPropertyValue('--accent-color').trim();
     chartInstance.data.datasets[0].backgroundColor = barColor;
-    
     chartInstance.update();
 }
 
@@ -387,20 +340,16 @@ function setupNavigation() {
         btn.addEventListener('click', () => {
             navButtons.forEach(b => b.classList.remove('active'));
             views.forEach(v => v.classList.remove('active'));
-            
             btn.classList.add('active');
             const targetId = btn.getAttribute('data-target');
             document.getElementById(targetId).classList.add('active');
-            
             localStorage.setItem('activeView', targetId);
         });
     });
 
     const savedView = localStorage.getItem('activeView') || 'dashboard';
     const btnToClick = document.querySelector(`.nav-btn[data-target="${savedView}"]`);
-    if (btnToClick) {
-        btnToClick.click();
-    }
+    if (btnToClick) btnToClick.click();
 }
 
 elements.themeToggle.addEventListener('click', () => {
@@ -412,6 +361,17 @@ elements.themeToggle.addEventListener('click', () => {
 
 elements.focusToggle.addEventListener('click', () => {
     document.body.classList.add('focus-active');
+});
+
+// Lógica do Botão Verde (Mac OS) para Tela Cheia
+elements.macFullscreenBtn.addEventListener('click', () => {
+    if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(err => {
+            console.log(`Erro ao tentar modo tela cheia: ${err.message}`);
+        });
+    } else {
+        document.exitFullscreen();
+    }
 });
 
 function renderTasks() {
@@ -435,7 +395,6 @@ function renderTasks() {
     });
 }
 
-// --- ATALHOS DE TECLADO ---
 document.addEventListener('keydown', (e) => {
     const isTimerActive = document.getElementById('timer').classList.contains('active');
     if (!isTimerActive) return;
@@ -451,6 +410,21 @@ document.addEventListener('keydown', (e) => {
     if (e.code === 'Enter' || e.code === 'Escape') {
         if (document.body.classList.contains('focus-active')) {
             document.body.classList.remove('focus-active');
+        }
+    }
+});
+
+window.addEventListener('beforeunload', () => {
+    if (isRunning) pauseTimer();
+    saveData();
+});
+
+document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') {
+        saveData();
+        if (isRunning) {
+            localStorage.setItem('currentSessionSeconds', secondsElapsed);
+            localStorage.setItem('lastTick', Date.now().toString());
         }
     }
 });

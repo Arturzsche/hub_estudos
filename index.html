@@ -10,7 +10,14 @@
 </head>
 <body class="dark-mode">
     <header id="main-header">
-        <div class="logo">MeusEstudos.com</div>
+        <div class="header-left">
+            <div class="mac-window-controls">
+                <span class="mac-dot mac-red"></span>
+                <span class="mac-dot mac-yellow"></span>
+                <span class="mac-dot mac-green" id="mac-fullscreen-btn" title="Tela Cheia"></span>
+            </div>
+            <div class="logo">MeusEstudos.com</div>
+        </div>
         <nav>
             <button class="nav-btn active" data-target="dashboard">Visão Geral</button>
             <button class="nav-btn" data-target="timer">Cronômetro</button>
@@ -49,8 +56,7 @@
 
                     <div class="heatmap-card">
                         <h2>Consistência (Últimos 30 dias)</h2>
-                        <div class="heatmap-grid" id="heatmap-grid">
-                            </div>
+                        <div class="heatmap-grid" id="heatmap-grid"></div>
                         <div class="heatmap-legend">
                             <span>Menos</span>
                             <div class="legend-cell level-0"></div>

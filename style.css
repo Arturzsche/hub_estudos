@@ -55,6 +55,15 @@ body.focus-active header {
     max-height: 0; padding-top: 0; padding-bottom: 0; border-bottom-color: transparent;
 }
 
+/* --- BOTÕES ESTILO MAC OS --- */
+.header-left { display: flex; align-items: center; gap: 1.5rem; }
+.mac-window-controls { display: flex; gap: 8px; }
+.mac-dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; cursor: default; }
+.mac-red { background-color: #ff5f56; }
+.mac-yellow { background-color: #ffbd2e; }
+.mac-green { background-color: #27c93f; cursor: pointer; transition: filter 0.2s; }
+.mac-green:hover { filter: brightness(1.2); }
+
 .logo { font-size: 1.2rem; font-weight: 600; letter-spacing: -0.02em; color: var(--text-main); }
 nav { display: flex; gap: 0.5rem; }
 .nav-btn { background: none; border: none; color: var(--text-muted); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 500; cursor: pointer; padding: 0.5rem 1rem; border-radius: var(--radius); transition: var(--transition); }
@@ -66,37 +75,31 @@ nav { display: flex; gap: 0.5rem; }
 main { flex: 1; padding: 2rem 1rem; display: flex; justify-content: center; transition: padding 0.5s ease; }
 body.focus-active main { padding: 0; } 
 
-/* Ampliado de 1000px para 1200px para ocupar melhor a tela */
 .container { width: 100%; max-width: 1200px; }
 .container-small { max-width: 600px; }
 .view { display: none; }
 .view.active { display: block; animation: fadeIn 0.4s ease; }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
-/* Grid da Visão Geral */
 .dashboard-grid { display: grid; grid-template-columns: 2.5fr 1fr; gap: 2rem; }
 .main-panel, .side-panel { display: flex; flex-direction: column; gap: 1.5rem; }
 
-/* Novas Seções (Progresso e Heatmap) */
 .progress-card, .chart-wrapper, .heatmap-card {
     background-color: var(--surface-color); border: 1px solid var(--border-color); border-radius: var(--radius); padding: 1.5rem;
 }
 
-/* Barra de Progresso Diário */
 .progress-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 0.8rem; }
 .progress-header h3 { font-size: 0.9rem; text-transform: uppercase; color: var(--text-muted); letter-spacing: 0.05em; }
 #daily-percentage { font-size: 1.5rem; font-weight: 600; color: var(--text-main); }
 .progress-bar-bg { width: 100%; height: 12px; background-color: var(--bg-color); border-radius: 6px; overflow: hidden; border: 1px solid var(--border-color); }
 .progress-bar-fill { height: 100%; background-color: var(--text-main); width: 0%; transition: width 1s ease; }
 
-/* Gráfico */
 .panel-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
 .total-badge { text-align: right; }
 .total-badge .label { display: block; font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.1em; }
 #total-accumulated { font-size: 1.4rem; font-weight: 600; color: var(--accent-color); }
 .chart-container { height: 350px; width: 100%; }
 
-/* Heatmap de Consistência */
 .heatmap-card h2 { font-size: 1rem; margin-bottom: 1.5rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
 .heatmap-grid { display: grid; grid-template-columns: repeat(15, 1fr); gap: 6px; margin-bottom: 1rem; }
 .heatmap-cell { aspect-ratio: 1; border-radius: 2px; background-color: var(--border-color); transition: transform 0.2s; position: relative; cursor: pointer; }
@@ -104,7 +107,6 @@ body.focus-active main { padding: 0; }
 .heatmap-legend { display: flex; align-items: center; gap: 0.5rem; font-size: 0.8rem; color: var(--text-muted); justify-content: flex-end; }
 .legend-cell { width: 12px; height: 12px; border-radius: 2px; }
 
-/* Níveis do Heatmap (Claro -> Escuro) */
 .level-0 { background-color: var(--bg-color); border: 1px solid var(--border-color); }
 .level-1 { background-color: rgba(0, 0, 0, 0.2); }
 .level-2 { background-color: rgba(0, 0, 0, 0.5); }
@@ -114,7 +116,6 @@ body.dark-mode .level-1 { background-color: rgba(255, 255, 255, 0.2); }
 body.dark-mode .level-2 { background-color: rgba(255, 255, 255, 0.5); }
 body.dark-mode .level-3 { background-color: rgba(255, 255, 255, 0.9); }
 
-/* Cards Laterais */
 .stat-card { background-color: var(--surface-color); border: 1px solid var(--border-color); border-radius: var(--radius); padding: 1.5rem; display: flex; align-items: center; gap: 1rem; }
 .stat-card.outline { background-color: transparent; border: 1px dashed var(--border-color); flex-direction: column; align-items: flex-start; gap: 0.5rem; }
 .stat-info h3 { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 0.4rem; }
@@ -122,14 +123,12 @@ body.dark-mode .level-3 { background-color: rgba(255, 255, 255, 0.9); }
 .stat-info .highlight { font-size: 2.5rem; font-weight: 500; color: var(--text-main); }
 .stat-info .sub-text { font-size: 0.85rem; color: var(--text-muted); }
 
-/* --- EFEITO DO CRONÔMETRO --- */
 .timer-container { text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 70vh; transition: height 0.5s ease; transform-style: preserve-3d; }
 body.focus-active .timer-container { height: 100vh; }
 .stopwatch { transition: transform 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.1); }
 body.focus-active .stopwatch { transform: scale(1.3) translateZ(50px); }
 .stopwatch h1 { font-size: 8rem; font-weight: 300; font-variant-numeric: tabular-nums; margin: 2rem 0; letter-spacing: -4px; color: var(--text-main); }
 
-/* --- BOTÕES --- */
 .controls, #focus-toggle { transition: transform 0.4s ease, opacity 0.4s ease; transform: translateY(0); opacity: 1; }
 body.focus-active .controls, body.focus-active #focus-toggle { transform: translateY(20px); opacity: 0; pointer-events: none; position: absolute; visibility: hidden; }
 
@@ -151,7 +150,6 @@ body.focus-active .controls, body.focus-active #focus-toggle { transform: transl
 .task-item label { flex: 1; cursor: pointer; font-size: 1rem; color: var(--text-main); }
 .task-item.completed label { text-decoration: line-through; color: var(--text-muted); }
 
-/* Tooltip simples para o heatmap */
 .heatmap-cell[title]:hover::after {
     content: attr(title); position: absolute; bottom: 120%; left: 50%; transform: translateX(-50%);
     background: var(--text-main); color: var(--bg-color); padding: 4px 8px; border-radius: 4px;
