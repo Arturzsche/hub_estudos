@@ -62,7 +62,6 @@ const elements = {
     newSubjectInput: document.getElementById('new-subject-input'),
     btnAddSubject: document.getElementById('btn-add-subject'),
     
-    // Novo Botão
     btnAddCycle: document.getElementById('btn-add-cycle'),
     
     cycleSubject: document.getElementById('cycle-subject'),
@@ -569,7 +568,7 @@ elements.focusToggle.addEventListener('click', () => {
     document.body.classList.toggle('focus-active');
 });
 
-// --- LÓGICA DO BANCO DE MATÉRIAS ---
+
 function renderSubjectBank() {
     elements.subjectBank.innerHTML = '';
     appData.savedSubjects.forEach((subject, index) => {
@@ -618,16 +617,42 @@ function renderSchedule() {
     appData.schedule.forEach((row, rowIndex) => {
         const tr = document.createElement('tr');
         
+        // Célula de Horário (Contém o botão de excluir que aparece no hover)
         const tdTime = document.createElement('td');
         tdTime.className = 'time-cell';
-        tdTime.contentEditable = true;
-        tdTime.textContent = row.time;
-        tdTime.addEventListener('blur', (e) => {
+        
+        // Botão de Excluir Linha (Discreto, esquerda)
+        const btnDeleteRow = document.createElement('button');
+        btnDeleteRow.className = 'btn-remove-row';
+        btnDeleteRow.innerHTML = '<svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M19 13H5v-2h14v2z"/></svg>';
+        btnDeleteRow.title = "Remover este ciclo";
+        
+        btnDeleteRow.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (confirm("Remover este horário do cronograma?")) {
+                appData.schedule.splice(rowIndex, 1);
+                saveData();
+                renderSchedule();
+                updateTodaysSubjects();
+                updateTimerDisplay();
+            }
+        });
+        
+        // Span para digitar o texto do horário sem sobrepor o botão
+        const timeSpan = document.createElement('span');
+        timeSpan.className = 'time-text';
+        timeSpan.contentEditable = true;
+        timeSpan.textContent = row.time;
+        timeSpan.addEventListener('blur', (e) => {
             appData.schedule[rowIndex].time = e.target.textContent;
             saveData();
         });
+        
+        tdTime.appendChild(btnDeleteRow);
+        tdTime.appendChild(timeSpan);
         tr.appendChild(tdTime);
 
+        // Células dos Dias da Semana
         row.days.forEach((dayContent, dayIndex) => {
             const tdDay = document.createElement('td');
             tdDay.className = 'drop-zone';
@@ -670,7 +695,6 @@ function renderSchedule() {
     });
 }
 
-// --- ADICIONAR NOVO CICLO (LINHA) ---
 elements.btnAddCycle.addEventListener('click', () => {
     appData.schedule.push({ time: "00:00 - 00:00", days: ["", "", "", "", "", "", ""] });
     saveData();
