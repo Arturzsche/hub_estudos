@@ -22,7 +22,6 @@ let appData = {
         { time: "14:00 - 15:30", days: ["", "", "", "", "", "", ""] },
         { time: "15:30 - 17:00", days: ["", "", "", "", "", "", ""] }
     ],
-    // Salva o estado atual do ciclo para não perder caso recarregue a página
     cycleState: {
         date: "",
         subjectIndex: 0,
@@ -57,12 +56,15 @@ const elements = {
     btnClearToday: document.getElementById('btn-clear-today'),
     btnClearAll: document.getElementById('btn-clear-all'),
     btnCancelClear: document.getElementById('btn-cancel-clear'),
+    
     scheduleTableBody: document.querySelector('#schedule-table tbody'),
     subjectBank: document.getElementById('subject-bank'),
     newSubjectInput: document.getElementById('new-subject-input'),
     btnAddSubject: document.getElementById('btn-add-subject'),
     
-    // Novos elementos do Ciclo
+    // Novo Botão
+    btnAddCycle: document.getElementById('btn-add-cycle'),
+    
     cycleSubject: document.getElementById('cycle-subject'),
     cyclePhaseBadge: document.getElementById('cycle-phase-badge')
 };
@@ -93,7 +95,6 @@ function getTodayDate() {
     return today.toISOString().split('T')[0];
 }
 
-// Emite um Beep Suave usando o navegador (Sem arquivos externos)
 function playBeep() {
     try {
         const AudioContext = window.AudioContext || window.webkitAudioContext;
@@ -117,9 +118,7 @@ function formatHoursText(totalSeconds) {
     return `${h}h ${m}m`;
 }
 
-// Atualiza as matérias do dia com base na tabela
 function updateTodaysSubjects() {
-    // getDay() retorna 0 (Dom) a 6 (Sáb). A tabela é Seg(0) a Dom(6).
     const jsDay = new Date().getDay();
     const tableDayIndex = jsDay === 0 ? 6 : jsDay - 1;
     
@@ -132,7 +131,6 @@ function updateTodaysSubjects() {
     });
 
     const today = getTodayDate();
-    // Se mudou de dia, reseta o ciclo para a primeira matéria
     if (appData.cycleState.date !== today) {
         appData.cycleState = {
             date: today,
@@ -144,7 +142,6 @@ function updateTodaysSubjects() {
     }
 }
 
-// Atualiza a exibição do tempo regressivo no Cronômetro Principal
 function updateTimerDisplay() {
     let ms = appData.cycleState.msRemaining;
     if (ms < 0) ms = 0;
@@ -158,7 +155,6 @@ function updateTimerDisplay() {
     elements.timeMain.textContent = `${h}:${m}:${s}`;
     elements.timeMs.textContent = `.${msStr}`;
 
-    // Atualiza os cabeçalhos de Informação do Ciclo
     if (todaysSubjects.length === 0) {
         elements.cycleSubject.textContent = "Modo Livre";
         elements.cyclePhaseBadge.textContent = "Sem matérias cadastradas hoje";
@@ -319,13 +315,10 @@ function loadTimerState() {
     const lastTick = parseInt(localStorage.getItem('lastTick')) || Date.now();
 
     if (wasRunning) {
-        // Se o navegador foi fechado com o timer rodando, recupera o tempo offline
         const missedMs = Date.now() - lastTick;
-        if (missedMs > 0 && missedMs < 43200000) { // Max 12 horas offline limit
+        if (missedMs > 0 && missedMs < 43200000) { 
             appData.cycleState.msRemaining -= missedMs;
             
-            // Para não quebrar o ciclo inteiro offline, se o tempo zerar offline, 
-            // a gente apenas zera ele e espera o usuário abrir pra ouvir o bip
             if (appData.cycleState.msRemaining < 0) {
                 appData.cycleState.msRemaining = 0;
             } else {
@@ -348,7 +341,6 @@ function loadTimerState() {
 function startTimer() {
     if (isRunning) return;
     
-    // Se já concluiu todas as matérias e não está em modo livre
     if (todaysSubjects.length > 0 && appData.cycleState.subjectIndex >= todaysSubjects.length) {
         return; 
     }
@@ -378,65 +370,56 @@ function startTimer() {
 
     localStorage.setItem('isTimerRunning', 'true');
     lastTickTime = Date.now();
-    let accumulatedMsToSave = 0; // Ajuda a salvar o progresso global por segundo exato
+    let accumulatedMsToSave = 0; 
 
     timerInterval = setInterval(() => {
         const now = Date.now();
         const delta = now - lastTickTime;
         lastTickTime = now;
         
-        // Decrementa o regressivo
         appData.cycleState.msRemaining -= delta;
         accumulatedMsToSave += delta;
 
-        // Se o modo Livre (sem matérias) estiver ativo, apenas deixa no 00:00:00 visualmente, mas continua somando no global
         if (todaysSubjects.length === 0) {
             appData.cycleState.msRemaining = 0; 
         }
 
-        // Se passou 1 segundo completo
         if (accumulatedMsToSave >= 1000) {
             const secondsPassed = Math.floor(accumulatedMsToSave / 1000);
-            accumulatedMsToSave -= (secondsPassed * 1000); // guarda o resto (ms quebrados)
+            accumulatedMsToSave -= (secondsPassed * 1000); 
             
-            // Soma no Dashboard global APENAS se a fase atual for de estudo ou se for modo Livre
             const currentPhase = CYCLE_PHASES[appData.cycleState.phaseIndex];
             if (todaysSubjects.length === 0 || (currentPhase && currentPhase.isStudy)) {
                 appData.history[today].time += secondsPassed;
                 if (appData.history[today].time % 5 === 0) saveData(); 
                 if (appData.history[today].time % 60 === 0) calculateRecords();
-                updateUI(); // Atualiza dashboard
+                updateUI(); 
             }
         }
 
-        // LÓGICA DO CICLO: A FASE ACABOU!
         if (appData.cycleState.msRemaining <= 0 && todaysSubjects.length > 0) {
-            playBeep(); // Toca o alarme
+            playBeep(); 
             
-            // Avança para a próxima fase do ciclo (ex: Teoria -> Pausa)
             appData.cycleState.phaseIndex++;
             
-            // Se as 3 fases acabaram, avança a matéria
             if (appData.cycleState.phaseIndex >= CYCLE_PHASES.length) {
                 appData.cycleState.phaseIndex = 0;
                 appData.cycleState.subjectIndex++;
             }
             
-            // Se ainda houver matérias, carrega o tempo da próxima fase
             if (appData.cycleState.subjectIndex < todaysSubjects.length) {
                 appData.cycleState.msRemaining = CYCLE_PHASES[appData.cycleState.phaseIndex].ms;
             } else {
-                // Ciclo Diário Totalmente Concluído!
                 appData.cycleState.msRemaining = 0;
-                pauseTimer(); // Para o cronômetro
+                pauseTimer(); 
             }
             saveData();
         }
 
-        updateTimerDisplay(); // Atualiza os números da tela
+        updateTimerDisplay(); 
         localStorage.setItem('lastTick', now.toString());
         
-    }, 16); // Roda ~60 vezes por segundo para os milissegundos
+    }, 16); 
 }
 
 function pauseTimer() {
@@ -456,7 +439,6 @@ function pauseTimer() {
 function resetTimer() {
     pauseTimer();
     
-    // Zera o progresso do ciclo (volta pro início do dia de hoje)
     const today = getTodayDate();
     appData.cycleState = {
         date: today,
@@ -476,8 +458,6 @@ elements.btnToggle.addEventListener('click', () => {
 });
 elements.btnReset.addEventListener('click', resetTimer);
 
-
-// --- GRÁFICO E NAVEGAÇÃO ---
 function getChartData() {
     const labels = [];
     const data = [];
@@ -537,7 +517,7 @@ function setupNavigation() {
             document.getElementById(targetId).classList.add('active');
             localStorage.setItem('activeView', targetId);
             
-            if (targetId === 'timer') updateTimerDisplay(); // Garante atualização
+            if (targetId === 'timer') updateTimerDisplay(); 
         });
     });
 
@@ -638,7 +618,6 @@ function renderSchedule() {
     appData.schedule.forEach((row, rowIndex) => {
         const tr = document.createElement('tr');
         
-        // 1. Célula de Horário (Editável por clique)
         const tdTime = document.createElement('td');
         tdTime.className = 'time-cell';
         tdTime.contentEditable = true;
@@ -649,13 +628,11 @@ function renderSchedule() {
         });
         tr.appendChild(tdTime);
 
-        // 2. Células dos Dias (Drop Zones) - NÃO são mais editáveis por texto
         row.days.forEach((dayContent, dayIndex) => {
             const tdDay = document.createElement('td');
             tdDay.className = 'drop-zone';
             tdDay.textContent = dayContent;
 
-            // Permitir Drop (Arrastar por cima)
             tdDay.addEventListener('dragover', (e) => {
                 e.preventDefault(); 
                 tdDay.classList.add('drag-over');
@@ -665,7 +642,6 @@ function renderSchedule() {
                 tdDay.classList.remove('drag-over');
             });
 
-            // Ação de Soltar (Drop)
             tdDay.addEventListener('drop', (e) => {
                 e.preventDefault();
                 tdDay.classList.remove('drag-over');
@@ -674,12 +650,11 @@ function renderSchedule() {
                     tdDay.textContent = data; 
                     appData.schedule[rowIndex].days[dayIndex] = data; 
                     saveData();
-                    updateTodaysSubjects(); // Atualiza timer se tiver alterado o dia de hoje
+                    updateTodaysSubjects(); 
                     updateTimerDisplay();
                 }
             });
 
-            // Duplo clique para limpar a célula rápido
             tdDay.addEventListener('dblclick', () => {
                 tdDay.textContent = '';
                 appData.schedule[rowIndex].days[dayIndex] = '';
@@ -694,6 +669,14 @@ function renderSchedule() {
         elements.scheduleTableBody.appendChild(tr);
     });
 }
+
+// --- ADICIONAR NOVO CICLO (LINHA) ---
+elements.btnAddCycle.addEventListener('click', () => {
+    appData.schedule.push({ time: "00:00 - 00:00", days: ["", "", "", "", "", "", ""] });
+    saveData();
+    renderSchedule();
+});
+
 
 // --- ATALHOS DE TECLADO ---
 document.addEventListener('keydown', (e) => {

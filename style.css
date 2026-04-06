@@ -105,7 +105,7 @@ body.focus-active main { padding: 0; }
 .chart-container { height: 350px; width: 100%; }
 
 .icon-btn-small { background: transparent; border: none; color: var(--text-muted); cursor: pointer; transition: var(--transition); display: flex; align-items: center; justify-content: center; padding: 4px; border-radius: var(--radius); }
-.icon-btn-small:hover { color: var(--text-main); background-color: var(--border-color); }
+.icon-btn-small:hover { color: var(--text-main); background-color: var(--border-color); opacity: 1 !important; }
 
 .heatmap-card h2 { font-size: 1rem; margin-bottom: 1.5rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
 .heatmap-grid { display: grid; grid-template-columns: repeat(15, 1fr); gap: 6px; margin-bottom: 1rem; }
@@ -129,7 +129,6 @@ body.dark-mode .level-3 { background-color: rgba(255, 255, 255, 0.9); }
 .stat-info .highlight { font-size: 2.5rem; font-weight: 500; color: var(--text-main); }
 .stat-info .sub-text { font-size: 0.85rem; color: var(--text-muted); }
 
-/* --- EFEITO DO CRONÔMETRO COM CICLO --- */
 .timer-container { text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 70vh; transition: height 0.5s ease; transform-style: preserve-3d; }
 body.focus-active .timer-container { height: 100vh; }
 
@@ -146,7 +145,6 @@ body.focus-active .stopwatch { transform: scale(1.3) translateZ(50px); }
 #time-main { font-size: 8rem; letter-spacing: -4px; color: var(--text-main); }
 #time-ms { font-size: 4.5rem; color: var(--text-muted); letter-spacing: -2px; }
 
-/* --- BOTÕES CIRCULARES NO CRONÔMETRO --- */
 .controls { transition: transform 0.4s ease, opacity 0.4s ease; transform: translateY(0); opacity: 1; display: flex; gap: 1.5rem; }
 body.focus-active .controls { transform: translateY(20px); opacity: 0; pointer-events: none; position: absolute; visibility: hidden; }
 
@@ -168,7 +166,7 @@ body.focus-active .controls { transform: translateY(20px); opacity: 0; pointer-e
 .modal-content p { color: var(--text-muted); margin-bottom: 2rem; font-size: 0.9rem; line-height: 1.4; }
 .modal-options { display: flex; flex-direction: column; gap: 0.8rem; }
 
-/* --- CRONOGRAMA DE ESTUDOS (DRAG & DROP) --- */
+/* --- CRONOGRAMA DE ESTUDOS --- */
 .subject-bank-panel { background-color: var(--surface-color); border: 1px solid var(--border-color); border-radius: var(--radius); padding: 1.5rem; margin-bottom: 2rem; }
 .add-subject-wrapper { display: flex; gap: 0.5rem; margin-bottom: 1.5rem; }
 .add-subject-wrapper input { flex: 1; padding: 0.8rem 1rem; border: 1px solid var(--border-color); border-radius: var(--radius); background: var(--bg-color); color: var(--text-main); font-family: 'Inter', sans-serif; font-size: 0.95rem; }
@@ -186,12 +184,10 @@ body.focus-active .controls { transform: translateY(20px); opacity: 0; pointer-e
 .schedule-table th, .schedule-table td { padding: 1.2rem 0.5rem; border: 1px solid var(--border-color); text-align: center; font-size: 0.9rem; transition: var(--transition); }
 .schedule-table th { background-color: var(--bg-color); color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.8rem; }
 
-/* Removemos a possibilidade de digitar nas células de dia, mas mantemos o drop-zone */
 .schedule-table td.drop-zone { outline: none; user-select: none; }
 .schedule-table td.drop-zone:hover { background-color: rgba(150, 150, 150, 0.05); }
 .schedule-table td.drag-over { background-color: rgba(150, 150, 150, 0.2); border: 2px dashed var(--text-main); box-shadow: inset 0 0 0 2px var(--text-main); }
 
-/* A célula de horário continua editável */
 .schedule-table td.time-cell { cursor: text; outline: none; }
 .schedule-table td.time-cell:focus { background-color: var(--bg-color); box-shadow: inset 0 0 0 2px var(--text-main); }
 
