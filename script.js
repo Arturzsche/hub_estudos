@@ -12,14 +12,10 @@ let appData = {
     recordDay: 0,
     recordWeek: 0,
     dailyGoalSeconds: 14400, 
-    tasks: [
-        { id: 1, name: "Direito Administrativo", completed: false },
-        { id: 2, name: "Controle Externo", completed: false },
-        { id: 3, name: "Administração Financeira e Orçamentária", completed: false },
-        { id: 4, name: "Lei Orgânica", completed: false },
-        { id: 5, name: "Regimento Interno", completed: false },
-        { id: 6, name: "Português", completed: false },
-        { id: 7, name: "Prova Discursiva", completed: false }
+    // Novo Cronograma: arrays default para evitar telas vazias
+    schedule: [
+        { time: "14:00 - 15:30", days: ["", "", "", "", "", "", ""] },
+        { time: "15:30 - 17:00", days: ["", "", "", "", "", "", ""] }
     ]
 };
 
@@ -36,14 +32,13 @@ const elements = {
     recordDayDisplay: document.getElementById('record-day-display'),
     recordWeekDisplay: document.getElementById('record-week-display'),
     totalAccumulated: document.getElementById('total-accumulated'),
-    taskList: document.getElementById('task-list'),
+    scheduleTableBody: document.querySelector('#schedule-table tbody'), // Nova Tabela
     themeToggle: document.getElementById('theme-toggle'),
     focusToggle: document.getElementById('focus-toggle'), 
     dailyProgressFill: document.getElementById('daily-progress-fill'),
     dailyPercentage: document.getElementById('daily-percentage'),
     heatmapGrid: document.getElementById('heatmap-grid'),
     macFullscreenBtn: document.getElementById('mac-fullscreen-btn'),
-    // Elementos do Modal de Limpeza
     btnOpenClear: document.getElementById('btn-open-clear'),
     modalClear: document.getElementById('clear-modal'),
     btnClearToday: document.getElementById('btn-clear-today'),
@@ -56,7 +51,7 @@ function init() {
     checkStreak();
     calculateRecords();
     updateUI();
-    renderTasks();
+    renderSchedule(); // Substituiu renderTasks()
     setupNavigation();
     initChart();
     setupClearModal();
@@ -107,7 +102,12 @@ function loadData() {
     const saved = localStorage.getItem('studyAppData');
     if (saved) {
         const parsedSaved = JSON.parse(saved);
-        if (parsedSaved.tasks) appData.tasks = parsedSaved.tasks;
+        
+        // Migração caso o usuário venha da versão antiga de 'tasks'
+        if (parsedSaved.schedule) {
+            appData.schedule = parsedSaved.schedule;
+        }
+        
         appData.history = parsedSaved.history || {};
         appData.streak = parsedSaved.streak || 0;
         appData.lastStudyDate = parsedSaved.lastStudyDate || null;
@@ -400,42 +400,24 @@ function setupNavigation() {
     if (btnToClick) btnToClick.click();
 }
 
-// --- CONFIGURAÇÃO DO MODAL DE LIMPEZA ---
 function setupClearModal() {
-    elements.btnOpenClear.addEventListener('click', () => {
-        elements.modalClear.classList.add('active');
-    });
+    elements.btnOpenClear.addEventListener('click', () => elements.modalClear.classList.add('active'));
+    elements.btnCancelClear.addEventListener('click', () => elements.modalClear.classList.remove('active'));
 
-    elements.btnCancelClear.addEventListener('click', () => {
-        elements.modalClear.classList.remove('active');
-    });
-
-    // Limpar Apenas Hoje
     elements.btnClearToday.addEventListener('click', () => {
         const today = getTodayDate();
         if (appData.history[today]) {
             appData.history[today] = { time: 0, sessions: 0 };
-            saveData();
-            calculateRecords();
-            updateUI();
-            resetTimer(); 
+            saveData(); calculateRecords(); updateUI(); resetTimer(); 
         }
         elements.modalClear.classList.remove('active');
     });
 
-    // Zerar Todo o Histórico
     elements.btnClearAll.addEventListener('click', () => {
-        appData.history = {};
-        appData.streak = 0;
-        appData.lastStudyDate = null;
-        appData.recordDay = 0;
-        appData.recordWeek = 0;
+        appData.history = {}; appData.streak = 0; appData.lastStudyDate = null; appData.recordDay = 0; appData.recordWeek = 0;
         const today = getTodayDate();
         appData.history[today] = { time: 0, sessions: 0 };
-        saveData();
-        calculateRecords();
-        updateUI();
-        resetTimer(); 
+        saveData(); calculateRecords(); updateUI(); resetTimer(); 
         elements.modalClear.classList.remove('active');
     });
 }
@@ -461,43 +443,73 @@ elements.focusToggle.addEventListener('click', () => {
     document.body.classList.toggle('focus-active');
 });
 
-function renderTasks() {
-    elements.taskList.innerHTML = '';
-    appData.tasks.forEach(task => {
-        const li = document.createElement('li');
-        li.className = `task-item ${task.completed ? 'completed' : ''}`;
+
+// --- NOVA FUNÇÃO: RENDERIZAR CRONOGRAMA ---
+function renderSchedule() {
+    elements.scheduleTableBody.innerHTML = '';
+    
+    appData.schedule.forEach((row, rowIndex) => {
+        const tr = document.createElement('tr');
         
-        li.innerHTML = `
-            <input type="checkbox" id="task-${task.id}" ${task.completed ? 'checked' : ''}>
-            <label for="task-${task.id}">${task.name}</label>
-        `;
-        
-        li.querySelector('input').addEventListener('change', (e) => {
-            task.completed = e.target.checked;
-            li.classList.toggle('completed', task.completed);
+        // 1. Célula do Horário
+        const tdTime = document.createElement('td');
+        tdTime.contentEditable = true;
+        tdTime.textContent = row.time;
+        // Salva ao perder o foco (clicar fora)
+        tdTime.addEventListener('blur', (e) => {
+            appData.schedule[rowIndex].time = e.target.textContent;
             saveData();
         });
-        
-        elements.taskList.appendChild(li);
+        tr.appendChild(tdTime);
+
+        // 2. Células dos Dias (Seg a Dom)
+        row.days.forEach((dayContent, dayIndex) => {
+            const tdDay = document.createElement('td');
+            tdDay.contentEditable = true;
+            tdDay.textContent = dayContent;
+            // Salva ao perder o foco
+            tdDay.addEventListener('blur', (e) => {
+                appData.schedule[rowIndex].days[dayIndex] = e.target.textContent;
+                saveData();
+            });
+            tr.appendChild(tdDay);
+        });
+
+        elements.scheduleTableBody.appendChild(tr);
     });
 }
 
+// --- ATALHOS GLOBAIS DE TECLADO ---
 document.addEventListener('keydown', (e) => {
+    // Impede atalhos se estiver digitando no cronograma
+    const isTyping = document.activeElement.isContentEditable || document.activeElement.tagName === 'INPUT';
+    if (isTyping) return;
+
+    if (e.ctrlKey && e.code === 'Space') {
+        e.preventDefault(); 
+        if (isRunning) pauseTimer();
+        else startTimer();
+        return; 
+    }
+
     const isTimerActive = document.getElementById('timer').classList.contains('active');
     if (!isTimerActive) return;
 
-    if (e.code === 'Space') {
+    if (e.code === 'Space' && !e.ctrlKey) {
         e.preventDefault(); 
         if (isRunning) pauseTimer();
         else startTimer();
     }
+    
     if (e.code === 'Delete') {
         resetTimer();
     }
+    
     if (e.code === 'Enter') {
         e.preventDefault(); 
         document.body.classList.toggle('focus-active'); 
     }
+    
     if (e.code === 'Escape') {
         document.body.classList.remove('focus-active'); 
     }
@@ -517,5 +529,15 @@ document.addEventListener('visibilitychange', () => {
         }
     }
 });
+
+// Integração com Teclas Físicas de Mídia
+if ('mediaSession' in navigator) {
+    navigator.mediaSession.setActionHandler('play', () => {
+        if (!isRunning) startTimer();
+    });
+    navigator.mediaSession.setActionHandler('pause', () => {
+        if (isRunning) pauseTimer();
+    });
+}
 
 init();
