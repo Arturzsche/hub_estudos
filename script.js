@@ -568,7 +568,7 @@ elements.focusToggle.addEventListener('click', () => {
     document.body.classList.toggle('focus-active');
 });
 
-
+// --- LÓGICA DO BANCO DE MATÉRIAS ---
 function renderSubjectBank() {
     elements.subjectBank.innerHTML = '';
     appData.savedSubjects.forEach((subject, index) => {
@@ -617,28 +617,24 @@ function renderSchedule() {
     appData.schedule.forEach((row, rowIndex) => {
         const tr = document.createElement('tr');
         
-        // Célula de Horário (Contém o botão de excluir que aparece no hover)
         const tdTime = document.createElement('td');
         tdTime.className = 'time-cell';
         
-        // Botão de Excluir Linha (Discreto, esquerda)
+        // Ícone de Lixeira (Exclusão Imediata sem Confirmação)
         const btnDeleteRow = document.createElement('button');
         btnDeleteRow.className = 'btn-remove-row';
-        btnDeleteRow.innerHTML = '<svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M19 13H5v-2h14v2z"/></svg>';
+        btnDeleteRow.innerHTML = '<svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M16 9v10H8V9h8m-1.5-6h-5l-1 1H5v2h14V4h-3.5l-1-1zM18 7H6v12c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7z"/></svg>';
         btnDeleteRow.title = "Remover este ciclo";
         
         btnDeleteRow.addEventListener('click', (e) => {
             e.stopPropagation();
-            if (confirm("Remover este horário do cronograma?")) {
-                appData.schedule.splice(rowIndex, 1);
-                saveData();
-                renderSchedule();
-                updateTodaysSubjects();
-                updateTimerDisplay();
-            }
+            appData.schedule.splice(rowIndex, 1);
+            saveData();
+            renderSchedule();
+            updateTodaysSubjects();
+            updateTimerDisplay();
         });
         
-        // Span para digitar o texto do horário sem sobrepor o botão
         const timeSpan = document.createElement('span');
         timeSpan.className = 'time-text';
         timeSpan.contentEditable = true;
@@ -652,7 +648,6 @@ function renderSchedule() {
         tdTime.appendChild(timeSpan);
         tr.appendChild(tdTime);
 
-        // Células dos Dias da Semana
         row.days.forEach((dayContent, dayIndex) => {
             const tdDay = document.createElement('td');
             tdDay.className = 'drop-zone';

@@ -105,7 +105,7 @@ body.focus-active main { padding: 0; }
 .chart-container { height: 350px; width: 100%; }
 
 .icon-btn-small { background: transparent; border: none; color: var(--text-muted); cursor: pointer; transition: var(--transition); display: flex; align-items: center; justify-content: center; padding: 4px; border-radius: var(--radius); }
-.icon-btn-small:hover { color: var(--text-main); background-color: var(--border-color); }
+.icon-btn-small:hover { color: var(--text-main); background-color: var(--border-color); opacity: 1 !important; }
 
 .heatmap-card h2 { font-size: 1rem; margin-bottom: 1.5rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
 .heatmap-grid { display: grid; grid-template-columns: repeat(15, 1fr); gap: 6px; margin-bottom: 1rem; }
@@ -188,7 +188,7 @@ body.focus-active .controls { transform: translateY(20px); opacity: 0; pointer-e
 .schedule-table td.drop-zone:hover { background-color: rgba(150, 150, 150, 0.05); }
 .schedule-table td.drag-over { background-color: rgba(150, 150, 150, 0.2); border: 2px dashed var(--text-main); box-shadow: inset 0 0 0 2px var(--text-main); }
 
-/* --- EFEITO DE HOVER NA LINHA DA TABELA --- */
+/* --- BOTÃO DE LIXEIRA NA LINHA --- */
 .schedule-table tr { position: relative; }
 .schedule-table td.time-cell { position: relative; outline: none; }
 .schedule-table td.time-cell:focus .time-text { background-color: var(--bg-color); box-shadow: inset 0 0 0 2px var(--text-main); padding: 2px 4px; border-radius: 2px; }
@@ -199,19 +199,24 @@ body.focus-active .controls { transform: translateY(20px); opacity: 0; pointer-e
     top: 50%;
     transform: translateY(-50%);
     background: transparent;
-    color: var(--danger-color);
+    color: var(--text-muted); /* Neutro */
     border: none;
-    font-weight: bold;
     cursor: pointer;
     opacity: 0;
-    transition: opacity 0.2s ease;
+    transition: all 0.2s ease;
     display: flex;
     align-items: center;
     justify-content: center;
     padding: 4px;
+    border-radius: 4px;
 }
 .schedule-table tr:hover .btn-remove-row {
-    opacity: 1;
+    opacity: 0.5; /* Aparece translúcido */
+}
+.btn-remove-row:hover {
+    opacity: 1 !important; /* Acende no hover direto */
+    color: var(--text-main);
+    background-color: var(--border-color);
 }
 
 .heatmap-cell[title]:hover::after {
