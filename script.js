@@ -12,7 +12,10 @@ let appData = {
     recordDay: 0,
     recordWeek: 0,
     dailyGoalSeconds: 14400, 
-    // Novo Cronograma: arrays default para evitar telas vazias
+    // Nova Estrutura para o Cronograma e Banco de Matérias
+    savedSubjects: [
+        "Direito Administrativo", "Controle Externo", "AFO", "Lei Orgânica", "Regimento Interno", "Português", "Prova Discursiva"
+    ],
     schedule: [
         { time: "14:00 - 15:30", days: ["", "", "", "", "", "", ""] },
         { time: "15:30 - 17:00", days: ["", "", "", "", "", "", ""] }
@@ -32,7 +35,6 @@ const elements = {
     recordDayDisplay: document.getElementById('record-day-display'),
     recordWeekDisplay: document.getElementById('record-week-display'),
     totalAccumulated: document.getElementById('total-accumulated'),
-    scheduleTableBody: document.querySelector('#schedule-table tbody'), // Nova Tabela
     themeToggle: document.getElementById('theme-toggle'),
     focusToggle: document.getElementById('focus-toggle'), 
     dailyProgressFill: document.getElementById('daily-progress-fill'),
@@ -43,7 +45,13 @@ const elements = {
     modalClear: document.getElementById('clear-modal'),
     btnClearToday: document.getElementById('btn-clear-today'),
     btnClearAll: document.getElementById('btn-clear-all'),
-    btnCancelClear: document.getElementById('btn-cancel-clear')
+    btnCancelClear: document.getElementById('btn-cancel-clear'),
+    
+    // Elementos do Cronograma (Drag & Drop)
+    scheduleTableBody: document.querySelector('#schedule-table tbody'),
+    subjectBank: document.getElementById('subject-bank'),
+    newSubjectInput: document.getElementById('new-subject-input'),
+    btnAddSubject: document.getElementById('btn-add-subject')
 };
 
 function init() {
@@ -51,7 +59,8 @@ function init() {
     checkStreak();
     calculateRecords();
     updateUI();
-    renderSchedule(); // Substituiu renderTasks()
+    renderSubjectBank(); // Renderiza os blocos para arrastar
+    renderSchedule();    // Renderiza a tabela de drop
     setupNavigation();
     initChart();
     setupClearModal();
@@ -102,18 +111,23 @@ function loadData() {
     const saved = localStorage.getItem('studyAppData');
     if (saved) {
         const parsedSaved = JSON.parse(saved);
-        
-        // Migração caso o usuário venha da versão antiga de 'tasks'
-        if (parsedSaved.schedule) {
-            appData.schedule = parsedSaved.schedule;
-        }
-        
         appData.history = parsedSaved.history || {};
         appData.streak = parsedSaved.streak || 0;
         appData.lastStudyDate = parsedSaved.lastStudyDate || null;
         appData.recordDay = parsedSaved.recordDay || 0;
         appData.recordWeek = parsedSaved.recordWeek || 0;
         appData.dailyGoalSeconds = parsedSaved.dailyGoalSeconds || 14400; 
+        
+        // Migração ou carregamento da Tabela
+        if (parsedSaved.schedule) appData.schedule = parsedSaved.schedule;
+        
+        // Migração ou carregamento do Banco de Matérias
+        if (parsedSaved.savedSubjects) {
+            appData.savedSubjects = parsedSaved.savedSubjects;
+        } else if (parsedSaved.tasks) {
+            // Se existia a lista de tasks antiga, migra para o banco
+            appData.savedSubjects = parsedSaved.tasks.map(t => t.name);
+        }
     }
     
     const today = getTodayDate();
@@ -443,35 +457,110 @@ elements.focusToggle.addEventListener('click', () => {
     document.body.classList.toggle('focus-active');
 });
 
+// --- LÓGICA DO BANCO DE MATÉRIAS ---
+function renderSubjectBank() {
+    elements.subjectBank.innerHTML = '';
+    appData.savedSubjects.forEach((subject, index) => {
+        const pill = document.createElement('div');
+        pill.className = 'subject-pill';
+        pill.draggable = true;
+        pill.innerHTML = `<span>${subject}</span><span class="delete-subject" title="Remover matéria">&times;</span>`;
+        
+        // Inicia o arrasto (salva o nome da matéria)
+        pill.addEventListener('dragstart', (e) => {
+            e.dataTransfer.setData('text/plain', subject);
+            setTimeout(() => pill.classList.add('dragging'), 0);
+        });
 
-// --- NOVA FUNÇÃO: RENDERIZAR CRONOGRAMA ---
+        // Termina o arrasto
+        pill.addEventListener('dragend', () => {
+            pill.classList.remove('dragging');
+        });
+
+        // Deletar a matéria do banco
+        pill.querySelector('.delete-subject').addEventListener('click', () => {
+            appData.savedSubjects.splice(index, 1);
+            saveData();
+            renderSubjectBank();
+        });
+
+        elements.subjectBank.appendChild(pill);
+    });
+}
+
+elements.btnAddSubject.addEventListener('click', () => {
+    const val = elements.newSubjectInput.value.trim();
+    if (val && !appData.savedSubjects.includes(val)) {
+        appData.savedSubjects.push(val);
+        elements.newSubjectInput.value = '';
+        saveData();
+        renderSubjectBank();
+    }
+});
+
+elements.newSubjectInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') elements.btnAddSubject.click();
+});
+
+// --- LÓGICA DO CRONOGRAMA ---
 function renderSchedule() {
     elements.scheduleTableBody.innerHTML = '';
     
     appData.schedule.forEach((row, rowIndex) => {
         const tr = document.createElement('tr');
         
-        // 1. Célula do Horário
+        // 1. Célula de Horário (Editável)
         const tdTime = document.createElement('td');
         tdTime.contentEditable = true;
         tdTime.textContent = row.time;
-        // Salva ao perder o foco (clicar fora)
         tdTime.addEventListener('blur', (e) => {
             appData.schedule[rowIndex].time = e.target.textContent;
             saveData();
         });
         tr.appendChild(tdTime);
 
-        // 2. Células dos Dias (Seg a Dom)
+        // 2. Células dos Dias (Drop Zones e Editáveis)
         row.days.forEach((dayContent, dayIndex) => {
             const tdDay = document.createElement('td');
+            tdDay.className = 'drop-zone';
             tdDay.contentEditable = true;
             tdDay.textContent = dayContent;
-            // Salva ao perder o foco
+
+            // Salva se digitar manualmente
             tdDay.addEventListener('blur', (e) => {
                 appData.schedule[rowIndex].days[dayIndex] = e.target.textContent;
                 saveData();
             });
+
+            // Permitir Drop (Arrastar por cima)
+            tdDay.addEventListener('dragover', (e) => {
+                e.preventDefault(); // Necessário para liberar o Drop
+                tdDay.classList.add('drag-over');
+            });
+
+            tdDay.addEventListener('dragleave', () => {
+                tdDay.classList.remove('drag-over');
+            });
+
+            // Ação de Soltar (Drop)
+            tdDay.addEventListener('drop', (e) => {
+                e.preventDefault();
+                tdDay.classList.remove('drag-over');
+                const data = e.dataTransfer.getData('text/plain');
+                if (data) {
+                    tdDay.textContent = data; // Atualiza a tela
+                    appData.schedule[rowIndex].days[dayIndex] = data; // Salva nos dados
+                    saveData();
+                }
+            });
+
+            // Duplo clique para limpar a célula rápido
+            tdDay.addEventListener('dblclick', () => {
+                tdDay.textContent = '';
+                appData.schedule[rowIndex].days[dayIndex] = '';
+                saveData();
+            });
+
             tr.appendChild(tdDay);
         });
 
@@ -479,10 +568,10 @@ function renderSchedule() {
     });
 }
 
-// --- ATALHOS GLOBAIS DE TECLADO ---
+// --- ATALHOS DE TECLADO ---
 document.addEventListener('keydown', (e) => {
-    // Impede atalhos se estiver digitando no cronograma
-    const isTyping = document.activeElement.isContentEditable || document.activeElement.tagName === 'INPUT';
+    // Ignora se estiver digitando em inputs, blocos ou na tabela
+    const isTyping = document.activeElement.tagName === 'INPUT' || document.activeElement.isContentEditable;
     if (isTyping) return;
 
     if (e.ctrlKey && e.code === 'Space') {

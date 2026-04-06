@@ -20,19 +20,20 @@
         </div>
         
         <nav class="header-center">
-            <button class="nav-btn active" data-target="dashboard">VISÃO GERAL</button>
-            <button class="nav-btn" data-target="timer">CRONÔMETRO</button>
-            <button class="nav-btn" data-target="tasks">CRONOGRAMA</button>
+            <button class="nav-btn active" data-target="dashboard">Visão Geral</button>
+            <button class="nav-btn" data-target="timer">Cronômetro</button>
+            <button class="nav-btn" data-target="tasks">Cronograma</button>
         </nav>
 
         <div class="header-right">
-            <button id="theme-toggle" title="Alternar Tema">TEMA</button>
+            <button id="theme-toggle" title="Alternar Tema">Tema</button>
         </div>
     </header>
 
     <main>
         <section id="dashboard" class="view active">
             <div class="container dashboard-grid">
+                
                 <div class="main-panel">
                     <div class="progress-card">
                         <div class="progress-header">
@@ -83,23 +84,24 @@
                             <p><span id="streak-display">0</span> dias</p>
                         </div>
                     </div>
+
                     <div class="stat-card">
                         <div class="stat-info">
                             <h3>Recorde Diário</h3>
                             <p id="record-day-display">00:00</p>
                         </div>
                     </div>
+
                     <div class="stat-card">
                         <div class="stat-info">
                             <h3>Melhor Semana</h3>
                             <p id="record-week-display">00:00</p>
                         </div>
                     </div>
+
                     <div class="stat-card outline">
                         <div class="stat-info">
-                            <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
-                                <h3>Estudo Hoje</h3>
-                            </div>
+                            <h3>Estudo Hoje</h3>
                             <p id="total-time-display" class="highlight">00:00:00</p>
                             <span class="sub-text" id="sessions-display">0 sessões hoje</span>
                         </div>
@@ -110,6 +112,7 @@
 
         <section id="timer" class="view">
             <div class="container timer-container">
+                
                 <div class="stopwatch">
                     <h1 id="time-display">
                         <span id="time-main">00:00:00</span><span id="time-ms">.00</span>
@@ -134,18 +137,27 @@
         <section id="tasks" class="view">
             <div class="container">
                 <div class="panel-header" style="margin-bottom: 1.5rem; flex-direction: column; align-items: flex-start; gap: 0.5rem;">
-                    <h2 style="font-size: 1.5rem; color: var(--text-main); margin-bottom: 0;">Cronograma de Estudos</h2>
+                    <h2 style="font-size: 1.5rem; color: var(--text-main); margin-bottom: 0;">Cronograma da Semana</h2>
                     <p style="color: var(--text-muted); font-size: 0.9rem;">
-                        <strong>Método do Ciclo:</strong> 50min Teoria | 10min Pausa | 30min Questões.<br>
-                        <em>Dica: Clique em qualquer célula abaixo (horário ou dias) para digitar/alterar as matérias. Salva automaticamente.</em>
+                        <strong>Ciclo de Estudo:</strong> 50min Teoria | 10min Pausa | 30min Questões.<br>
+                        <em>Adicione suas matérias no banco abaixo e <strong>arraste-as para a tabela</strong>. (Duplo clique para limpar uma célula).</em>
                     </p>
+                </div>
+
+                <div class="subject-bank-panel">
+                    <div class="add-subject-wrapper">
+                        <input type="text" id="new-subject-input" placeholder="Digite uma nova matéria...">
+                        <button id="btn-add-subject" class="btn primary">Adicionar</button>
+                    </div>
+                    <div id="subject-bank" class="subject-bank">
+                        </div>
                 </div>
                 
                 <div class="table-responsive">
                     <table class="schedule-table" id="schedule-table">
                         <thead>
                             <tr>
-                                <th style="width: 120px;">Horário</th>
+                                <th style="width: 140px;">Horário</th>
                                 <th>Segunda</th>
                                 <th>Terça</th>
                                 <th>Quarta</th>
