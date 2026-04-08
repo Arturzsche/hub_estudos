@@ -756,3 +756,57 @@ if ('mediaSession' in navigator) {
 }
 
 init();
+
+// ==========================================
+// --- LÓGICA DE MAPEAMENTO DE PDFs (SSE) ---
+// ==========================================
+
+const btnStartMapping = document.getElementById('btn-start-mapping');
+const pdfCountDisplay = document.getElementById('pdf-count');
+const mappingStatus = document.getElementById('mapping-status');
+const pdfTableBody = document.getElementById('pdf-table-body');
+
+let pdfCount = 0;
+
+btnStartMapping.addEventListener('click', () => {
+    // Reseta a interface
+    pdfCount = 0;
+    pdfCountDisplay.textContent = '0';
+    pdfTableBody.innerHTML = '';
+    mappingStatus.textContent = "Iniciando servidor local e buscando arquivos...";
+    btnStartMapping.disabled = true;
+
+    // Inicia a conexão SSE com o servidor Python local
+    const eventSource = new EventSource('http://127.0.0.1:5000/mapear');
+
+    // Escuta as mensagens enviadas pelo Python
+    eventSource.onmessage = function(event) {
+        const data = JSON.parse(event.data);
+        
+        if (data.status === "processing") {
+            pdfCount++;
+            pdfCountDisplay.textContent = pdfCount;
+            mappingStatus.textContent = `Varrendo: ${data.file.path}`;
+
+            // Adiciona a nova linha no topo da tabela
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td style="text-align: left; padding-left: 1rem;">${data.file.name}</td>
+                <td style="font-size: 0.8rem; color: var(--text-muted); text-align: left; padding-left: 1rem;">${data.file.path}</td>
+            `;
+            pdfTableBody.prepend(tr); 
+        } 
+        else if (data.status === "done") {
+            mappingStatus.textContent = "Mapeamento concluído!";
+            btnStartMapping.disabled = false;
+            eventSource.close(); 
+        }
+    };
+
+    // Tratamento de erro caso o Python não esteja rodando
+    eventSource.onerror = function() {
+        mappingStatus.textContent = "Erro de conexão. Certifique-se de que o script Python está rodando na porta 5000.";
+        btnStartMapping.disabled = false;
+        eventSource.close();
+    };
+});

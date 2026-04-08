@@ -23,6 +23,7 @@
             <button class="nav-btn active" data-target="dashboard">Visão Geral</button>
             <button class="nav-btn" data-target="timer">Cronômetro</button>
             <button class="nav-btn" data-target="tasks">Cronograma</button>
+            <button class="nav-btn" data-target="library">Biblioteca</button>
         </nav>
 
         <div class="header-right">
@@ -178,6 +179,38 @@
                             <svg viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
                         </button>
                     </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="library" class="view">
+            <div class="container">
+                <div style="margin-bottom: 2rem;">
+                    <h2 style="font-size: 1.5rem; color: var(--text-main); margin-bottom: 0;">Biblioteca de PDFs</h2>
+                </div>
+                
+                <div class="progress-card" style="margin-bottom: 2rem;">
+                    <div class="progress-header">
+                        <h3>Arquivos Encontrados</h3>
+                        <span id="pdf-count" style="font-size: 1.5rem; font-weight: 600; color: var(--text-main);">0</span>
+                    </div>
+                    <div style="margin-top: 1rem; display: flex; align-items: center; justify-content: space-between;">
+                        <p id="mapping-status" style="color: var(--text-muted); font-size: 0.85rem; margin: 0; word-break: break-all; padding-right: 1rem;">Aguardando início do mapeamento...</p>
+                        <button id="btn-start-mapping" class="btn primary">Iniciar Mapeamento</button>
+                    </div>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="schedule-table" id="pdf-table">
+                        <thead>
+                            <tr>
+                                <th style="text-align: left; padding-left: 1rem;">Nome do Arquivo</th>
+                                <th style="text-align: left; padding-left: 1rem;">Caminho Local</th>
+                            </tr>
+                        </thead>
+                        <tbody id="pdf-table-body">
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </section>
