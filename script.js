@@ -120,6 +120,14 @@ function formatHoursText(totalSeconds) {
     return `${h}h ${m}m`;
 }
 
+function formatSize(bytes) {
+    if (!bytes) return '';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+}
+
 function updateTodaysSubjects() {
     const jsDay = new Date().getDay();
     const tableDayIndex = jsDay === 0 ? 6 : jsDay - 1;
@@ -758,6 +766,7 @@ const btnStartMapping = document.getElementById('btn-start-mapping');
 const pdfCountDisplay = document.getElementById('pdf-count');
 const mappingStatus = document.getElementById('mapping-status');
 const searchInput = document.getElementById('search-pdf'); 
+const sortSelect = document.getElementById('sort-pdf'); 
 
 function renderPdfLibrary() {
     if(!elements.libraryContainer) return;
@@ -777,7 +786,24 @@ function renderPdfLibrary() {
         groupedPdfs[folderName].push(file);
     });
 
-    for (const [folder, files] of Object.entries(groupedPdfs)) {
+    const sortOption = sortSelect ? sortSelect.value : 'name-asc';
+
+    for (const folder in groupedPdfs) {
+        groupedPdfs[folder].sort((a, b) => {
+            if (sortOption === 'name-asc') return a.name.localeCompare(b.name);
+            if (sortOption === 'name-desc') return b.name.localeCompare(a.name);
+            if (sortOption === 'date-desc') return (b.mtime || 0) - (a.mtime || 0);
+            if (sortOption === 'date-asc') return (a.mtime || 0) - (b.mtime || 0);
+            if (sortOption === 'size-desc') return (b.size || 0) - (a.size || 0);
+            if (sortOption === 'size-asc') return (a.size || 0) - (b.size || 0);
+            return 0;
+        });
+    }
+
+    const sortedFolders = Object.keys(groupedPdfs).sort((a, b) => a.localeCompare(b));
+
+    for (const folder of sortedFolders) {
+        const files = groupedPdfs[folder];
         const folderGroup = document.createElement('div');
         folderGroup.className = 'folder-group';
         
@@ -806,6 +832,9 @@ function renderPdfLibrary() {
 
         files.forEach(file => {
             const currentStatus = file.status || 'unread';
+            
+            const sizeBadge = file.size ? `<span style="font-size: 0.65rem; background: var(--bg-color); border: 1px solid var(--border-color); padding: 2px 6px; border-radius: 4px; color: var(--text-muted);">${formatSize(file.size)}</span>` : '';
+
             const fileItem = document.createElement('div');
             fileItem.className = 'file-item';
             fileItem.innerHTML = `
@@ -814,7 +843,7 @@ function renderPdfLibrary() {
                     ${file.name}
                 </a>
                 <div class="file-actions">
-                    <span class="file-path">${file.path}</span>
+                    <span class="file-path">${sizeBadge} ${file.path}</span>
                     <div class="status-selectors">
                         <div class="status-dot status-red ${currentStatus === 'unread' ? 'active' : ''}" data-status="unread" data-path="${file.path}" title="Não Lida"></div>
                         <div class="status-dot status-orange ${currentStatus === 'started' ? 'active' : ''}" data-status="started" data-path="${file.path}" title="Iniciada"></div>
@@ -830,6 +859,12 @@ function renderPdfLibrary() {
         folderGroup.appendChild(wrapper);
         elements.libraryContainer.appendChild(folderGroup);
     }
+}
+
+if(sortSelect) {
+    sortSelect.addEventListener('change', () => {
+        renderPdfLibrary();
+    });
 }
 
 if(elements.libraryContainer) {
@@ -919,6 +954,8 @@ if(btnStartMapping) {
                 appData.mappedPdfs.unshift({
                     name: data.file.name,
                     path: data.file.path,
+                    size: data.file.size || 0,
+                    mtime: data.file.mtime || 0,
                     status: previousStatus
                 });
             } 

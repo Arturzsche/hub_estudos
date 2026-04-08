@@ -200,8 +200,16 @@
                     </div>
                 </div>
 
-                <div style="margin-bottom: 1.5rem; display: flex; width: 100%;">
-                    <input type="text" id="search-pdf" placeholder="Pesquisar matéria, aula ou assunto..." style="flex: 1; padding: 1rem; border: 1px solid var(--border-color); border-radius: var(--radius); background: var(--bg-color); color: var(--text-main); font-size: 1rem; outline: none;">
+                <div class="controls-wrapper">
+                    <input type="text" id="search-pdf" class="search-input" placeholder="Pesquisar matéria, aula ou assunto...">
+                    <select id="sort-pdf" class="sort-select">
+                        <option value="name-asc">Nome (A-Z)</option>
+                        <option value="name-desc">Nome (Z-A)</option>
+                        <option value="date-desc">Mais Recentes</option>
+                        <option value="date-asc">Mais Antigos</option>
+                        <option value="size-desc">Maior Tamanho</option>
+                        <option value="size-asc">Menor Tamanho</option>
+                    </select>
                 </div>
 
                 <div id="library-container" class="library-container">

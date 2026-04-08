@@ -7,6 +7,7 @@ import json
 app = Flask(__name__)
 CORS(app) 
 
+# Lembre-se de verificar se o seu caminho alvo está correto aqui!
 PASTA_ALVO = r"C:\Users\artur\OneDrive\Área de Trabalho\ESTUDOS"
 
 @app.route('/mapear')
@@ -16,15 +17,19 @@ def mapear_pdfs():
             for file in files:
                 if file.lower().endswith('.pdf'):
                     caminho_completo = os.path.join(root, file)
+                    stats = os.stat(caminho_completo)
+                    
                     dados = {
                         "status": "processing",
                         "file": {
                             "name": file,
-                            "path": caminho_completo
+                            "path": caminho_completo,
+                            "size": stats.st_size,      
+                            "mtime": stats.st_mtime     
                         }
                     }
                     yield f"data: {json.dumps(dados)}\n\n"
-                    time.sleep(0.02) 
+                    time.sleep(0.01) 
         
         yield f"data: {json.dumps({'status': 'done'})}\n\n"
 
@@ -40,5 +45,5 @@ def abrir_pdf():
     return "Arquivo não encontrado", 404
 
 if __name__ == '__main__':
-    print("Servidor rodando. Clique em 'Iniciar Mapeamento' no seu site.")
+    print("Servidor rodando. Clique em 'Atualizar Mapeamento' no seu site.")
     app.run(port=5000, debug=True)
