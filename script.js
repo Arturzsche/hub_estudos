@@ -777,6 +777,12 @@ function renderPdfLibrary() {
         groupedPdfs[folderName].push(file);
     });
 
+    const statusMap = {
+        'unread': { class: 'status-unread', text: 'Não Lida' },
+        'started': { class: 'status-started', text: 'Iniciada' },
+        'completed': { class: 'status-completed', text: 'Concluída' }
+    };
+
     for (const [folder, files] of Object.entries(groupedPdfs)) {
         const details = document.createElement('details');
         details.className = 'folder-group';
@@ -798,6 +804,7 @@ function renderPdfLibrary() {
         contentDiv.className = 'folder-content';
 
         files.forEach(file => {
+            const currentStatus = statusMap[file.status || 'unread'];
             const fileItem = document.createElement('div');
             fileItem.className = 'file-item';
             fileItem.innerHTML = `
@@ -805,7 +812,10 @@ function renderPdfLibrary() {
                     <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M20 2H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-8.5 7.5c0 .83-.67 1.5-1.5 1.5H9v2H7.5V7H10c.83 0 1.5.67 1.5 1.5v1zm5 2c0 .83-.67 1.5-1.5 1.5h-2.5V7H15c.83 0 1.5.67 1.5 1.5v3zm4-3H19v1h1.5V11H19v2h-1.5V7h3v1.5zM9 9.5h1v-1H9v1zM4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm10 5.5h1v-3h-1v3z"/></svg>
                     ${file.name}
                 </a>
-                <span class="file-path">${file.path}</span>
+                <div class="file-actions">
+                    <span class="file-path">${file.path}</span>
+                    <button class="status-badge ${currentStatus.class}" data-path="${file.path}">${currentStatus.text}</button>
+                </div>
             `;
             contentDiv.appendChild(fileItem);
         });
@@ -814,6 +824,28 @@ function renderPdfLibrary() {
         details.appendChild(contentDiv);
         elements.libraryContainer.appendChild(details);
     }
+}
+
+if(elements.libraryContainer) {
+    elements.libraryContainer.addEventListener('click', (e) => {
+        if (e.target.classList.contains('status-badge')) {
+            e.preventDefault();
+            const path = e.target.getAttribute('data-path');
+            const fileIndex = appData.mappedPdfs.findIndex(f => f.path === path);
+            
+            if (fileIndex !== -1) {
+                const currentStatus = appData.mappedPdfs[fileIndex].status || 'unread';
+                let nextStatus = 'unread';
+                
+                if (currentStatus === 'unread') nextStatus = 'started';
+                else if (currentStatus === 'started') nextStatus = 'completed';
+                
+                appData.mappedPdfs[fileIndex].status = nextStatus;
+                saveData();
+                renderPdfLibrary(); 
+            }
+        }
+    });
 }
 
 if(searchInput) {
@@ -850,6 +882,11 @@ if(searchInput) {
 
 if(btnStartMapping) {
     btnStartMapping.addEventListener('click', () => {
+        const existingPdfs = {};
+        appData.mappedPdfs.forEach(pdf => {
+            existingPdfs[pdf.path] = pdf.status || 'unread';
+        });
+
         appData.mappedPdfs = [];
         saveData();
         renderPdfLibrary();
@@ -869,9 +906,12 @@ if(btnStartMapping) {
                 if(pdfCountDisplay) pdfCountDisplay.textContent = tempCount;
                 if(mappingStatus) mappingStatus.textContent = `Varrendo: ${data.file.path}`;
 
+                const previousStatus = existingPdfs[data.file.path] || 'unread';
+
                 appData.mappedPdfs.unshift({
                     name: data.file.name,
-                    path: data.file.path
+                    path: data.file.path,
+                    status: previousStatus
                 });
             } 
             else if (data.status === "done") {

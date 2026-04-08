@@ -217,7 +217,6 @@ body.focus-active .controls { transform: translateY(20px); opacity: 0; pointer-e
     font-size: 0.7rem; white-space: nowrap; z-index: 10; pointer-events: none;
 }
 
-/* --- ESTILOS DO ACORDEÃO (PASTAS DA BIBLIOTECA) --- */
 .library-container { display: flex; flex-direction: column; gap: 1rem; }
 .folder-group { background: var(--surface-color); border: 1px solid var(--border-color); border-radius: var(--radius); overflow: hidden; transition: var(--transition); }
 .folder-summary { padding: 1.2rem 1.5rem; cursor: pointer; list-style: none; display: flex; align-items: center; justify-content: space-between; font-weight: 500; font-size: 1rem; color: var(--text-main); background: var(--surface-color); user-select: none; }
@@ -234,7 +233,14 @@ details[open] .folder-chevron { transform: rotate(180deg); }
 .file-item:hover { background: var(--border-color); }
 .file-link { color: var(--text-main); font-weight: 500; text-decoration: none; display: flex; align-items: center; gap: 0.8rem; flex: 1; }
 .file-link svg { color: #e53935; flex-shrink: 0; }
-.file-path { font-size: 0.8rem; color: var(--text-muted); flex: 2; text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.file-actions { display: flex; align-items: center; gap: 1rem; flex: 2; justify-content: flex-end; overflow: hidden; }
+.file-path { font-size: 0.8rem; color: var(--text-muted); text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; }
+
+.status-badge { font-size: 0.7rem; text-transform: uppercase; font-weight: 600; padding: 6px 12px; border-radius: 12px; border: none; cursor: pointer; transition: var(--transition); white-space: nowrap; }
+.status-unread { background-color: var(--border-color); color: var(--text-muted); }
+.status-started { background-color: #ffb300; color: #000; }
+.status-completed { background-color: #4caf50; color: #fff; }
+.status-badge:hover { filter: brightness(0.9); }
 
 @media (max-width: 800px) {
     header { grid-template-columns: 1fr; display: flex; flex-direction: column; gap: 1rem; }
@@ -246,6 +252,7 @@ details[open] .folder-chevron { transform: rotate(180deg); }
     body.focus-active .stopwatch { transform: scale(1.1) translateZ(0); }
     .schedule-table th, .schedule-table td { padding: 0.8rem 0.3rem; font-size: 0.8rem; }
     .btn-remove-row { left: 0; }
-    .file-item { flex-direction: column; align-items: flex-start; gap: 0.5rem; }
-    .file-path { text-align: left; width: 100%; }
+    .file-item { flex-direction: column; align-items: flex-start; gap: 0.8rem; }
+    .file-actions { width: 100%; justify-content: space-between; }
+    .file-path { text-align: left; }
 }
