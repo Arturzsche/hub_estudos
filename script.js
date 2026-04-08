@@ -833,7 +833,7 @@ function renderPdfLibrary() {
         files.forEach(file => {
             const currentStatus = file.status || 'unread';
             
-            const sizeBadge = file.size ? `<span style="font-size: 0.65rem; background: var(--bg-color); border: 1px solid var(--border-color); padding: 2px 6px; border-radius: 4px; color: var(--text-muted);">${formatSize(file.size)}</span>` : '';
+            const sizeBadge = file.size ? `<span class="size-badge">${formatSize(file.size)}</span>` : '';
 
             const fileItem = document.createElement('div');
             fileItem.className = 'file-item';
@@ -843,7 +843,8 @@ function renderPdfLibrary() {
                     ${file.name}
                 </a>
                 <div class="file-actions">
-                    <span class="file-path">${sizeBadge} ${file.path}</span>
+                    ${sizeBadge}
+                    <span class="file-path" title="${file.path}">${file.path}</span>
                     <div class="status-selectors">
                         <div class="status-dot status-red ${currentStatus === 'unread' ? 'active' : ''}" data-status="unread" data-path="${file.path}" title="Não Lida"></div>
                         <div class="status-dot status-orange ${currentStatus === 'started' ? 'active' : ''}" data-status="started" data-path="${file.path}" title="Iniciada"></div>
