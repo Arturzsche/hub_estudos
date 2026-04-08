@@ -790,8 +790,8 @@ function renderPdfLibrary() {
 
     for (const folder in groupedPdfs) {
         groupedPdfs[folder].sort((a, b) => {
-            if (sortOption === 'name-asc') return a.name.localeCompare(b.name);
-            if (sortOption === 'name-desc') return b.name.localeCompare(a.name);
+            if (sortOption === 'name-asc') return a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' });
+            if (sortOption === 'name-desc') return b.name.localeCompare(a.name, undefined, { numeric: true, sensitivity: 'base' });
             if (sortOption === 'date-desc') return (b.mtime || 0) - (a.mtime || 0);
             if (sortOption === 'date-asc') return (a.mtime || 0) - (b.mtime || 0);
             if (sortOption === 'size-desc') return (b.size || 0) - (a.size || 0);
