@@ -236,11 +236,13 @@ details[open] .folder-chevron { transform: rotate(180deg); }
 .file-actions { display: flex; align-items: center; gap: 1rem; flex: 2; justify-content: flex-end; overflow: hidden; }
 .file-path { font-size: 0.8rem; color: var(--text-muted); text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; }
 
-.status-badge { font-size: 0.7rem; text-transform: uppercase; font-weight: 600; padding: 6px 12px; border-radius: 12px; border: none; cursor: pointer; transition: var(--transition); white-space: nowrap; }
-.status-unread { background-color: var(--border-color); color: var(--text-muted); }
-.status-started { background-color: #ffb300; color: #000; }
-.status-completed { background-color: #4caf50; color: #fff; }
-.status-badge:hover { filter: brightness(0.9); }
+.status-selectors { display: flex; gap: 8px; align-items: center; }
+.status-box { width: 22px; height: 22px; border-radius: 4px; cursor: pointer; transition: all 0.2s; opacity: 0.2; border: 2px solid transparent; }
+.status-box:hover { opacity: 0.6; }
+.status-box.active { opacity: 1; border-color: var(--text-main); transform: scale(1.15); }
+.status-red { background-color: #ef5350; }
+.status-orange { background-color: #ff9800; }
+.status-green { background-color: #4caf50; }
 
 @media (max-width: 800px) {
     header { grid-template-columns: 1fr; display: flex; flex-direction: column; gap: 1rem; }

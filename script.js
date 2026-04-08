@@ -777,12 +777,6 @@ function renderPdfLibrary() {
         groupedPdfs[folderName].push(file);
     });
 
-    const statusMap = {
-        'unread': { class: 'status-unread', text: 'Não Lida' },
-        'started': { class: 'status-started', text: 'Iniciada' },
-        'completed': { class: 'status-completed', text: 'Concluída' }
-    };
-
     for (const [folder, files] of Object.entries(groupedPdfs)) {
         const details = document.createElement('details');
         details.className = 'folder-group';
@@ -804,7 +798,7 @@ function renderPdfLibrary() {
         contentDiv.className = 'folder-content';
 
         files.forEach(file => {
-            const currentStatus = statusMap[file.status || 'unread'];
+            const currentStatus = file.status || 'unread';
             const fileItem = document.createElement('div');
             fileItem.className = 'file-item';
             fileItem.innerHTML = `
@@ -814,7 +808,11 @@ function renderPdfLibrary() {
                 </a>
                 <div class="file-actions">
                     <span class="file-path">${file.path}</span>
-                    <button class="status-badge ${currentStatus.class}" data-path="${file.path}">${currentStatus.text}</button>
+                    <div class="status-selectors">
+                        <div class="status-box status-red ${currentStatus === 'unread' ? 'active' : ''}" data-status="unread" data-path="${file.path}" title="Não Lida"></div>
+                        <div class="status-box status-orange ${currentStatus === 'started' ? 'active' : ''}" data-status="started" data-path="${file.path}" title="Iniciada"></div>
+                        <div class="status-box status-green ${currentStatus === 'completed' ? 'active' : ''}" data-status="completed" data-path="${file.path}" title="Concluída"></div>
+                    </div>
                 </div>
             `;
             contentDiv.appendChild(fileItem);
@@ -828,21 +826,23 @@ function renderPdfLibrary() {
 
 if(elements.libraryContainer) {
     elements.libraryContainer.addEventListener('click', (e) => {
-        if (e.target.classList.contains('status-badge')) {
+        if (e.target.classList.contains('status-box')) {
             e.preventDefault();
+            e.stopPropagation(); 
+            
             const path = e.target.getAttribute('data-path');
+            const newStatus = e.target.getAttribute('data-status');
             const fileIndex = appData.mappedPdfs.findIndex(f => f.path === path);
             
             if (fileIndex !== -1) {
-                const currentStatus = appData.mappedPdfs[fileIndex].status || 'unread';
-                let nextStatus = 'unread';
-                
-                if (currentStatus === 'unread') nextStatus = 'started';
-                else if (currentStatus === 'started') nextStatus = 'completed';
-                
-                appData.mappedPdfs[fileIndex].status = nextStatus;
+                appData.mappedPdfs[fileIndex].status = newStatus;
                 saveData();
-                renderPdfLibrary(); 
+                
+                const selectorsContainer = e.target.parentElement;
+                selectorsContainer.querySelectorAll('.status-box').forEach(box => {
+                    box.classList.remove('active');
+                });
+                e.target.classList.add('active');
             }
         }
     });
