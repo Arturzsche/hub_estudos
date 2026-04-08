@@ -778,10 +778,10 @@ function renderPdfLibrary() {
     });
 
     for (const [folder, files] of Object.entries(groupedPdfs)) {
-        const details = document.createElement('details');
-        details.className = 'folder-group';
+        const folderGroup = document.createElement('div');
+        folderGroup.className = 'folder-group';
         
-        const summary = document.createElement('summary');
+        const summary = document.createElement('div');
         summary.className = 'folder-summary';
         summary.innerHTML = `
             <div class="folder-header-left">
@@ -794,6 +794,13 @@ function renderPdfLibrary() {
             </div>
         `;
         
+        summary.addEventListener('click', () => {
+            folderGroup.classList.toggle('open');
+        });
+        
+        const wrapper = document.createElement('div');
+        wrapper.className = 'folder-content-wrapper';
+
         const contentDiv = document.createElement('div');
         contentDiv.className = 'folder-content';
 
@@ -818,9 +825,10 @@ function renderPdfLibrary() {
             contentDiv.appendChild(fileItem);
         });
 
-        details.appendChild(summary);
-        details.appendChild(contentDiv);
-        elements.libraryContainer.appendChild(details);
+        wrapper.appendChild(contentDiv);
+        folderGroup.appendChild(summary);
+        folderGroup.appendChild(wrapper);
+        elements.libraryContainer.appendChild(folderGroup);
     }
 }
 
@@ -851,11 +859,11 @@ if(elements.libraryContainer) {
 if(searchInput) {
     searchInput.addEventListener('input', (e) => {
         const term = e.target.value.toLowerCase();
-        const detailsElements = elements.libraryContainer.querySelectorAll('details');
+        const folderGroups = elements.libraryContainer.querySelectorAll('.folder-group');
         
-        detailsElements.forEach(details => {
+        folderGroups.forEach(group => {
             let hasMatch = false;
-            const fileItems = details.querySelectorAll('.file-item');
+            const fileItems = group.querySelectorAll('.file-item');
             
             fileItems.forEach(item => {
                 const text = item.textContent.toLowerCase();
@@ -868,13 +876,13 @@ if(searchInput) {
             });
 
             if(term === '') {
-                details.style.display = 'block';
-                details.removeAttribute('open');
+                group.style.display = 'block';
+                group.classList.remove('open');
             } else if (hasMatch) {
-                details.style.display = 'block';
-                details.setAttribute('open', '');
+                group.style.display = 'block';
+                group.classList.add('open');
             } else {
-                details.style.display = 'none';
+                group.style.display = 'none';
             }
         });
     });

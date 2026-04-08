@@ -219,15 +219,20 @@ body.focus-active .controls { transform: translateY(20px); opacity: 0; pointer-e
 
 .library-container { display: flex; flex-direction: column; gap: 1rem; }
 .folder-group { background: var(--surface-color); border: 1px solid var(--border-color); border-radius: var(--radius); overflow: hidden; transition: var(--transition); }
-.folder-summary { padding: 1.2rem 1.5rem; cursor: pointer; list-style: none; display: flex; align-items: center; justify-content: space-between; font-weight: 500; font-size: 1rem; color: var(--text-main); background: var(--surface-color); user-select: none; }
-.folder-summary::-webkit-details-marker { display: none; }
+.folder-summary { padding: 1.2rem 1.5rem; cursor: pointer; display: flex; align-items: center; justify-content: space-between; font-weight: 500; font-size: 1rem; color: var(--text-main); background: var(--surface-color); user-select: none; transition: background 0.2s; border-bottom: 1px solid transparent; transition: border-color 0.4s; }
 .folder-summary:hover { background: var(--bg-color); }
+.folder-group.open .folder-summary { border-bottom-color: var(--border-color); }
+
 .folder-header-left { display: flex; align-items: center; gap: 0.8rem; }
 .folder-icon { color: #fbc02d; display: flex; align-items: center; }
 .folder-count { font-size: 0.8rem; background: var(--border-color); color: var(--text-muted); padding: 2px 8px; border-radius: 12px; font-weight: 600; }
-.folder-chevron { color: var(--text-muted); transition: transform 0.3s ease; display: flex; align-items: center; }
-details[open] .folder-chevron { transform: rotate(180deg); }
-.folder-content { padding: 0; border-top: 1px solid var(--border-color); background: var(--bg-color); }
+.folder-chevron { color: var(--text-muted); transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1); display: flex; align-items: center; }
+.folder-group.open .folder-chevron { transform: rotate(180deg); }
+
+.folder-content-wrapper { display: grid; grid-template-rows: 0fr; transition: grid-template-rows 0.4s cubic-bezier(0.4, 0, 0.2, 1); background: var(--bg-color); }
+.folder-group.open .folder-content-wrapper { grid-template-rows: 1fr; }
+.folder-content { overflow: hidden; }
+
 .file-item { padding: 1rem 1.5rem; border-bottom: 1px solid var(--border-color); display: flex; align-items: center; gap: 1rem; transition: background 0.2s; }
 .file-item:last-child { border-bottom: none; }
 .file-item:hover { background: var(--border-color); }
