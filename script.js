@@ -65,7 +65,9 @@ const elements = {
     btnAddCycle: document.getElementById('btn-add-cycle'),
     
     cycleSubject: document.getElementById('cycle-subject'),
-    cyclePhaseBadge: document.getElementById('cycle-phase-badge')
+    cyclePhaseBadge: document.getElementById('cycle-phase-badge'),
+    
+    libraryContainer: document.getElementById('library-container')
 };
 
 function init() {
@@ -78,7 +80,7 @@ function init() {
     setupNavigation();
     initChart();
     setupClearModal();
-    renderPdfTable();
+    renderPdfLibrary();
     
     if (localStorage.getItem('theme') === 'light') {
         document.body.classList.remove('dark-mode');
@@ -755,89 +757,138 @@ if ('mediaSession' in navigator) {
 const btnStartMapping = document.getElementById('btn-start-mapping');
 const pdfCountDisplay = document.getElementById('pdf-count');
 const mappingStatus = document.getElementById('mapping-status');
-const pdfTableBody = document.getElementById('pdf-table-body');
 const searchInput = document.getElementById('search-pdf'); 
 
-function renderPdfTable() {
-    pdfTableBody.innerHTML = '';
-    const countSpan = document.getElementById('pdf-count');
-    if(countSpan) countSpan.textContent = appData.mappedPdfs.length;
+function renderPdfLibrary() {
+    if(!elements.libraryContainer) return;
+    elements.libraryContainer.innerHTML = '';
+    
+    if(pdfCountDisplay) pdfCountDisplay.textContent = appData.mappedPdfs.length;
 
+    const groupedPdfs = {};
+    
     appData.mappedPdfs.forEach(file => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-            <td style="text-align: left; padding-left: 1rem;">
-                <a href="http://127.0.0.1:5000/abrir?caminho=${encodeURIComponent(file.path)}" target="_blank" style="color: var(--text-main); font-weight: 500; text-decoration: none; display: flex; align-items: center; gap: 8px;">
-                    <svg viewBox="0 0 24 24" width="18" height="18" style="color: #e53935;"><path fill="currentColor" d="M20 2H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-8.5 7.5c0 .83-.67 1.5-1.5 1.5H9v2H7.5V7H10c.83 0 1.5.67 1.5 1.5v1zm5 2c0 .83-.67 1.5-1.5 1.5h-2.5V7H15c.83 0 1.5.67 1.5 1.5v3zm4-3H19v1h1.5V11H19v2h-1.5V7h3v1.5zM9 9.5h1v-1H9v1zM4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm10 5.5h1v-3h-1v3z"/></svg>
+        const parts = file.path.split(/[\\/]/);
+        const folderName = parts.length > 1 ? parts[parts.length - 2] : "Arquivos Avulsos";
+        
+        if(!groupedPdfs[folderName]) {
+            groupedPdfs[folderName] = [];
+        }
+        groupedPdfs[folderName].push(file);
+    });
+
+    for (const [folder, files] of Object.entries(groupedPdfs)) {
+        const details = document.createElement('details');
+        details.className = 'folder-group';
+        
+        const summary = document.createElement('summary');
+        summary.className = 'folder-summary';
+        summary.innerHTML = `
+            <div class="folder-header-left">
+                <svg class="folder-icon" viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>
+                ${folder}
+            </div>
+            <div style="display: flex; align-items: center; gap: 1rem;">
+                <span class="folder-count">${files.length}</span>
+                <svg class="folder-chevron" viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/></svg>
+            </div>
+        `;
+        
+        const contentDiv = document.createElement('div');
+        contentDiv.className = 'folder-content';
+
+        files.forEach(file => {
+            const fileItem = document.createElement('div');
+            fileItem.className = 'file-item';
+            fileItem.innerHTML = `
+                <a class="file-link" href="http://127.0.0.1:5000/abrir?caminho=${encodeURIComponent(file.path)}" target="_blank">
+                    <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M20 2H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-8.5 7.5c0 .83-.67 1.5-1.5 1.5H9v2H7.5V7H10c.83 0 1.5.67 1.5 1.5v1zm5 2c0 .83-.67 1.5-1.5 1.5h-2.5V7H15c.83 0 1.5.67 1.5 1.5v3zm4-3H19v1h1.5V11H19v2h-1.5V7h3v1.5zM9 9.5h1v-1H9v1zM4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm10 5.5h1v-3h-1v3z"/></svg>
                     ${file.name}
                 </a>
-            </td>
-            <td style="font-size: 0.8rem; color: var(--text-muted); text-align: left; padding-left: 1rem;">${file.path}</td>
-        `;
-        pdfTableBody.appendChild(tr); 
+                <span class="file-path">${file.path}</span>
+            `;
+            contentDiv.appendChild(fileItem);
+        });
+
+        details.appendChild(summary);
+        details.appendChild(contentDiv);
+        elements.libraryContainer.appendChild(details);
+    }
+}
+
+if(searchInput) {
+    searchInput.addEventListener('input', (e) => {
+        const term = e.target.value.toLowerCase();
+        const detailsElements = elements.libraryContainer.querySelectorAll('details');
+        
+        detailsElements.forEach(details => {
+            let hasMatch = false;
+            const fileItems = details.querySelectorAll('.file-item');
+            
+            fileItems.forEach(item => {
+                const text = item.textContent.toLowerCase();
+                if(text.includes(term)) {
+                    item.style.display = 'flex';
+                    hasMatch = true;
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+
+            if(term === '') {
+                details.style.display = 'block';
+                details.removeAttribute('open');
+            } else if (hasMatch) {
+                details.style.display = 'block';
+                details.setAttribute('open', '');
+            } else {
+                details.style.display = 'none';
+            }
+        });
     });
 }
 
-searchInput.addEventListener('input', (e) => {
-    const term = e.target.value.toLowerCase();
-    const rows = pdfTableBody.querySelectorAll('tr');
-    
-    rows.forEach(row => {
-        const text = row.textContent.toLowerCase();
-        row.style.display = text.includes(term) ? '' : 'none';
-    });
-});
-
-btnStartMapping.addEventListener('click', () => {
-    appData.mappedPdfs = [];
-    saveData();
-    renderPdfTable();
-    
-    let tempCount = 0;
-    searchInput.value = ''; 
-    mappingStatus.textContent = "Iniciando servidor local e buscando arquivos...";
-    btnStartMapping.disabled = true;
-
-    const eventSource = new EventSource('http://127.0.0.1:5000/mapear');
-
-    eventSource.onmessage = function(event) {
-        const data = JSON.parse(event.data);
+if(btnStartMapping) {
+    btnStartMapping.addEventListener('click', () => {
+        appData.mappedPdfs = [];
+        saveData();
+        renderPdfLibrary();
         
-        if (data.status === "processing") {
-            tempCount++;
-            pdfCountDisplay.textContent = tempCount;
-            mappingStatus.textContent = `Varrendo: ${data.file.path}`;
+        let tempCount = 0;
+        if(searchInput) searchInput.value = ''; 
+        if(mappingStatus) mappingStatus.textContent = "Iniciando servidor local e buscando arquivos...";
+        btnStartMapping.disabled = true;
 
-            appData.mappedPdfs.unshift({
-                name: data.file.name,
-                path: data.file.path
-            });
+        const eventSource = new EventSource('http://127.0.0.1:5000/mapear');
 
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td style="text-align: left; padding-left: 1rem;">
-                    <a href="http://127.0.0.1:5000/abrir?caminho=${encodeURIComponent(data.file.path)}" target="_blank" style="color: var(--text-main); font-weight: 500; text-decoration: none; display: flex; align-items: center; gap: 8px;">
-                        <svg viewBox="0 0 24 24" width="18" height="18" style="color: #e53935;"><path fill="currentColor" d="M20 2H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-8.5 7.5c0 .83-.67 1.5-1.5 1.5H9v2H7.5V7H10c.83 0 1.5.67 1.5 1.5v1zm5 2c0 .83-.67 1.5-1.5 1.5h-2.5V7H15c.83 0 1.5.67 1.5 1.5v3zm4-3H19v1h1.5V11H19v2h-1.5V7h3v1.5zM9 9.5h1v-1H9v1zM4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm10 5.5h1v-3h-1v3z"/></svg>
-                        ${data.file.name}
-                    </a>
-                </td>
-                <td style="font-size: 0.8rem; color: var(--text-muted); text-align: left; padding-left: 1rem;">${data.file.path}</td>
-            `;
-            pdfTableBody.prepend(tr); 
-        } 
-        else if (data.status === "done") {
-            saveData();
-            mappingStatus.textContent = "Mapeamento concluído e salvo localmente!";
+        eventSource.onmessage = function(event) {
+            const data = JSON.parse(event.data);
+            
+            if (data.status === "processing") {
+                tempCount++;
+                if(pdfCountDisplay) pdfCountDisplay.textContent = tempCount;
+                if(mappingStatus) mappingStatus.textContent = `Varrendo: ${data.file.path}`;
+
+                appData.mappedPdfs.unshift({
+                    name: data.file.name,
+                    path: data.file.path
+                });
+            } 
+            else if (data.status === "done") {
+                saveData();
+                renderPdfLibrary();
+                if(mappingStatus) mappingStatus.textContent = "Mapeamento concluído e salvo localmente!";
+                btnStartMapping.disabled = false;
+                eventSource.close(); 
+            }
+        };
+
+        eventSource.onerror = function() {
+            if(mappingStatus) mappingStatus.textContent = "Erro de conexão. Certifique-se de que o script Python está rodando na porta 5000.";
             btnStartMapping.disabled = false;
-            eventSource.close(); 
-        }
-    };
-
-    eventSource.onerror = function() {
-        mappingStatus.textContent = "Erro de conexão. Certifique-se de que o script Python está rodando na porta 5000.";
-        btnStartMapping.disabled = false;
-        eventSource.close();
-    };
-});
+            eventSource.close();
+        };
+    });
+}
 
 init();
