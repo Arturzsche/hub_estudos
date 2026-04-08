@@ -809,9 +809,9 @@ function renderPdfLibrary() {
                 <div class="file-actions">
                     <span class="file-path">${file.path}</span>
                     <div class="status-selectors">
-                        <div class="status-box status-red ${currentStatus === 'unread' ? 'active' : ''}" data-status="unread" data-path="${file.path}" title="Não Lida"></div>
-                        <div class="status-box status-orange ${currentStatus === 'started' ? 'active' : ''}" data-status="started" data-path="${file.path}" title="Iniciada"></div>
-                        <div class="status-box status-green ${currentStatus === 'completed' ? 'active' : ''}" data-status="completed" data-path="${file.path}" title="Concluída"></div>
+                        <div class="status-dot status-red ${currentStatus === 'unread' ? 'active' : ''}" data-status="unread" data-path="${file.path}" title="Não Lida"></div>
+                        <div class="status-dot status-orange ${currentStatus === 'started' ? 'active' : ''}" data-status="started" data-path="${file.path}" title="Iniciada"></div>
+                        <div class="status-dot status-green ${currentStatus === 'completed' ? 'active' : ''}" data-status="completed" data-path="${file.path}" title="Concluída"></div>
                     </div>
                 </div>
             `;
@@ -826,7 +826,7 @@ function renderPdfLibrary() {
 
 if(elements.libraryContainer) {
     elements.libraryContainer.addEventListener('click', (e) => {
-        if (e.target.classList.contains('status-box')) {
+        if (e.target.classList.contains('status-dot')) {
             e.preventDefault();
             e.stopPropagation(); 
             
@@ -839,8 +839,8 @@ if(elements.libraryContainer) {
                 saveData();
                 
                 const selectorsContainer = e.target.parentElement;
-                selectorsContainer.querySelectorAll('.status-box').forEach(box => {
-                    box.classList.remove('active');
+                selectorsContainer.querySelectorAll('.status-dot').forEach(dot => {
+                    dot.classList.remove('active');
                 });
                 e.target.classList.add('active');
             }
