@@ -3,7 +3,6 @@ let isRunning = false;
 let lastTickTime = 0; 
 let chartInstance = null;
 
-// Configuração do Ciclo de Estudos
 const CYCLE_PHASES = [
     { name: "Teoria (50min)", ms: 50 * 60 * 1000, isStudy: true },
     { name: "Pausa (10min)", ms: 10 * 60 * 1000, isStudy: false },
@@ -107,7 +106,7 @@ function playBeep() {
         gainNode.gain.setValueAtTime(0.1, ctx.currentTime);
         osc.start();
         osc.stop(ctx.currentTime + 0.8);
-    } catch(e) { console.log("Áudio não suportado"); }
+    } catch(e) { }
 }
 
 function formatHoursText(totalSeconds) {
@@ -568,7 +567,6 @@ elements.focusToggle.addEventListener('click', () => {
     document.body.classList.toggle('focus-active');
 });
 
-// --- LÓGICA DO BANCO DE MATÉRIAS ---
 function renderSubjectBank() {
     elements.subjectBank.innerHTML = '';
     appData.savedSubjects.forEach((subject, index) => {
@@ -610,7 +608,6 @@ elements.newSubjectInput.addEventListener('keypress', (e) => {
     if (e.key === 'Enter') elements.btnAddSubject.click();
 });
 
-// --- LÓGICA DO CRONOGRAMA ---
 function renderSchedule() {
     elements.scheduleTableBody.innerHTML = '';
     
@@ -620,7 +617,6 @@ function renderSchedule() {
         const tdTime = document.createElement('td');
         tdTime.className = 'time-cell';
         
-        // Ícone de Lixeira (Exclusão Imediata sem Confirmação)
         const btnDeleteRow = document.createElement('button');
         btnDeleteRow.className = 'btn-remove-row';
         btnDeleteRow.innerHTML = '<svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M16 9v10H8V9h8m-1.5-6h-5l-1 1H5v2h14V4h-3.5l-1-1zM18 7H6v12c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7z"/></svg>';
@@ -696,8 +692,6 @@ elements.btnAddCycle.addEventListener('click', () => {
     renderSchedule();
 });
 
-
-// --- ATALHOS DE TECLADO ---
 document.addEventListener('keydown', (e) => {
     const isTyping = document.activeElement.tagName === 'INPUT' || document.activeElement.isContentEditable;
     if (isTyping) return;
@@ -757,29 +751,34 @@ if ('mediaSession' in navigator) {
 
 init();
 
-// ==========================================
-// --- LÓGICA DE MAPEAMENTO DE PDFs (SSE) ---
-// ==========================================
-
 const btnStartMapping = document.getElementById('btn-start-mapping');
 const pdfCountDisplay = document.getElementById('pdf-count');
 const mappingStatus = document.getElementById('mapping-status');
 const pdfTableBody = document.getElementById('pdf-table-body');
+const searchInput = document.getElementById('search-pdf'); 
 
 let pdfCount = 0;
 
+searchInput.addEventListener('input', (e) => {
+    const term = e.target.value.toLowerCase();
+    const rows = pdfTableBody.querySelectorAll('tr');
+    
+    rows.forEach(row => {
+        const text = row.textContent.toLowerCase();
+        row.style.display = text.includes(term) ? '' : 'none';
+    });
+});
+
 btnStartMapping.addEventListener('click', () => {
-    // Reseta a interface
     pdfCount = 0;
     pdfCountDisplay.textContent = '0';
     pdfTableBody.innerHTML = '';
+    searchInput.value = ''; 
     mappingStatus.textContent = "Iniciando servidor local e buscando arquivos...";
     btnStartMapping.disabled = true;
 
-    // Inicia a conexão SSE com o servidor Python local
     const eventSource = new EventSource('http://127.0.0.1:5000/mapear');
 
-    // Escuta as mensagens enviadas pelo Python
     eventSource.onmessage = function(event) {
         const data = JSON.parse(event.data);
         
@@ -788,10 +787,15 @@ btnStartMapping.addEventListener('click', () => {
             pdfCountDisplay.textContent = pdfCount;
             mappingStatus.textContent = `Varrendo: ${data.file.path}`;
 
-            // Adiciona a nova linha no topo da tabela
             const tr = document.createElement('tr');
+            
             tr.innerHTML = `
-                <td style="text-align: left; padding-left: 1rem;">${data.file.name}</td>
+                <td style="text-align: left; padding-left: 1rem;">
+                    <a href="http://127.0.0.1:5000/abrir?caminho=${encodeURIComponent(data.file.path)}" target="_blank" style="color: var(--text-main); font-weight: 500; text-decoration: none; display: flex; align-items: center; gap: 8px;">
+                        <svg viewBox="0 0 24 24" width="18" height="18" style="color: #e53935;"><path fill="currentColor" d="M20 2H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-8.5 7.5c0 .83-.67 1.5-1.5 1.5H9v2H7.5V7H10c.83 0 1.5.67 1.5 1.5v1zm5 2c0 .83-.67 1.5-1.5 1.5h-2.5V7H15c.83 0 1.5.67 1.5 1.5v3zm4-3H19v1h1.5V11H19v2h-1.5V7h3v1.5zM9 9.5h1v-1H9v1zM4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm10 5.5h1v-3h-1v3z"/></svg>
+                        ${data.file.name}
+                    </a>
+                </td>
                 <td style="font-size: 0.8rem; color: var(--text-muted); text-align: left; padding-left: 1rem;">${data.file.path}</td>
             `;
             pdfTableBody.prepend(tr); 
@@ -803,7 +807,6 @@ btnStartMapping.addEventListener('click', () => {
         }
     };
 
-    // Tratamento de erro caso o Python não esteja rodando
     eventSource.onerror = function() {
         mappingStatus.textContent = "Erro de conexão. Certifique-se de que o script Python está rodando na porta 5000.";
         btnStartMapping.disabled = false;

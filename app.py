@@ -1,15 +1,13 @@
-from flask import Flask, Response, jsonify
+from flask import Flask, Response, jsonify, request, send_file
 from flask_cors import CORS
 import os
 import time
 import json
 
 app = Flask(__name__)
-# Permite que o seu navegador receba os dados mesmo abrindo o HTML diretamente
 CORS(app) 
 
-# ALTERE AQUI PARA A PASTA ONDE VOCÊ GUARDA SEUS MATERIAIS DE ESTUDO
-PASTA_ALVO = r"C:\Users\SeuUsuario\Documents"
+PASTA_ALVO = r"C:\Users\artur\OneDrive\Área de Trabalho\ESTUDOS"
 
 @app.route('/mapear')
 def mapear_pdfs():
@@ -18,7 +16,6 @@ def mapear_pdfs():
             for file in files:
                 if file.lower().endswith('.pdf'):
                     caminho_completo = os.path.join(root, file)
-                    
                     dados = {
                         "status": "processing",
                         "file": {
@@ -26,17 +23,21 @@ def mapear_pdfs():
                             "path": caminho_completo
                         }
                     }
-                    
-                    # Envia os dados no padrão SSE
                     yield f"data: {json.dumps(dados)}\n\n"
-                    
-                    # Um pequeno delay para dar um visual legal de "processamento" na tela
-                    time.sleep(0.05) 
+                    time.sleep(0.02) 
         
-        # Avisa ao Javascript que finalizou
         yield f"data: {json.dumps({'status': 'done'})}\n\n"
 
     return Response(gerar_eventos(), mimetype='text/event-stream')
+
+@app.route('/abrir')
+def abrir_pdf():
+    caminho = request.args.get('caminho')
+    
+    if caminho and os.path.exists(caminho):
+        return send_file(caminho)
+    
+    return "Arquivo não encontrado", 404
 
 if __name__ == '__main__':
     print("Servidor rodando. Clique em 'Iniciar Mapeamento' no seu site.")
