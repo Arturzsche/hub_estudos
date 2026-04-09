@@ -10,12 +10,12 @@ const CYCLE_PHASES = [
 ];
 
 let defaultFlashcards = [
-    { subject: "Direito Administrativo", q: "Quais são os princípios expressos da Administração Pública (LIMPE)?", a: "Legalidade, Impessoalidade, Moralidade, Publicidade e Eficiência." },
-    { subject: "Direito Administrativo", q: "Qual a diferença entre Administração Direta e Indireta?", a: "Direta: atua pelo próprio ente (União, Estados, Municípios). Indireta: criação de novas entidades (Autarquias, Fundações, EP, SEM)." },
-    { subject: "Direito Administrativo", q: "O que é Poder de Polícia?", a: "Prerrogativa de direito público que autoriza a Administração Pública a restringir o uso e o gozo da liberdade e da propriedade em favor do interesse da coletividade." },
-    { subject: "Direito Administrativo", q: "O que caracteriza um Ato Administrativo Discricionário?", a: "A margem de liberdade (conveniência e oportunidade) conferida por lei ao administrador para escolher a melhor ação, dentro dos limites legais." },
-    { subject: "Português", q: "Qual a regra geral de concordância verbal?", a: "O verbo concorda com o núcleo do sujeito em número e pessoa." },
-    { subject: "Português", q: "O que é Próclise, Mesóclise e Ênclise?", a: "Posição do pronome oblíquo: Próclise (antes do verbo), Mesóclise (no meio do verbo) e Ênclise (depois do verbo)." }
+    { id: 'def_1', subject: "Direito Administrativo", q: "Quais são os princípios expressos da Administração Pública (LIMPE)?", a: "Legalidade, Impessoalidade, Moralidade, Publicidade e Eficiência.", reps: 0, interval: 0, efactor: 2.5 },
+    { id: 'def_2', subject: "Direito Administrativo", q: "Qual a diferença entre Administração Direta e Indireta?", a: "Direta: atua pelo próprio ente (União, Estados, Municípios). Indireta: criação de novas entidades (Autarquias, Fundações, EP, SEM).", reps: 0, interval: 0, efactor: 2.5 },
+    { id: 'def_3', subject: "Direito Administrativo", q: "O que é Poder de Polícia?", a: "Prerrogativa de direito público que autoriza a Administração Pública a restringir o uso e o gozo da liberdade e da propriedade em favor do interesse da coletividade.", reps: 0, interval: 0, efactor: 2.5 },
+    { id: 'def_4', subject: "Direito Administrativo", q: "O que caracteriza um Ato Administrativo Discricionário?", a: "A margem de liberdade (conveniência e oportunidade) conferida por lei ao administrador para escolher a melhor ação, dentro dos limites legais.", reps: 0, interval: 0, efactor: 2.5 },
+    { id: 'def_5', subject: "Português", q: "Qual a regra geral de concordância verbal?", a: "O verbo concorda com o núcleo do sujeito em número e pessoa.", reps: 0, interval: 0, efactor: 2.5 },
+    { id: 'def_6', subject: "Português", q: "O que é Próclise, Mesóclise e Ênclise?", a: "Posição do pronome oblíquo: Próclise (antes do verbo), Mesóclise (no meio do verbo) e Ênclise (depois do verbo).", reps: 0, interval: 0, efactor: 2.5 }
 ];
 
 let appData = {
@@ -37,7 +37,7 @@ let appData = {
         msRemaining: CYCLE_PHASES[0].ms
     },
     mappedPdfs: [],
-    flashcards: [] 
+    flashcards: []
 };
 
 let todaysSubjects = [];
@@ -222,7 +222,11 @@ function loadData() {
     }
     
     if (!appData.flashcards || appData.flashcards.length === 0) {
-        appData.flashcards = [...defaultFlashcards];
+        appData.flashcards = JSON.parse(JSON.stringify(defaultFlashcards));
+    } else {
+        appData.flashcards.forEach((fc, idx) => {
+            if (!fc.id) fc.id = 'fc_' + Date.now() + '_' + idx;
+        });
     }
     
     const today = getTodayDate();
@@ -617,7 +621,7 @@ function renderSubjectBank() {
             appData.savedSubjects.splice(index, 1);
             saveData();
             renderSubjectBank();
-            updateFlashcardSubjects(); 
+            updateFlashcardSubjects();
         });
 
         elements.subjectBank.appendChild(pill);
@@ -724,7 +728,7 @@ elements.btnAddCycle.addEventListener('click', () => {
 });
 
 document.addEventListener('keydown', (e) => {
-    const isTyping = document.activeElement.tagName === 'INPUT' || document.activeElement.isContentEditable;
+    const isTyping = document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA' || document.activeElement.isContentEditable;
     if (isTyping) return;
 
     if (e.ctrlKey && e.code === 'Space') {
@@ -995,7 +999,7 @@ if(btnStartMapping) {
     });
 }
 
-// --- LÓGICA DE FLASHCARDS ---
+// --- LÓGICA DOS FLASHCARDS ---
 let currentFcDeck = [];
 let currentFcIndex = 0;
 let isFcFlipped = false;
@@ -1013,18 +1017,42 @@ const fcElements = {
     btnShow: document.getElementById('btn-fc-show'),
     rateBtns: document.querySelectorAll('.fc-rate-btn'),
     emptyState: document.getElementById('fc-empty-state'),
-    btnReset: document.getElementById('btn-fc-reset')
+    
+    btnAdd: document.getElementById('btn-add-fc'),
+    modalAdd: document.getElementById('fc-add-modal'),
+    newSubject: document.getElementById('fc-new-subject'),
+    newQ: document.getElementById('fc-new-q'),
+    newA: document.getElementById('fc-new-a'),
+    btnCancelAdd: document.getElementById('btn-fc-cancel-add'),
+    btnSaveAdd: document.getElementById('btn-fc-save-add')
 };
+
+function getNextInterval(card, quality) {
+    let reps = card.reps || 0;
+    let interval = card.interval || 0;
+    let efactor = card.efactor || 2.5;
+
+    if (quality === 0) return 1; 
+
+    if (reps === 0) {
+        return quality === 1 ? 1 : 4; 
+    } else if (reps === 1) {
+        return quality === 1 ? 6 : 10;
+    } else {
+        let nextI = Math.round(interval * efactor);
+        if (quality === 2) nextI = Math.round(nextI * 1.3);
+        return nextI;
+    }
+}
 
 function updateFlashcardSubjects() {
     if(!fcElements.subjectSelect) return;
     fcElements.subjectSelect.innerHTML = '';
+    fcElements.newSubject.innerHTML = '';
     
     appData.savedSubjects.forEach(sub => {
-        const option = document.createElement('option');
-        option.value = sub;
-        option.textContent = sub;
-        fcElements.subjectSelect.appendChild(option);
+        fcElements.subjectSelect.appendChild(new Option(sub, sub));
+        fcElements.newSubject.appendChild(new Option(sub, sub));
     });
     
     if (appData.savedSubjects.length > 0) {
@@ -1033,7 +1061,22 @@ function updateFlashcardSubjects() {
 }
 
 function loadDeck(subjectName) {
-    currentFcDeck = appData.flashcards.filter(card => card.subject === subjectName);
+    const today = getTodayDate();
+    
+    currentFcDeck = appData.flashcards.filter(card => {
+        if (card.subject !== subjectName) return false;
+        if (!card.nextReview) return true; 
+        return card.nextReview <= today;
+    });
+
+    currentFcDeck.sort((a, b) => {
+        if(!a.nextReview && b.nextReview) return -1;
+        if(a.nextReview && !b.nextReview) return 1;
+        if(a.nextReview < b.nextReview) return -1;
+        if(a.nextReview > b.nextReview) return 1;
+        return 0;
+    });
+
     currentFcIndex = 0;
     isFcFlipped = false;
     
@@ -1044,6 +1087,13 @@ function loadDeck(subjectName) {
         fcElements.controlsBack.style.display = 'none';
         renderCurrentCard();
     } else {
+        const futureCards = appData.flashcards.filter(card => card.subject === subjectName);
+        let msg = "Não há cartões criados para esta matéria.";
+        if (futureCards.length > 0) {
+            msg = `Todos os ${futureCards.length} cartões desta matéria estão em dia! Volte amanhã.`;
+        }
+        
+        fcElements.emptyState.querySelector('p').textContent = msg;
         fcElements.emptyState.style.display = 'block';
         fcElements.cardContainer.style.display = 'none';
         fcElements.controlsFront.style.display = 'none';
@@ -1055,6 +1105,7 @@ function loadDeck(subjectName) {
 
 function renderCurrentCard() {
     if (currentFcIndex >= currentFcDeck.length) {
+        fcElements.emptyState.querySelector('p').textContent = "Você finalizou todas as revisões pendentes desta matéria por hoje!";
         fcElements.emptyState.style.display = 'block';
         fcElements.cardContainer.style.display = 'none';
         fcElements.controlsFront.style.display = 'none';
@@ -1077,6 +1128,40 @@ function renderCurrentCard() {
     fcElements.progressText.textContent = `${currentFcIndex + 1} / ${currentFcDeck.length} Cartões`;
 }
 
+function rateCard(quality) {
+    const card = currentFcDeck[currentFcIndex];
+    const cardInDb = appData.flashcards.find(c => c.id === card.id);
+
+    if(cardInDb) {
+        let interval = getNextInterval(cardInDb, quality);
+
+        if (quality === 0) {
+            cardInDb.reps = 0;
+        } else {
+            cardInDb.reps = (cardInDb.reps || 0) + 1;
+            let qValue = quality === 1 ? 4 : 5;
+            cardInDb.efactor = (cardInDb.efactor || 2.5) + (0.1 - (5 - qValue) * (0.08 + (5 - qValue) * 0.02));
+            if (cardInDb.efactor < 1.3) cardInDb.efactor = 1.3;
+        }
+        cardInDb.interval = interval;
+
+        const d = new Date();
+        d.setDate(d.getDate() + interval);
+        cardInDb.nextReview = d.toISOString().split('T')[0];
+
+        saveData();
+    }
+
+    currentFcIndex++;
+    
+    if (currentFcIndex >= currentFcDeck.length) {
+        fcElements.progressFill.style.width = `100%`;
+        setTimeout(renderCurrentCard, 300); 
+    } else {
+        renderCurrentCard();
+    }
+}
+
 function initFlashcards() {
     if(!fcElements.subjectSelect) return;
     
@@ -1092,6 +1177,11 @@ function initFlashcards() {
             isFcFlipped = true;
             fcElements.controlsFront.style.display = 'none';
             fcElements.controlsBack.style.display = 'flex';
+            
+            const card = currentFcDeck[currentFcIndex];
+            document.getElementById('fc-hard-time').textContent = `(${getNextInterval(card, 0)}d)`;
+            document.getElementById('fc-good-time').textContent = `(${getNextInterval(card, 1)}d)`;
+            document.getElementById('fc-easy-time').textContent = `(${getNextInterval(card, 2)}d)`;
         }
     };
 
@@ -1099,18 +1189,47 @@ function initFlashcards() {
     fcElements.cardContainer.addEventListener('click', flipCard);
 
     fcElements.rateBtns.forEach(btn => {
-        btn.addEventListener('click', () => {
-            currentFcIndex++;
-            renderCurrentCard();
-            
-            if (currentFcIndex >= currentFcDeck.length) {
-                fcElements.progressFill.style.width = `100%`;
-            }
+        btn.addEventListener('click', (e) => {
+            const quality = parseInt(e.currentTarget.getAttribute('data-rating'));
+            rateCard(quality);
         });
     });
 
-    fcElements.btnReset.addEventListener('click', () => {
-        loadDeck(fcElements.subjectSelect.value);
+    fcElements.btnAdd.addEventListener('click', () => {
+        fcElements.newSubject.value = fcElements.subjectSelect.value;
+        fcElements.modalAdd.classList.add('active');
+    });
+
+    fcElements.btnCancelAdd.addEventListener('click', () => {
+        fcElements.modalAdd.classList.remove('active');
+        fcElements.newQ.value = '';
+        fcElements.newA.value = '';
+    });
+
+    fcElements.btnSaveAdd.addEventListener('click', () => {
+        const sub = fcElements.newSubject.value;
+        const q = fcElements.newQ.value.trim();
+        const a = fcElements.newA.value.trim();
+
+        if (q && a) {
+            appData.flashcards.push({
+                id: 'fc_' + Date.now(),
+                subject: sub,
+                q: q,
+                a: a,
+                reps: 0,
+                interval: 0,
+                efactor: 2.5
+            });
+            saveData();
+            fcElements.modalAdd.classList.remove('active');
+            fcElements.newQ.value = '';
+            fcElements.newA.value = '';
+            
+            if (sub === fcElements.subjectSelect.value) {
+                loadDeck(sub);
+            }
+        }
     });
 }
 
