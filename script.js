@@ -1003,6 +1003,7 @@ if(btnStartMapping) {
 let currentFcDeck = [];
 let currentFcIndex = 0;
 let isFcFlipped = false;
+let currentFcMode = 'study'; // 'study' ou 'manage'
 
 const fcElements = {
     subjectSelect: document.getElementById('fc-subject-select'),
@@ -1018,14 +1019,30 @@ const fcElements = {
     rateBtns: document.querySelectorAll('.fc-rate-btn'),
     emptyState: document.getElementById('fc-empty-state'),
     
+    studyView: document.getElementById('fc-study-view'),
+    manageView: document.getElementById('fc-manage-view'),
+    btnStudyMode: document.getElementById('btn-fc-study-mode'),
+    btnManageMode: document.getElementById('btn-fc-manage-mode'),
+    manageTbody: document.getElementById('fc-manage-tbody'),
+    manageEmpty: document.getElementById('fc-manage-empty'),
+    
     btnAdd: document.getElementById('btn-add-fc'),
     modalAdd: document.getElementById('fc-add-modal'),
     newSubject: document.getElementById('fc-new-subject'),
     newQ: document.getElementById('fc-new-q'),
     newA: document.getElementById('fc-new-a'),
     btnCancelAdd: document.getElementById('btn-fc-cancel-add'),
-    btnSaveAdd: document.getElementById('btn-fc-save-add')
+    btnSaveAdd: document.getElementById('btn-fc-save-add'),
+    
+    modalEdit: document.getElementById('fc-edit-modal'),
+    editSubject: document.getElementById('fc-edit-subject'),
+    editQ: document.getElementById('fc-edit-q'),
+    editA: document.getElementById('fc-edit-a'),
+    btnCancelEdit: document.getElementById('btn-fc-cancel-edit'),
+    btnSaveEdit: document.getElementById('btn-fc-save-edit')
 };
+
+let currentEditId = null;
 
 function getNextInterval(card, quality) {
     let reps = card.reps || 0;
@@ -1049,14 +1066,35 @@ function updateFlashcardSubjects() {
     if(!fcElements.subjectSelect) return;
     fcElements.subjectSelect.innerHTML = '';
     fcElements.newSubject.innerHTML = '';
+    fcElements.editSubject.innerHTML = '';
     
     appData.savedSubjects.forEach(sub => {
         fcElements.subjectSelect.appendChild(new Option(sub, sub));
         fcElements.newSubject.appendChild(new Option(sub, sub));
+        fcElements.editSubject.appendChild(new Option(sub, sub));
     });
     
     if (appData.savedSubjects.length > 0) {
-        loadDeck(appData.savedSubjects[0]);
+        if(currentFcMode === 'study') loadDeck(appData.savedSubjects[0]);
+        else renderManageView(appData.savedSubjects[0]);
+    }
+}
+
+function switchFcMode(mode) {
+    currentFcMode = mode;
+    const subject = fcElements.subjectSelect.value;
+    if(mode === 'study') {
+        fcElements.btnStudyMode.classList.add('active');
+        fcElements.btnManageMode.classList.remove('active');
+        fcElements.studyView.style.display = 'block';
+        fcElements.manageView.style.display = 'none';
+        if(subject) loadDeck(subject);
+    } else {
+        fcElements.btnManageMode.classList.add('active');
+        fcElements.btnStudyMode.classList.remove('active');
+        fcElements.studyView.style.display = 'none';
+        fcElements.manageView.style.display = 'block';
+        if(subject) renderManageView(subject);
     }
 }
 
@@ -1162,13 +1200,72 @@ function rateCard(quality) {
     }
 }
 
+function renderManageView(subjectName) {
+    fcElements.manageTbody.innerHTML = '';
+    const cards = appData.flashcards.filter(c => c.subject === subjectName);
+    
+    if(cards.length === 0) {
+        fcElements.manageTbody.parentElement.style.display = 'none';
+        fcElements.manageEmpty.style.display = 'block';
+    } else {
+        fcElements.manageTbody.parentElement.style.display = 'table';
+        fcElements.manageEmpty.style.display = 'none';
+        
+        cards.forEach(card => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td style="text-align: left; padding-left: 1rem; color: var(--text-main); font-weight: 500;">${card.q}</td>
+                <td style="text-align: left; padding-left: 1rem; color: var(--text-muted); font-size: 0.85rem;">${card.a}</td>
+                <td style="text-align: center;">
+                    <div style="display: flex; justify-content: center; gap: 0.5rem;">
+                        <button class="fc-action-btn edit-btn" data-id="${card.id}" title="Editar">
+                            <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+                        </button>
+                        <button class="fc-action-btn delete delete-btn" data-id="${card.id}" title="Excluir">
+                            <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M16 9v10H8V9h8m-1.5-6h-5l-1 1H5v2h14V4h-3.5l-1-1zM18 7H6v12c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7z"/></svg>
+                        </button>
+                    </div>
+                </td>
+            `;
+            fcElements.manageTbody.appendChild(tr);
+        });
+
+        fcElements.manageTbody.querySelectorAll('.delete-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const id = e.currentTarget.getAttribute('data-id');
+                appData.flashcards = appData.flashcards.filter(c => c.id !== id);
+                saveData();
+                renderManageView(fcElements.subjectSelect.value);
+            });
+        });
+
+        fcElements.manageTbody.querySelectorAll('.edit-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const id = e.currentTarget.getAttribute('data-id');
+                const card = appData.flashcards.find(c => c.id === id);
+                if(card) {
+                    currentEditId = id;
+                    fcElements.editSubject.value = card.subject;
+                    fcElements.editQ.value = card.q;
+                    fcElements.editA.value = card.a;
+                    fcElements.modalEdit.classList.add('active');
+                }
+            });
+        });
+    }
+}
+
 function initFlashcards() {
     if(!fcElements.subjectSelect) return;
     
     updateFlashcardSubjects();
 
+    fcElements.btnStudyMode.addEventListener('click', () => switchFcMode('study'));
+    fcElements.btnManageMode.addEventListener('click', () => switchFcMode('manage'));
+
     fcElements.subjectSelect.addEventListener('change', (e) => {
-        loadDeck(e.target.value);
+        if(currentFcMode === 'study') loadDeck(e.target.value);
+        else renderManageView(e.target.value);
     });
 
     const flipCard = () => {
@@ -1227,7 +1324,29 @@ function initFlashcards() {
             fcElements.newA.value = '';
             
             if (sub === fcElements.subjectSelect.value) {
-                loadDeck(sub);
+                if(currentFcMode === 'study') loadDeck(sub);
+                else renderManageView(sub);
+            }
+        }
+    });
+
+    fcElements.btnCancelEdit.addEventListener('click', () => {
+        fcElements.modalEdit.classList.remove('active');
+        currentEditId = null;
+    });
+
+    fcElements.btnSaveEdit.addEventListener('click', () => {
+        if(currentEditId) {
+            const cardIndex = appData.flashcards.findIndex(c => c.id === currentEditId);
+            if(cardIndex !== -1) {
+                appData.flashcards[cardIndex].subject = fcElements.editSubject.value;
+                appData.flashcards[cardIndex].q = fcElements.editQ.value.trim();
+                appData.flashcards[cardIndex].a = fcElements.editA.value.trim();
+                saveData();
+                
+                fcElements.modalEdit.classList.remove('active');
+                if(currentFcMode === 'study') loadDeck(fcElements.subjectSelect.value);
+                else renderManageView(fcElements.subjectSelect.value);
             }
         }
     });

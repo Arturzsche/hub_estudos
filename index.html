@@ -221,58 +221,86 @@
         <section id="flashcards" class="view">
             <div class="container container-small">
                 
-                <div style="margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: center;">
+                <div style="margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+                    <div style="display: flex; align-items: center; gap: 1.5rem;">
+                        <h2 style="font-size: 1.5rem; color: var(--text-main); margin-bottom: 0;">Flashcards</h2>
+                        <div class="segmented-control">
+                            <button id="btn-fc-study-mode" class="seg-btn active">Estudar</button>
+                            <button id="btn-fc-manage-mode" class="seg-btn">Gerenciar</button>
+                        </div>
+                    </div>
+                    
                     <div style="display: flex; align-items: center; gap: 1rem;">
-                        <h2 style="font-size: 1.5rem; color: var(--text-main); margin-bottom: 0;">Revisão Ativa</h2>
-                        <button id="btn-add-fc" class="icon-btn-small" style="border: 1px solid var(--border-color); background: var(--surface-color);" title="Criar novo cartão">
-                            <svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+                        <select id="fc-subject-select" class="sort-select" style="min-width: 180px;"></select>
+                        <button id="btn-add-fc" class="btn primary" style="padding: 0.6rem 1rem; display: flex; align-items: center; gap: 6px; font-size: 0.8rem;">
+                            <svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg> Novo
                         </button>
                     </div>
-                    <select id="fc-subject-select" class="sort-select" style="min-width: 200px;">
-                    </select>
                 </div>
 
-                <div class="fc-progress-container">
-                    <div class="fc-progress-bar">
-                        <div id="fc-progress-fill" class="fc-progress-fill"></div>
-                    </div>
-                    <span id="fc-progress-text" class="fc-progress-text">0 / 0 Cartões</span>
-                </div>
-
-                <div id="fc-card-container" class="fc-card-container">
-                    <div id="fc-card" class="fc-card">
-                        <div class="fc-face fc-front">
-                            <span class="fc-label">PERGUNTA</span>
-                            <p id="fc-question-text" class="fc-text"></p>
+                <div id="fc-study-view">
+                    <div class="fc-progress-container">
+                        <div class="fc-progress-bar">
+                            <div id="fc-progress-fill" class="fc-progress-fill"></div>
                         </div>
-                        <div class="fc-face fc-back">
-                            <span class="fc-label">RESPOSTA</span>
-                            <p id="fc-answer-text" class="fc-text"></p>
+                        <span id="fc-progress-text" class="fc-progress-text">0 / 0 Cartões</span>
+                    </div>
+
+                    <div id="fc-card-container" class="fc-card-container">
+                        <div id="fc-card" class="fc-card">
+                            <div class="fc-face fc-front">
+                                <span class="fc-label">PERGUNTA</span>
+                                <p id="fc-question-text" class="fc-text"></p>
+                            </div>
+                            <div class="fc-face fc-back">
+                                <span class="fc-label">RESPOSTA</span>
+                                <p id="fc-answer-text" class="fc-text"></p>
+                            </div>
                         </div>
+                    </div>
+
+                    <div id="fc-controls-front" class="fc-controls">
+                        <button id="btn-fc-show" class="btn primary" style="width: 100%; padding: 1.2rem; font-size: 1.1rem;">Mostrar Resposta</button>
+                    </div>
+
+                    <div id="fc-controls-back" class="fc-controls" style="display: none; gap: 1rem;">
+                        <button class="btn fc-rate-btn fc-btn-hard" data-rating="0">
+                            Difícil <span id="fc-hard-time" class="fc-btn-subtext"></span>
+                        </button>
+                        <button class="btn fc-rate-btn fc-btn-good" data-rating="1">
+                            Bom <span id="fc-good-time" class="fc-btn-subtext"></span>
+                        </button>
+                        <button class="btn fc-rate-btn fc-btn-easy" data-rating="2">
+                            Fácil <span id="fc-easy-time" class="fc-btn-subtext"></span>
+                        </button>
+                    </div>
+                    
+                    <div id="fc-empty-state" style="display: none; text-align: center; padding: 4rem 2rem; background: var(--surface-color); border: 1px solid var(--border-color); border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.05);">
+                        <svg viewBox="0 0 24 24" width="48" height="48" style="color: var(--text-muted); margin-bottom: 1rem;"><path fill="currentColor" d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+                        <h3 style="margin-bottom: 0.5rem; font-size: 1.4rem;">Revisão Concluída!</h3>
+                        <p style="color: var(--text-muted); font-size: 1rem;">Não há mais cartões pendentes para hoje.</p>
                     </div>
                 </div>
 
-                <div id="fc-controls-front" class="fc-controls">
-                    <button id="btn-fc-show" class="btn primary" style="width: 100%;">Mostrar Resposta</button>
+                <div id="fc-manage-view" style="display: none;">
+                    <div class="table-responsive">
+                        <table class="schedule-table" style="text-align: left;">
+                            <thead>
+                                <tr>
+                                    <th style="text-align: left; padding-left: 1rem; width: 40%;">Pergunta</th>
+                                    <th style="text-align: left; padding-left: 1rem; width: 45%;">Resposta</th>
+                                    <th style="text-align: center; width: 15%;">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="fc-manage-tbody">
+                                </tbody>
+                        </table>
+                    </div>
+                    <div id="fc-manage-empty" style="display: none; text-align: center; padding: 3rem; color: var(--text-muted);">
+                        Nenhum cartão encontrado nesta matéria.
+                    </div>
                 </div>
 
-                <div id="fc-controls-back" class="fc-controls" style="display: none; gap: 1rem;">
-                    <button class="btn fc-rate-btn fc-btn-hard" data-rating="0">
-                        Difícil <span id="fc-hard-time" class="fc-btn-subtext"></span>
-                    </button>
-                    <button class="btn fc-rate-btn fc-btn-good" data-rating="1">
-                        Bom <span id="fc-good-time" class="fc-btn-subtext"></span>
-                    </button>
-                    <button class="btn fc-rate-btn fc-btn-easy" data-rating="2">
-                        Fácil <span id="fc-easy-time" class="fc-btn-subtext"></span>
-                    </button>
-                </div>
-                
-                <div id="fc-empty-state" style="display: none; text-align: center; padding: 4rem 2rem; background: var(--surface-color); border: 1px solid var(--border-color); border-radius: var(--radius); box-shadow: 0 4px 20px rgba(0,0,0,0.05);">
-                    <svg viewBox="0 0 24 24" width="48" height="48" style="color: var(--text-muted); margin-bottom: 1rem;"><path fill="currentColor" d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
-                    <h3 style="margin-bottom: 0.5rem;">Revisão Concluída!</h3>
-                    <p style="color: var(--text-muted);">Não há mais cartões pendentes para hoje.</p>
-                </div>
             </div>
         </section>
 
@@ -291,7 +319,7 @@
     </div>
 
     <div id="fc-add-modal" class="modal-overlay">
-        <div class="modal-content" style="max-width: 500px; text-align: left;">
+        <div class="modal-content" style="max-width: 550px; text-align: left;">
             <h2 style="margin-bottom: 1.5rem;">Novo Cartão</h2>
             <div style="margin-bottom: 1rem;">
                 <label style="display: block; margin-bottom: 0.5rem; font-size: 0.85rem; color: var(--text-muted); font-weight: 600;">Matéria</label>
@@ -308,6 +336,28 @@
             <div style="display: flex; gap: 1rem; justify-content: flex-end;">
                 <button id="btn-fc-cancel-add" class="btn secondary">Cancelar</button>
                 <button id="btn-fc-save-add" class="btn primary">Salvar Cartão</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="fc-edit-modal" class="modal-overlay">
+        <div class="modal-content" style="max-width: 550px; text-align: left;">
+            <h2 style="margin-bottom: 1.5rem;">Editar Cartão</h2>
+            <div style="margin-bottom: 1rem;">
+                <label style="display: block; margin-bottom: 0.5rem; font-size: 0.85rem; color: var(--text-muted); font-weight: 600;">Matéria</label>
+                <select id="fc-edit-subject" class="sort-select" style="width: 100%; border-radius: 6px; padding: 0.8rem;"></select>
+            </div>
+            <div style="margin-bottom: 1rem;">
+                <label style="display: block; margin-bottom: 0.5rem; font-size: 0.85rem; color: var(--text-muted); font-weight: 600;">Frente (Pergunta)</label>
+                <textarea id="fc-edit-q" rows="3" style="width: 100%; padding: 0.8rem; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-color); color: var(--text-main); font-family: 'Inter', sans-serif; resize: vertical;"></textarea>
+            </div>
+            <div style="margin-bottom: 1.5rem;">
+                <label style="display: block; margin-bottom: 0.5rem; font-size: 0.85rem; color: var(--text-muted); font-weight: 600;">Verso (Resposta)</label>
+                <textarea id="fc-edit-a" rows="4" style="width: 100%; padding: 0.8rem; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-color); color: var(--text-main); font-family: 'Inter', sans-serif; resize: vertical;"></textarea>
+            </div>
+            <div style="display: flex; gap: 1rem; justify-content: flex-end;">
+                <button id="btn-fc-cancel-edit" class="btn secondary">Cancelar</button>
+                <button id="btn-fc-save-edit" class="btn primary">Atualizar Cartão</button>
             </div>
         </div>
     </div>
