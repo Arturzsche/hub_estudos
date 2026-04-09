@@ -23,7 +23,7 @@ let defaultEdital = [
         id: "subj_da",
         name: "Direito Administrativo",
         topics: [
-            { id: "t_da1", name: "1. Princípios da Administração Pública", theory: true, summary: true, questions: false },
+            { id: "t_da1", name: "1. Princípios da Administração Pública", theory: false, summary: false, questions: false },
             { id: "t_da2", name: "2. Organização Administrativa (Direta e Indireta)", theory: false, summary: false, questions: false },
             { id: "t_da3", name: "3. Poderes Administrativos", theory: false, summary: false, questions: false },
             { id: "t_da4", name: "4. Atos Administrativos", theory: false, summary: false, questions: false }
@@ -748,7 +748,7 @@ elements.btnAddCycle.addEventListener('click', () => {
 });
 
 document.addEventListener('keydown', (e) => {
-    const isTyping = document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA' || document.activeElement.isContentEditable;
+    const isTyping = document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA' || document.activeElement.tagName === 'SELECT' || document.activeElement.isContentEditable;
     if (isTyping) return;
 
     if (e.ctrlKey && e.code === 'Space') {
@@ -816,6 +816,17 @@ function renderPdfLibrary() {
     
     if(pdfCountDisplay) pdfCountDisplay.textContent = appData.mappedPdfs.length;
 
+    let editalOptionsHTML = `<option value="">Vincular a um tópico...</option>`;
+    appData.edital.forEach(subj => {
+        if(subj.topics && subj.topics.length > 0) {
+            editalOptionsHTML += `<optgroup label="${subj.name}">`;
+            subj.topics.forEach(t => {
+                editalOptionsHTML += `<option value="${t.id}">${t.name}</option>`;
+            });
+            editalOptionsHTML += `</optgroup>`;
+        }
+    });
+
     const groupedPdfs = {};
     
     appData.mappedPdfs.forEach(file => {
@@ -862,8 +873,10 @@ function renderPdfLibrary() {
             </div>
         `;
         
-        summary.addEventListener('click', () => {
-            folderGroup.classList.toggle('open');
+        summary.addEventListener('click', (e) => {
+            if (!e.target.closest('.pdf-edital-link') && !e.target.closest('.status-dot')) {
+                folderGroup.classList.toggle('open');
+            }
         });
         
         const wrapper = document.createElement('div');
@@ -874,8 +887,12 @@ function renderPdfLibrary() {
 
         files.forEach(file => {
             const currentStatus = file.status || 'unread';
-            
             const sizeBadge = file.size ? `<span class="size-badge">${formatSize(file.size)}</span>` : '';
+            
+            let fileOptionsHTML = editalOptionsHTML;
+            if(file.linkedTopicId) {
+                fileOptionsHTML = fileOptionsHTML.replace(`value="${file.linkedTopicId}"`, `value="${file.linkedTopicId}" selected`);
+            }
 
             const fileItem = document.createElement('div');
             fileItem.className = 'file-item';
@@ -885,8 +902,13 @@ function renderPdfLibrary() {
                     ${file.name}
                 </a>
                 <div class="file-actions">
+                    <div class="edital-link-wrapper">
+                        <svg viewBox="0 0 24 24" width="14" height="14" style="flex-shrink: 0;"><path fill="currentColor" d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z"/></svg>
+                        <select class="pdf-edital-link" data-path="${file.path}">
+                            ${fileOptionsHTML}
+                        </select>
+                    </div>
                     ${sizeBadge}
-                    <span class="file-path" title="${file.path}">${file.path}</span>
                     <div class="status-selectors">
                         <div class="status-dot status-red ${currentStatus === 'unread' ? 'active' : ''}" data-status="unread" data-path="${file.path}" title="Não Lida"></div>
                         <div class="status-dot status-orange ${currentStatus === 'started' ? 'active' : ''}" data-status="started" data-path="${file.path}" title="Iniciada"></div>
@@ -911,6 +933,19 @@ if(sortSelect) {
 }
 
 if(elements.libraryContainer) {
+    elements.libraryContainer.addEventListener('change', (e) => {
+        if (e.target.classList.contains('pdf-edital-link')) {
+            const path = e.target.getAttribute('data-path');
+            const topicId = e.target.value;
+            const fileIndex = appData.mappedPdfs.findIndex(f => f.path === path);
+            
+            if (fileIndex !== -1) {
+                appData.mappedPdfs[fileIndex].linkedTopicId = topicId;
+                saveData();
+            }
+        }
+    });
+
     elements.libraryContainer.addEventListener('click', (e) => {
         if (e.target.classList.contains('status-dot')) {
             e.preventDefault();
@@ -922,6 +957,16 @@ if(elements.libraryContainer) {
             
             if (fileIndex !== -1) {
                 appData.mappedPdfs[fileIndex].status = newStatus;
+                
+                if (newStatus === 'completed' && appData.mappedPdfs[fileIndex].linkedTopicId) {
+                    const tId = appData.mappedPdfs[fileIndex].linkedTopicId;
+                    appData.edital.forEach(s => {
+                        const topic = s.topics.find(t => t.id === tId);
+                        if (topic) topic.theory = true; 
+                    });
+                    renderEdital(); 
+                }
+
                 saveData();
                 
                 const selectorsContainer = e.target.parentElement;
@@ -970,7 +1015,7 @@ if(btnStartMapping) {
     btnStartMapping.addEventListener('click', () => {
         const existingPdfs = {};
         appData.mappedPdfs.forEach(pdf => {
-            existingPdfs[pdf.path] = pdf.status || 'unread';
+            existingPdfs[pdf.path] = { status: pdf.status || 'unread', linkedTopicId: pdf.linkedTopicId || '' };
         });
 
         appData.mappedPdfs = [];
@@ -992,14 +1037,15 @@ if(btnStartMapping) {
                 if(pdfCountDisplay) pdfCountDisplay.textContent = tempCount;
                 if(mappingStatus) mappingStatus.textContent = `Varrendo: ${data.file.path}`;
 
-                const previousStatus = existingPdfs[data.file.path] || 'unread';
+                const previousData = existingPdfs[data.file.path] || { status: 'unread', linkedTopicId: '' };
 
                 appData.mappedPdfs.unshift({
                     name: data.file.name,
                     path: data.file.path,
                     size: data.file.size || 0,
                     mtime: data.file.mtime || 0,
-                    status: previousStatus
+                    status: previousData.status,
+                    linkedTopicId: previousData.linkedTopicId
                 });
             } 
             else if (data.status === "done") {
