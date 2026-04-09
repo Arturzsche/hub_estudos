@@ -24,6 +24,7 @@
             <button class="nav-btn" data-target="timer">Cronômetro</button>
             <button class="nav-btn" data-target="tasks">Cronograma</button>
             <button class="nav-btn" data-target="library">Biblioteca</button>
+            <button class="nav-btn" data-target="flashcards">Flashcards</button>
         </nav>
 
         <div class="header-right">
@@ -216,6 +217,54 @@
                 </div>
             </div>
         </section>
+
+        <section id="flashcards" class="view">
+            <div class="container container-small">
+                <div style="margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: center;">
+                    <h2 style="font-size: 1.5rem; color: var(--text-main); margin-bottom: 0;">Revisão Ativa</h2>
+                    <select id="fc-subject-select" class="sort-select" style="min-width: 200px;">
+                    </select>
+                </div>
+
+                <div class="fc-progress-container">
+                    <div class="fc-progress-bar">
+                        <div id="fc-progress-fill" class="fc-progress-fill"></div>
+                    </div>
+                    <span id="fc-progress-text" class="fc-progress-text">0 / 0 Cartões</span>
+                </div>
+
+                <div id="fc-card-container" class="fc-card-container">
+                    <div id="fc-card" class="fc-card">
+                        <div class="fc-face fc-front">
+                            <span class="fc-label">PERGUNTA</span>
+                            <p id="fc-question-text" class="fc-text"></p>
+                        </div>
+                        <div class="fc-face fc-back">
+                            <span class="fc-label">RESPOSTA</span>
+                            <p id="fc-answer-text" class="fc-text"></p>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="fc-controls-front" class="fc-controls">
+                    <button id="btn-fc-show" class="btn primary" style="width: 100%;">Mostrar Resposta</button>
+                </div>
+
+                <div id="fc-controls-back" class="fc-controls" style="display: none; gap: 1rem;">
+                    <button class="btn fc-rate-btn fc-btn-hard" data-rating="hard">Difícil</button>
+                    <button class="btn fc-rate-btn fc-btn-good" data-rating="good">Bom</button>
+                    <button class="btn fc-rate-btn fc-btn-easy" data-rating="easy">Fácil</button>
+                </div>
+                
+                <div id="fc-empty-state" style="display: none; text-align: center; padding: 4rem 2rem; background: var(--surface-color); border: 1px solid var(--border-color); border-radius: var(--radius);">
+                    <svg viewBox="0 0 24 24" width="48" height="48" style="color: var(--text-muted); margin-bottom: 1rem;"><path fill="currentColor" d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+                    <h3 style="margin-bottom: 0.5rem;">Revisão Concluída!</h3>
+                    <p style="color: var(--text-muted);">Não há mais cartões pendentes para esta matéria hoje.</p>
+                    <button id="btn-fc-reset" class="btn secondary" style="margin-top: 1.5rem;">Revisar Novamente</button>
+                </div>
+            </div>
+        </section>
+
     </main>
 
     <div id="clear-modal" class="modal-overlay">

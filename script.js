@@ -9,6 +9,15 @@ const CYCLE_PHASES = [
     { name: "Questões (30min)", ms: 30 * 60 * 1000, isStudy: true }
 ];
 
+let defaultFlashcards = [
+    { subject: "Direito Administrativo", q: "Quais são os princípios expressos da Administração Pública (LIMPE)?", a: "Legalidade, Impessoalidade, Moralidade, Publicidade e Eficiência." },
+    { subject: "Direito Administrativo", q: "Qual a diferença entre Administração Direta e Indireta?", a: "Direta: atua pelo próprio ente (União, Estados, Municípios). Indireta: criação de novas entidades (Autarquias, Fundações, EP, SEM)." },
+    { subject: "Direito Administrativo", q: "O que é Poder de Polícia?", a: "Prerrogativa de direito público que autoriza a Administração Pública a restringir o uso e o gozo da liberdade e da propriedade em favor do interesse da coletividade." },
+    { subject: "Direito Administrativo", q: "O que caracteriza um Ato Administrativo Discricionário?", a: "A margem de liberdade (conveniência e oportunidade) conferida por lei ao administrador para escolher a melhor ação, dentro dos limites legais." },
+    { subject: "Português", q: "Qual a regra geral de concordância verbal?", a: "O verbo concorda com o núcleo do sujeito em número e pessoa." },
+    { subject: "Português", q: "O que é Próclise, Mesóclise e Ênclise?", a: "Posição do pronome oblíquo: Próclise (antes do verbo), Mesóclise (no meio do verbo) e Ênclise (depois do verbo)." }
+];
+
 let appData = {
     history: {}, 
     streak: 0,
@@ -27,7 +36,8 @@ let appData = {
         phaseIndex: 0,
         msRemaining: CYCLE_PHASES[0].ms
     },
-    mappedPdfs: []
+    mappedPdfs: [],
+    flashcards: [] 
 };
 
 let todaysSubjects = [];
@@ -81,6 +91,7 @@ function init() {
     initChart();
     setupClearModal();
     renderPdfLibrary();
+    initFlashcards();
     
     if (localStorage.getItem('theme') === 'light') {
         document.body.classList.remove('dark-mode');
@@ -207,6 +218,11 @@ function loadData() {
         
         if (parsedSaved.cycleState) appData.cycleState = parsedSaved.cycleState;
         if (parsedSaved.mappedPdfs) appData.mappedPdfs = parsedSaved.mappedPdfs;
+        if (parsedSaved.flashcards) appData.flashcards = parsedSaved.flashcards;
+    }
+    
+    if (!appData.flashcards || appData.flashcards.length === 0) {
+        appData.flashcards = [...defaultFlashcards];
     }
     
     const today = getTodayDate();
@@ -601,6 +617,7 @@ function renderSubjectBank() {
             appData.savedSubjects.splice(index, 1);
             saveData();
             renderSubjectBank();
+            updateFlashcardSubjects(); 
         });
 
         elements.subjectBank.appendChild(pill);
@@ -614,6 +631,7 @@ elements.btnAddSubject.addEventListener('click', () => {
         elements.newSubjectInput.value = '';
         saveData();
         renderSubjectBank();
+        updateFlashcardSubjects();
     }
 });
 
@@ -974,6 +992,125 @@ if(btnStartMapping) {
             btnStartMapping.disabled = false;
             eventSource.close();
         };
+    });
+}
+
+// --- LÓGICA DE FLASHCARDS ---
+let currentFcDeck = [];
+let currentFcIndex = 0;
+let isFcFlipped = false;
+
+const fcElements = {
+    subjectSelect: document.getElementById('fc-subject-select'),
+    progressFill: document.getElementById('fc-progress-fill'),
+    progressText: document.getElementById('fc-progress-text'),
+    card: document.getElementById('fc-card'),
+    cardContainer: document.getElementById('fc-card-container'),
+    questionText: document.getElementById('fc-question-text'),
+    answerText: document.getElementById('fc-answer-text'),
+    controlsFront: document.getElementById('fc-controls-front'),
+    controlsBack: document.getElementById('fc-controls-back'),
+    btnShow: document.getElementById('btn-fc-show'),
+    rateBtns: document.querySelectorAll('.fc-rate-btn'),
+    emptyState: document.getElementById('fc-empty-state'),
+    btnReset: document.getElementById('btn-fc-reset')
+};
+
+function updateFlashcardSubjects() {
+    if(!fcElements.subjectSelect) return;
+    fcElements.subjectSelect.innerHTML = '';
+    
+    appData.savedSubjects.forEach(sub => {
+        const option = document.createElement('option');
+        option.value = sub;
+        option.textContent = sub;
+        fcElements.subjectSelect.appendChild(option);
+    });
+    
+    if (appData.savedSubjects.length > 0) {
+        loadDeck(appData.savedSubjects[0]);
+    }
+}
+
+function loadDeck(subjectName) {
+    currentFcDeck = appData.flashcards.filter(card => card.subject === subjectName);
+    currentFcIndex = 0;
+    isFcFlipped = false;
+    
+    if (currentFcDeck.length > 0) {
+        fcElements.emptyState.style.display = 'none';
+        fcElements.cardContainer.style.display = 'block';
+        fcElements.controlsFront.style.display = 'flex';
+        fcElements.controlsBack.style.display = 'none';
+        renderCurrentCard();
+    } else {
+        fcElements.emptyState.style.display = 'block';
+        fcElements.cardContainer.style.display = 'none';
+        fcElements.controlsFront.style.display = 'none';
+        fcElements.controlsBack.style.display = 'none';
+        fcElements.progressText.textContent = "0 / 0 Cartões";
+        fcElements.progressFill.style.width = "0%";
+    }
+}
+
+function renderCurrentCard() {
+    if (currentFcIndex >= currentFcDeck.length) {
+        fcElements.emptyState.style.display = 'block';
+        fcElements.cardContainer.style.display = 'none';
+        fcElements.controlsFront.style.display = 'none';
+        fcElements.controlsBack.style.display = 'none';
+        return;
+    }
+
+    const card = currentFcDeck[currentFcIndex];
+    fcElements.questionText.textContent = card.q;
+    fcElements.answerText.textContent = card.a;
+    
+    fcElements.card.classList.remove('flipped');
+    isFcFlipped = false;
+    
+    fcElements.controlsFront.style.display = 'flex';
+    fcElements.controlsBack.style.display = 'none';
+
+    const progress = ((currentFcIndex) / currentFcDeck.length) * 100;
+    fcElements.progressFill.style.width = `${progress}%`;
+    fcElements.progressText.textContent = `${currentFcIndex + 1} / ${currentFcDeck.length} Cartões`;
+}
+
+function initFlashcards() {
+    if(!fcElements.subjectSelect) return;
+    
+    updateFlashcardSubjects();
+
+    fcElements.subjectSelect.addEventListener('change', (e) => {
+        loadDeck(e.target.value);
+    });
+
+    const flipCard = () => {
+        if (!isFcFlipped && currentFcIndex < currentFcDeck.length) {
+            fcElements.card.classList.add('flipped');
+            isFcFlipped = true;
+            fcElements.controlsFront.style.display = 'none';
+            fcElements.controlsBack.style.display = 'flex';
+        }
+    };
+
+    fcElements.btnShow.addEventListener('click', flipCard);
+    fcElements.cardContainer.addEventListener('click', flipCard);
+
+    fcElements.rateBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            currentFcIndex++;
+            renderCurrentCard();
+            
+            if (currentFcIndex >= currentFcDeck.length) {
+                fcElements.progressFill.style.width = `100%`;
+            }
+        });
+    });
+
+    fcElements.btnReset.addEventListener('click', () => {
+        loadDeck(fcElements.subjectSelect.value);
     });
 }
 
