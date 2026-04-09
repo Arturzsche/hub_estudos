@@ -18,19 +18,6 @@ let defaultFlashcards = [
     { id: 'def_6', subject: "Português", q: "O que é Próclise, Mesóclise e Ênclise?", a: "Posição do pronome oblíquo: Próclise (antes do verbo), Mesóclise (no meio do verbo) e Ênclise (depois do verbo).", reps: 0, interval: 0, efactor: 2.5 }
 ];
 
-let defaultEdital = [
-    {
-        id: "subj_da",
-        name: "Direito Administrativo",
-        topics: [
-            { id: "t_da1", name: "1. Princípios da Administração Pública", theory: false, summary: false, questions: false },
-            { id: "t_da2", name: "2. Organização Administrativa (Direta e Indireta)", theory: false, summary: false, questions: false },
-            { id: "t_da3", name: "3. Poderes Administrativos", theory: false, summary: false, questions: false },
-            { id: "t_da4", name: "4. Atos Administrativos", theory: false, summary: false, questions: false }
-        ]
-    }
-];
-
 let appData = {
     history: {}, 
     streak: 0,
@@ -50,8 +37,7 @@ let appData = {
         msRemaining: CYCLE_PHASES[0].ms
     },
     mappedPdfs: [],
-    flashcards: [],
-    edital: []
+    flashcards: []
 };
 
 let todaysSubjects = [];
@@ -106,7 +92,6 @@ function init() {
     setupClearModal();
     renderPdfLibrary();
     initFlashcards();
-    initEdital();
     
     if (localStorage.getItem('theme') === 'light') {
         document.body.classList.remove('dark-mode');
@@ -234,7 +219,6 @@ function loadData() {
         if (parsedSaved.cycleState) appData.cycleState = parsedSaved.cycleState;
         if (parsedSaved.mappedPdfs) appData.mappedPdfs = parsedSaved.mappedPdfs;
         if (parsedSaved.flashcards) appData.flashcards = parsedSaved.flashcards;
-        if (parsedSaved.edital) appData.edital = parsedSaved.edital;
     }
     
     if (!appData.flashcards || appData.flashcards.length === 0) {
@@ -243,10 +227,6 @@ function loadData() {
         appData.flashcards.forEach((fc, idx) => {
             if (!fc.id) fc.id = 'fc_' + Date.now() + '_' + idx;
         });
-    }
-
-    if (!appData.edital || appData.edital.length === 0) {
-        appData.edital = JSON.parse(JSON.stringify(defaultEdital));
     }
     
     const today = getTodayDate();
@@ -748,7 +728,7 @@ elements.btnAddCycle.addEventListener('click', () => {
 });
 
 document.addEventListener('keydown', (e) => {
-    const isTyping = document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA' || document.activeElement.tagName === 'SELECT' || document.activeElement.isContentEditable;
+    const isTyping = document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA' || document.activeElement.isContentEditable;
     if (isTyping) return;
 
     if (e.ctrlKey && e.code === 'Space') {
@@ -816,17 +796,6 @@ function renderPdfLibrary() {
     
     if(pdfCountDisplay) pdfCountDisplay.textContent = appData.mappedPdfs.length;
 
-    let editalOptionsHTML = `<option value="">Vincular a um tópico...</option>`;
-    appData.edital.forEach(subj => {
-        if(subj.topics && subj.topics.length > 0) {
-            editalOptionsHTML += `<optgroup label="${subj.name}">`;
-            subj.topics.forEach(t => {
-                editalOptionsHTML += `<option value="${t.id}">${t.name}</option>`;
-            });
-            editalOptionsHTML += `</optgroup>`;
-        }
-    });
-
     const groupedPdfs = {};
     
     appData.mappedPdfs.forEach(file => {
@@ -873,10 +842,8 @@ function renderPdfLibrary() {
             </div>
         `;
         
-        summary.addEventListener('click', (e) => {
-            if (!e.target.closest('.pdf-edital-link') && !e.target.closest('.status-dot')) {
-                folderGroup.classList.toggle('open');
-            }
+        summary.addEventListener('click', () => {
+            folderGroup.classList.toggle('open');
         });
         
         const wrapper = document.createElement('div');
@@ -887,12 +854,8 @@ function renderPdfLibrary() {
 
         files.forEach(file => {
             const currentStatus = file.status || 'unread';
-            const sizeBadge = file.size ? `<span class="size-badge">${formatSize(file.size)}</span>` : '';
             
-            let fileOptionsHTML = editalOptionsHTML;
-            if(file.linkedTopicId) {
-                fileOptionsHTML = fileOptionsHTML.replace(`value="${file.linkedTopicId}"`, `value="${file.linkedTopicId}" selected`);
-            }
+            const sizeBadge = file.size ? `<span class="size-badge">${formatSize(file.size)}</span>` : '';
 
             const fileItem = document.createElement('div');
             fileItem.className = 'file-item';
@@ -902,13 +865,8 @@ function renderPdfLibrary() {
                     ${file.name}
                 </a>
                 <div class="file-actions">
-                    <div class="edital-link-wrapper">
-                        <svg viewBox="0 0 24 24" width="14" height="14" style="flex-shrink: 0;"><path fill="currentColor" d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z"/></svg>
-                        <select class="pdf-edital-link" data-path="${file.path}">
-                            ${fileOptionsHTML}
-                        </select>
-                    </div>
                     ${sizeBadge}
+                    <span class="file-path" title="${file.path}">${file.path}</span>
                     <div class="status-selectors">
                         <div class="status-dot status-red ${currentStatus === 'unread' ? 'active' : ''}" data-status="unread" data-path="${file.path}" title="Não Lida"></div>
                         <div class="status-dot status-orange ${currentStatus === 'started' ? 'active' : ''}" data-status="started" data-path="${file.path}" title="Iniciada"></div>
@@ -933,19 +891,6 @@ if(sortSelect) {
 }
 
 if(elements.libraryContainer) {
-    elements.libraryContainer.addEventListener('change', (e) => {
-        if (e.target.classList.contains('pdf-edital-link')) {
-            const path = e.target.getAttribute('data-path');
-            const topicId = e.target.value;
-            const fileIndex = appData.mappedPdfs.findIndex(f => f.path === path);
-            
-            if (fileIndex !== -1) {
-                appData.mappedPdfs[fileIndex].linkedTopicId = topicId;
-                saveData();
-            }
-        }
-    });
-
     elements.libraryContainer.addEventListener('click', (e) => {
         if (e.target.classList.contains('status-dot')) {
             e.preventDefault();
@@ -957,16 +902,6 @@ if(elements.libraryContainer) {
             
             if (fileIndex !== -1) {
                 appData.mappedPdfs[fileIndex].status = newStatus;
-                
-                if (newStatus === 'completed' && appData.mappedPdfs[fileIndex].linkedTopicId) {
-                    const tId = appData.mappedPdfs[fileIndex].linkedTopicId;
-                    appData.edital.forEach(s => {
-                        const topic = s.topics.find(t => t.id === tId);
-                        if (topic) topic.theory = true; 
-                    });
-                    renderEdital(); 
-                }
-
                 saveData();
                 
                 const selectorsContainer = e.target.parentElement;
@@ -1015,7 +950,7 @@ if(btnStartMapping) {
     btnStartMapping.addEventListener('click', () => {
         const existingPdfs = {};
         appData.mappedPdfs.forEach(pdf => {
-            existingPdfs[pdf.path] = { status: pdf.status || 'unread', linkedTopicId: pdf.linkedTopicId || '' };
+            existingPdfs[pdf.path] = pdf.status || 'unread';
         });
 
         appData.mappedPdfs = [];
@@ -1037,15 +972,14 @@ if(btnStartMapping) {
                 if(pdfCountDisplay) pdfCountDisplay.textContent = tempCount;
                 if(mappingStatus) mappingStatus.textContent = `Varrendo: ${data.file.path}`;
 
-                const previousData = existingPdfs[data.file.path] || { status: 'unread', linkedTopicId: '' };
+                const previousStatus = existingPdfs[data.file.path] || 'unread';
 
                 appData.mappedPdfs.unshift({
                     name: data.file.name,
                     path: data.file.path,
                     size: data.file.size || 0,
                     mtime: data.file.mtime || 0,
-                    status: previousData.status,
-                    linkedTopicId: previousData.linkedTopicId
+                    status: previousStatus
                 });
             } 
             else if (data.status === "done") {
@@ -1069,7 +1003,7 @@ if(btnStartMapping) {
 let currentFcDeck = [];
 let currentFcIndex = 0;
 let isFcFlipped = false;
-let currentFcMode = 'study';
+let currentFcMode = 'study'; // 'study' ou 'manage'
 
 const fcElements = {
     subjectSelect: document.getElementById('fc-subject-select'),
@@ -1413,252 +1347,6 @@ function initFlashcards() {
                 fcElements.modalEdit.classList.remove('active');
                 if(currentFcMode === 'study') loadDeck(fcElements.subjectSelect.value);
                 else renderManageView(fcElements.subjectSelect.value);
-            }
-        }
-    });
-}
-
-// --- LÓGICA DO EDITAL VERTICALIZADO ---
-const editalElements = {
-    container: document.getElementById('edital-container'),
-    overallPercentage: document.getElementById('edital-overall-percentage'),
-    overallFill: document.getElementById('edital-overall-fill'),
-    
-    btnAddSubject: document.getElementById('btn-edital-add-subject'),
-    modalSubject: document.getElementById('edital-subject-modal'),
-    inputSubject: document.getElementById('edital-new-subject-input'),
-    btnCancelSubject: document.getElementById('btn-edital-cancel-subject'),
-    btnSaveSubject: document.getElementById('btn-edital-save-subject'),
-
-    modalTopic: document.getElementById('edital-topic-modal'),
-    inputTopic: document.getElementById('edital-new-topic-input'),
-    btnCancelTopic: document.getElementById('btn-edital-cancel-topic'),
-    btnSaveTopic: document.getElementById('btn-edital-save-topic')
-};
-
-let currentSubjectIdForTopic = null;
-
-function renderEdital() {
-    if (!editalElements.container) return;
-    editalElements.container.innerHTML = '';
-    
-    let totalCheckboxes = 0;
-    let checkedCheckboxes = 0;
-
-    appData.edital.forEach((subjectData) => {
-        let subjTotal = 0;
-        let subjChecked = 0;
-
-        const contentDiv = document.createElement('div');
-        contentDiv.className = 'folder-content';
-
-        subjectData.topics.forEach(topic => {
-            subjTotal += 3;
-            totalCheckboxes += 3;
-            if (topic.theory) { subjChecked++; checkedCheckboxes++; }
-            if (topic.summary) { subjChecked++; checkedCheckboxes++; }
-            if (topic.questions) { subjChecked++; checkedCheckboxes++; }
-
-            const topicRow = document.createElement('div');
-            topicRow.className = 'edital-topic-row';
-            topicRow.innerHTML = `
-                <div class="edital-topic-name">${topic.name}</div>
-                <div class="edital-checks">
-                    <button class="edital-chk-btn theory ${topic.theory ? 'active' : ''}" data-subj="${subjectData.id}" data-topic="${topic.id}" data-type="theory">Teoria</button>
-                    <button class="edital-chk-btn summary ${topic.summary ? 'active' : ''}" data-subj="${subjectData.id}" data-topic="${topic.id}" data-type="summary">Resumo</button>
-                    <button class="edital-chk-btn questions ${topic.questions ? 'active' : ''}" data-subj="${subjectData.id}" data-topic="${topic.id}" data-type="questions">Questões</button>
-                    <button class="fc-action-btn delete edital-del-topic" data-subj="${subjectData.id}" data-topic="${topic.id}" title="Excluir Tópico" style="margin-left: 8px;">
-                        <svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M16 9v10H8V9h8m-1.5-6h-5l-1 1H5v2h14V4h-3.5l-1-1zM18 7H6v12c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7z"/></svg>
-                    </button>
-                </div>
-            `;
-            contentDiv.appendChild(topicRow);
-        });
-
-        const subjProgress = subjTotal === 0 ? 0 : Math.round((subjChecked / subjTotal) * 100);
-
-        const folderGroup = document.createElement('div');
-        folderGroup.className = 'folder-group';
-        
-        const summary = document.createElement('div');
-        summary.className = 'folder-summary';
-        summary.innerHTML = `
-            <div class="folder-header-left">
-                <svg class="folder-icon" viewBox="0 0 24 24" width="20" height="20" style="color: #4caf50;"><path fill="currentColor" d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>
-                ${subjectData.name}
-            </div>
-            <div style="display: flex; align-items: center; gap: 1rem;">
-                <span class="folder-count">${subjProgress}%</span>
-                <div class="edital-subject-progress">
-                    <div class="edital-subject-fill" style="width: ${subjProgress}%;"></div>
-                </div>
-                <button class="fc-action-btn edital-add-topic-btn" data-subj="${subjectData.id}" title="Adicionar Tópico" style="margin-left: 8px; z-index: 2; position: relative;">
-                    <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
-                </button>
-                <button class="fc-action-btn delete edital-del-subj" data-subj="${subjectData.id}" title="Excluir Matéria" style="z-index: 2; position: relative;">
-                    <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M16 9v10H8V9h8m-1.5-6h-5l-1 1H5v2h14V4h-3.5l-1-1zM18 7H6v12c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7z"/></svg>
-                </button>
-                <svg class="folder-chevron" viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/></svg>
-            </div>
-        `;
-        
-        summary.addEventListener('click', (e) => {
-            if (!e.target.closest('.fc-action-btn')) {
-                folderGroup.classList.toggle('open');
-            }
-        });
-        
-        const wrapper = document.createElement('div');
-        wrapper.className = 'folder-content-wrapper';
-        wrapper.appendChild(contentDiv);
-
-        folderGroup.appendChild(summary);
-        folderGroup.appendChild(wrapper);
-        editalElements.container.appendChild(folderGroup);
-    });
-
-    const overall = totalCheckboxes === 0 ? 0 : Math.round((checkedCheckboxes / totalCheckboxes) * 100);
-    editalElements.overallPercentage.textContent = `${overall}%`;
-    editalElements.overallFill.style.width = `${overall}%`;
-    
-    attachEditalListeners();
-}
-
-function attachEditalListeners() {
-    document.querySelectorAll('.edital-chk-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            const subjId = e.currentTarget.getAttribute('data-subj');
-            const topicId = e.currentTarget.getAttribute('data-topic');
-            const type = e.currentTarget.getAttribute('data-type');
-
-            const subj = appData.edital.find(s => s.id === subjId);
-            if (subj) {
-                const topic = subj.topics.find(t => t.id === topicId);
-                if (topic) {
-                    topic[type] = !topic[type];
-                    saveData();
-                    
-                    e.currentTarget.classList.toggle('active');
-                    
-                    let subjTotal = 0;
-                    let subjChecked = 0;
-                    let totalCheckboxes = 0;
-                    let checkedCheckboxes = 0;
-
-                    appData.edital.forEach(s => {
-                        s.topics.forEach(t => {
-                            totalCheckboxes += 3;
-                            if (t.theory) checkedCheckboxes++;
-                            if (t.summary) checkedCheckboxes++;
-                            if (t.questions) checkedCheckboxes++;
-                            
-                            if (s.id === subjId) {
-                                subjTotal += 3;
-                                if (t.theory) subjChecked++;
-                                if (t.summary) subjChecked++;
-                                if (t.questions) subjChecked++;
-                            }
-                        });
-                    });
-
-                    const subjProgress = subjTotal === 0 ? 0 : Math.round((subjChecked / subjTotal) * 100);
-                    const overall = totalCheckboxes === 0 ? 0 : Math.round((checkedCheckboxes / totalCheckboxes) * 100);
-                    
-                    const group = e.currentTarget.closest('.folder-group');
-                    group.querySelector('.folder-count').textContent = `${subjProgress}%`;
-                    group.querySelector('.edital-subject-fill').style.width = `${subjProgress}%`;
-                    
-                    editalElements.overallPercentage.textContent = `${overall}%`;
-                    editalElements.overallFill.style.width = `${overall}%`;
-                }
-            }
-        });
-    });
-
-    document.querySelectorAll('.edital-del-topic').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            const subjId = e.currentTarget.getAttribute('data-subj');
-            const topicId = e.currentTarget.getAttribute('data-topic');
-            const subj = appData.edital.find(s => s.id === subjId);
-            if (subj) {
-                subj.topics = subj.topics.filter(t => t.id !== topicId);
-                saveData();
-                renderEdital();
-            }
-        });
-    });
-
-    document.querySelectorAll('.edital-del-subj').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            const subjId = e.currentTarget.getAttribute('data-subj');
-            appData.edital = appData.edital.filter(s => s.id !== subjId);
-            saveData();
-            renderEdital();
-        });
-    });
-
-    document.querySelectorAll('.edital-add-topic-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            currentSubjectIdForTopic = e.currentTarget.getAttribute('data-subj');
-            editalElements.modalTopic.classList.add('active');
-            editalElements.inputTopic.focus();
-        });
-    });
-}
-
-function initEdital() {
-    if (!editalElements.container) return;
-
-    renderEdital();
-
-    editalElements.btnAddSubject.addEventListener('click', () => {
-        editalElements.modalSubject.classList.add('active');
-        editalElements.inputSubject.focus();
-    });
-
-    editalElements.btnCancelSubject.addEventListener('click', () => {
-        editalElements.modalSubject.classList.remove('active');
-        editalElements.inputSubject.value = '';
-    });
-
-    editalElements.btnSaveSubject.addEventListener('click', () => {
-        const val = editalElements.inputSubject.value.trim();
-        if (val) {
-            appData.edital.push({
-                id: 'subj_' + Date.now(),
-                name: val,
-                topics: []
-            });
-            saveData();
-            renderEdital();
-            editalElements.modalSubject.classList.remove('active');
-            editalElements.inputSubject.value = '';
-        }
-    });
-
-    editalElements.btnCancelTopic.addEventListener('click', () => {
-        editalElements.modalTopic.classList.remove('active');
-        editalElements.inputTopic.value = '';
-        currentSubjectIdForTopic = null;
-    });
-
-    editalElements.btnSaveTopic.addEventListener('click', () => {
-        const val = editalElements.inputTopic.value.trim();
-        if (val && currentSubjectIdForTopic) {
-            const subj = appData.edital.find(s => s.id === currentSubjectIdForTopic);
-            if (subj) {
-                subj.topics.push({
-                    id: 'top_' + Date.now(),
-                    name: val,
-                    theory: false,
-                    summary: false,
-                    questions: false
-                });
-                saveData();
-                renderEdital();
-                editalElements.modalTopic.classList.remove('active');
-                editalElements.inputTopic.value = '';
-                currentSubjectIdForTopic = null;
             }
         }
     });

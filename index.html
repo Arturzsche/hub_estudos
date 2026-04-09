@@ -23,7 +23,6 @@
             <button class="nav-btn active" data-target="dashboard">Visão Geral</button>
             <button class="nav-btn" data-target="timer">Cronômetro</button>
             <button class="nav-btn" data-target="tasks">Cronograma</button>
-            <button class="nav-btn" data-target="edital">Edital</button>
             <button class="nav-btn" data-target="library">Biblioteca</button>
             <button class="nav-btn" data-target="flashcards">Flashcards</button>
         </nav>
@@ -185,30 +184,6 @@
             </div>
         </section>
 
-        <section id="edital" class="view">
-            <div class="container container-small">
-                <div style="margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
-                    <h2 style="font-size: 1.5rem; color: var(--text-main); margin-bottom: 0;">Edital Verticalizado</h2>
-                    <button id="btn-edital-add-subject" class="btn primary" style="padding: 0.6rem 1rem; display: flex; align-items: center; gap: 6px; font-size: 0.8rem;">
-                        <svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg> Nova Matéria
-                    </button>
-                </div>
-
-                <div class="progress-card" style="margin-bottom: 2rem; padding: 2rem;">
-                    <div class="progress-header" style="margin-bottom: 1.2rem;">
-                        <h3 style="font-size: 1rem;">Progresso Geral do Edital</h3>
-                        <span id="edital-overall-percentage" style="font-size: 2rem;">0%</span>
-                    </div>
-                    <div class="progress-bar-bg" style="height: 16px; border-radius: 8px;">
-                        <div class="progress-bar-fill" id="edital-overall-fill" style="border-radius: 8px;"></div>
-                    </div>
-                </div>
-
-                <div id="edital-container" class="library-container">
-                </div>
-            </div>
-        </section>
-
         <section id="library" class="view">
             <div class="container">
                 <div style="margin-bottom: 2rem;">
@@ -318,13 +293,14 @@
                                 </tr>
                             </thead>
                             <tbody id="fc-manage-tbody">
-                            </tbody>
+                                </tbody>
                         </table>
                     </div>
                     <div id="fc-manage-empty" style="display: none; text-align: center; padding: 3rem; color: var(--text-muted);">
                         Nenhum cartão encontrado nesta matéria.
                     </div>
                 </div>
+
             </div>
         </section>
 
@@ -382,34 +358,6 @@
             <div style="display: flex; gap: 1rem; justify-content: flex-end;">
                 <button id="btn-fc-cancel-edit" class="btn secondary">Cancelar</button>
                 <button id="btn-fc-save-edit" class="btn primary">Atualizar Cartão</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="edital-subject-modal" class="modal-overlay">
-        <div class="modal-content" style="max-width: 400px; text-align: left;">
-            <h2 style="margin-bottom: 1.5rem;">Nova Matéria do Edital</h2>
-            <div style="margin-bottom: 1.5rem;">
-                <label style="display: block; margin-bottom: 0.5rem; font-size: 0.85rem; color: var(--text-muted); font-weight: 600;">Nome da Matéria</label>
-                <input type="text" id="edital-new-subject-input" style="width: 100%; padding: 0.8rem; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-color); color: var(--text-main); font-family: 'Inter', sans-serif; font-size: 1rem;" placeholder="Ex: Direito Constitucional">
-            </div>
-            <div style="display: flex; gap: 1rem; justify-content: flex-end;">
-                <button id="btn-edital-cancel-subject" class="btn secondary">Cancelar</button>
-                <button id="btn-edital-save-subject" class="btn primary">Adicionar</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="edital-topic-modal" class="modal-overlay">
-        <div class="modal-content" style="max-width: 500px; text-align: left;">
-            <h2 style="margin-bottom: 1.5rem;">Novo Tópico</h2>
-            <div style="margin-bottom: 1.5rem;">
-                <label style="display: block; margin-bottom: 0.5rem; font-size: 0.85rem; color: var(--text-muted); font-weight: 600;">Nome do Tópico</label>
-                <textarea id="edital-new-topic-input" rows="2" style="width: 100%; padding: 0.8rem; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-color); color: var(--text-main); font-family: 'Inter', sans-serif; resize: vertical; font-size: 1rem;" placeholder="Ex: 1. Organização do Estado Brasileiro"></textarea>
-            </div>
-            <div style="display: flex; gap: 1rem; justify-content: flex-end;">
-                <button id="btn-edital-cancel-topic" class="btn secondary">Cancelar</button>
-                <button id="btn-edital-save-topic" class="btn primary">Adicionar Tópico</button>
             </div>
         </div>
     </div>
