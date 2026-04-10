@@ -904,7 +904,7 @@ function renderPdfLibrary() {
             const fileItem = document.createElement('div');
             fileItem.className = 'file-item';
             fileItem.innerHTML = `
-                <a class="file-link" href="http://127.0.0.1:5000/abrir?caminho=${encodeURIComponent(file.path)}" target="_blank">
+                <a class="file-link" href="[http://127.0.0.1:5000/abrir?caminho=$](http://127.0.0.1:5000/abrir?caminho=$){encodeURIComponent(file.path)}" target="_blank">
                     <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M20 2H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-8.5 7.5c0 .83-.67 1.5-1.5 1.5H9v2H7.5V7H10c.83 0 1.5.67 1.5 1.5v1zm5 2c0 .83-.67 1.5-1.5 1.5h-2.5V7H15c.83 0 1.5.67 1.5 1.5v3zm4-3H19v1h1.5V11H19v2h-1.5V7h3v1.5zM9 9.5h1v-1H9v1zM4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm10 5.5h1v-3h-1v3z"/></svg>
                     ${file.name}
                 </a>
@@ -1034,7 +1034,7 @@ if(btnStartMapping) {
         if(mappingStatus) mappingStatus.textContent = "Iniciando servidor local e buscando arquivos...";
         btnStartMapping.disabled = true;
 
-        const eventSource = new EventSource('http://127.0.0.1:5000/mapear');
+        const eventSource = new EventSource('[http://127.0.0.1:5000/mapear](http://127.0.0.1:5000/mapear)');
 
         eventSource.onmessage = function(event) {
             const data = JSON.parse(event.data);
@@ -1912,41 +1912,49 @@ function initErrors() {
     });
 
     // MÁGICA DA IA: Colar imagem (Ctrl+V) no modal de erro
-    document.addEventListener('paste', async (e) => {
+    window.addEventListener('paste', async (e) => {
         if (!errElements.modal.classList.contains('active')) return;
         
-        const items = (e.clipboardData || e.originalEvent.clipboardData).items;
+        const clipboardItems = e.clipboardData ? e.clipboardData.items : [];
         let imageFile = null;
-        for (let index in items) {
-            const item = items[index];
-            if (item.kind === 'file' && item.type.includes('image/')) {
+
+        for (let i = 0; i < clipboardItems.length; i++) {
+            const item = clipboardItems[i];
+            if (item.type.indexOf('image') !== -1) {
                 imageFile = item.getAsFile();
                 break;
             }
         }
 
         if (imageFile) {
+            e.preventDefault(); 
             const originalTitle = errElements.modalTitle.textContent;
             errElements.modalTitle.textContent = "🤖 Analisando questão com IA...";
-            errElements.conceptInput.value = "Aguarde, extraindo a regra da questão...";
+            errElements.conceptInput.value = "Aguarde, extraindo a regra da questão (Isso pode levar uns 10 segundos)...";
             errElements.contextInput.value = "Aguarde, dissecando a pegadinha da banca...";
 
             const formData = new FormData();
             formData.append('image', imageFile);
 
             try {
-                const response = await fetch('http://127.0.0.1:5000/analisar_erro', {
+                const response = await fetch('[http://127.0.0.1:5000/analisar_erro](http://127.0.0.1:5000/analisar_erro)', {
                     method: 'POST',
                     body: formData
                 });
+                
+                if (!response.ok) {
+                    throw new Error("Erro no servidor Python.");
+                }
+
                 const data = await response.json();
                 
-                errElements.conceptInput.value = data.conceito || "";
-                errElements.contextInput.value = data.contexto || "";
+                errElements.conceptInput.value = data.conceito || "Conceito não encontrado na resposta da IA.";
+                errElements.contextInput.value = data.contexto || "Contexto não encontrado na resposta da IA.";
                 errElements.modalTitle.textContent = originalTitle;
             } catch (error) {
-                errElements.conceptInput.value = "Erro ao analisar a imagem.";
-                errElements.contextInput.value = "Verifique se você gerou a chave de API e se o servidor Python está rodando (app.py).";
+                console.error("Erro na API:", error);
+                errElements.conceptInput.value = "Erro na conexão com a Inteligência Artificial.";
+                errElements.contextInput.value = "Verifique o terminal do Python (VS Code) para ver qual foi o erro exato. Lembre-se de colar a chave de API no arquivo app.py e reiniciar o servidor no terminal!";
                 errElements.modalTitle.textContent = originalTitle;
             }
         }
