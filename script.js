@@ -1910,6 +1910,47 @@ function initErrors() {
             alert("Por favor, preencha a Matéria, o Conceito e o Contexto.");
         }
     });
+
+    // MÁGICA DA IA: Colar imagem (Ctrl+V) no modal de erro
+    document.addEventListener('paste', async (e) => {
+        if (!errElements.modal.classList.contains('active')) return;
+        
+        const items = (e.clipboardData || e.originalEvent.clipboardData).items;
+        let imageFile = null;
+        for (let index in items) {
+            const item = items[index];
+            if (item.kind === 'file' && item.type.includes('image/')) {
+                imageFile = item.getAsFile();
+                break;
+            }
+        }
+
+        if (imageFile) {
+            const originalTitle = errElements.modalTitle.textContent;
+            errElements.modalTitle.textContent = "🤖 Analisando questão com IA...";
+            errElements.conceptInput.value = "Aguarde, extraindo a regra da questão...";
+            errElements.contextInput.value = "Aguarde, dissecando a pegadinha da banca...";
+
+            const formData = new FormData();
+            formData.append('image', imageFile);
+
+            try {
+                const response = await fetch('http://127.0.0.1:5000/analisar_erro', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await response.json();
+                
+                errElements.conceptInput.value = data.conceito || "";
+                errElements.contextInput.value = data.contexto || "";
+                errElements.modalTitle.textContent = originalTitle;
+            } catch (error) {
+                errElements.conceptInput.value = "Erro ao analisar a imagem.";
+                errElements.contextInput.value = "Verifique se você gerou a chave de API e se o servidor Python está rodando (app.py).";
+                errElements.modalTitle.textContent = originalTitle;
+            }
+        }
+    });
 }
 
 init();
