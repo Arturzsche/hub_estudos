@@ -1,6 +1,6 @@
 from flask import Flask, Response, jsonify, request, send_file
 from flask_cors import CORS
-import google.generativeai as genai
+from google import genai # <-- NOVA BIBLIOTECA OFICIAL
 import PIL.Image
 import os
 import time
@@ -10,11 +10,10 @@ app = Flask(__name__)
 CORS(app) 
 
 # --- CONFIGURAÇÕES ---
-# 1. Coloque a sua chave de API do Google AI Studio aqui:
-genai.configure(api_key="AIzaSyDMtgixvzXUF3tRiIuLCEDnk-uehm4-Z0k")
-model = genai.GenerativeModel('gemini-1.5-flash')
+# Conectando com a nova sintaxe da API:
+client = genai.Client(api_key="AIzaSyDMtgixvzXUF3tRiIuLCEDnk-uehm4-Z0k")
 
-# 2. Confirme o caminho da sua pasta de PDFs:
+# Confirme o caminho da sua pasta de PDFs:
 PASTA_ALVO = r"C:\Users\artur\OneDrive\Área de Trabalho\ESTUDOS"
 
 @app.route('/mapear')
@@ -69,7 +68,12 @@ def analisar_erro():
     """
     
     try:
-        response = model.generate_content([prompt, img])
+        # Chamada para a IA usando a estrutura nova
+        response = client.models.generate_content(
+            model='gemini-2.5-flash',
+            contents=[img, prompt]
+        )
+        
         text = response.text.strip()
         
         # Limpeza blindada para garantir que o Javascript consiga ler o JSON
@@ -92,5 +96,5 @@ def analisar_erro():
         return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
-    print("Servidor rodando na porta 5000. IA Ativada!")
+    print("Servidor rodando na porta 5000. IA Ativada com a nova biblioteca!")
     app.run(port=5000, debug=True)
