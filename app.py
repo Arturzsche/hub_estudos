@@ -11,7 +11,7 @@ CORS(app)
 
 # --- CONFIGURAÇÕES ---
 # 1. Coloque a sua chave de API do Google AI Studio aqui:
-genai.configure(api_key="AIzaSyCtIeW2eO5X038w4sv1e5JPIsyX4hlEE8s")
+genai.configure(api_key="AIzaSyDMtgixvzXUF3tRiIuLCEDnk-uehm4-Z0k")
 model = genai.GenerativeModel('gemini-1.5-flash')
 
 # 2. Confirme o caminho da sua pasta de PDFs:
