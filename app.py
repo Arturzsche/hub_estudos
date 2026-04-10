@@ -1,6 +1,6 @@
 from flask import Flask, Response, jsonify, request, send_file
 from flask_cors import CORS
-from google import genai # <-- NOVA BIBLIOTECA OFICIAL
+from google import genai
 import PIL.Image
 import os
 import time
@@ -10,10 +10,10 @@ app = Flask(__name__)
 CORS(app) 
 
 # --- CONFIGURAÇÕES ---
-# Conectando com a nova sintaxe da API:
-client = genai.Client(api_key="AIzaSyDMtgixvzXUF3tRiIuLCEDnk-uehm4-Z0k")
+# 1. Coloque a sua chave de API NOVA aqui:
+client = genai.Client(api_key="AIzaSyAhljNrc1YmUYo104caV1kEePVaADZZA8c")
 
-# Confirme o caminho da sua pasta de PDFs:
+# 2. Confirme o caminho da sua pasta de PDFs:
 PASTA_ALVO = r"C:\Users\artur\OneDrive\Área de Trabalho\ESTUDOS"
 
 @app.route('/mapear')
@@ -68,7 +68,6 @@ def analisar_erro():
     """
     
     try:
-        # Chamada para a IA usando a estrutura nova
         response = client.models.generate_content(
             model='gemini-2.5-flash',
             contents=[img, prompt]
@@ -96,5 +95,5 @@ def analisar_erro():
         return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
-    print("Servidor rodando na porta 5000. IA Ativada com a nova biblioteca!")
+    print("Servidor rodando na porta 5000. IA Ativada com a nova biblioteca e chave segura!")
     app.run(port=5000, debug=True)
