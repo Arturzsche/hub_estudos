@@ -1,3 +1,19 @@
+// --- FIREBASE CONFIGURATION ---
+const firebaseConfig = {
+    apiKey: "AIzaSyDKkVRT_2El3mT-9SjZPow9c0vtVMDjgPM",
+    authDomain: "hubestudos-1ce06.firebaseapp.com",
+    databaseURL: "https://hubestudos-1ce06-default-rtdb.firebaseio.com",
+    projectId: "hubestudos-1ce06",
+    storageBucket: "hubestudos-1ce06.firebasestorage.app",
+    messagingSenderId: "951170319139",
+    appId: "1:951170319139:web:5088d18ff383eebb934296"
+};
+
+// Inicializa o Firebase
+firebase.initializeApp(firebaseConfig);
+const database = firebase.database();
+// ------------------------------
+
 const API_URL = "http://127.0.0.1:5000";
 
 let timerInterval;
@@ -78,8 +94,9 @@ const elements = {
     libraryContainer: document.getElementById('library-container')
 };
 
-function init() {
-    loadData();
+// Agora o init é async para aguardar a nuvem carregar
+async function init() {
+    await loadData(); 
     checkStreak();
     calculateRecords();
     
@@ -200,24 +217,43 @@ function updateToggleBtn() {
     }
 }
 
-function loadData() {
-    const saved = localStorage.getItem('studyAppData');
-    if (saved) {
-        const parsedSaved = JSON.parse(saved);
-        if (parsedSaved.schedule) appData.schedule = parsedSaved.schedule;
-        if (parsedSaved.savedSubjects) appData.savedSubjects = parsedSaved.savedSubjects;
-        
-        appData.history = parsedSaved.history || {};
-        appData.streak = parsedSaved.streak || 0;
-        appData.lastStudyDate = parsedSaved.lastStudyDate || null;
-        appData.recordDay = parsedSaved.recordDay || 0;
-        appData.recordWeek = parsedSaved.recordWeek || 0;
-        appData.dailyGoalSeconds = parsedSaved.dailyGoalSeconds || 14400; 
-        
-        if (parsedSaved.cycleState) appData.cycleState = parsedSaved.cycleState;
-        if (parsedSaved.mappedPdfs) appData.mappedPdfs = parsedSaved.mappedPdfs;
-        if (parsedSaved.errors) appData.errors = parsedSaved.errors;
-        if (parsedSaved.reviews) appData.reviews = parsedSaved.reviews;
+function mergeData(parsedSaved) {
+    if (parsedSaved.schedule) appData.schedule = parsedSaved.schedule;
+    if (parsedSaved.savedSubjects) appData.savedSubjects = parsedSaved.savedSubjects;
+    appData.history = parsedSaved.history || {};
+    appData.streak = parsedSaved.streak || 0;
+    appData.lastStudyDate = parsedSaved.lastStudyDate || null;
+    appData.recordDay = parsedSaved.recordDay || 0;
+    appData.recordWeek = parsedSaved.recordWeek || 0;
+    appData.dailyGoalSeconds = parsedSaved.dailyGoalSeconds || 14400; 
+    if (parsedSaved.cycleState) appData.cycleState = parsedSaved.cycleState;
+    if (parsedSaved.mappedPdfs) appData.mappedPdfs = parsedSaved.mappedPdfs;
+    if (parsedSaved.errors) appData.errors = parsedSaved.errors;
+    if (parsedSaved.reviews) appData.reviews = parsedSaved.reviews;
+}
+
+// Nova função LoadData que puxa do Firebase
+async function loadData() {
+    try {
+        const snapshot = await database.ref('appData').once('value');
+        const cloudData = snapshot.val();
+
+        if (cloudData) {
+            // Nuvem tem dados! Sincroniza e atualiza o backup local
+            mergeData(cloudData);
+            localStorage.setItem('studyAppData', JSON.stringify(appData)); 
+        } else {
+            // Nuvem Vazia (Primeiro uso do Firebase). Pega do navegador e joga na nuvem!
+            const localData = localStorage.getItem('studyAppData');
+            if (localData) {
+                mergeData(JSON.parse(localData));
+                database.ref('appData').set(appData); 
+            }
+        }
+    } catch (error) {
+        console.error("Erro ao conectar na nuvem. Usando modo offline.", error);
+        const localData = localStorage.getItem('studyAppData');
+        if (localData) mergeData(JSON.parse(localData));
     }
 
     if (!appData.errors) appData.errors = [];
@@ -229,8 +265,15 @@ function loadData() {
     }
 }
 
+// Nova função SaveData que escreve no Firebase
 function saveData() {
+    // Salva no navegador como Backup Offline
     localStorage.setItem('studyAppData', JSON.stringify(appData));
+    
+    // Salva na nuvem (Firebase) em tempo real
+    database.ref('appData').set(appData).catch(error => {
+        console.error("Erro ao salvar na nuvem:", error);
+    });
 }
 
 function checkStreak() {
@@ -567,7 +610,6 @@ function resetTimer() {
     updateTimerDisplay();
 }
 
-// --- NOVAS FUNÇÕES: LÓGICA DE AVANÇAR (SKIP) ---
 function skipPhase() {
     if (todaysSubjects.length === 0 || appData.cycleState.subjectIndex >= todaysSubjects.length) return;
 
@@ -861,7 +903,6 @@ document.addEventListener('keydown', (e) => {
     const isTimerActive = document.getElementById('timer').classList.contains('active');
     if (!isTimerActive) return;
 
-    // Novos atalhos de Skip no teclado
     if (e.code === 'Space' && e.shiftKey && e.ctrlKey) {
         e.preventDefault();
         skipBlock();
