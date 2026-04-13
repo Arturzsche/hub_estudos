@@ -303,3 +303,92 @@ body.dark-mode .error-card { box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
     .controls-wrapper { flex-direction: column; gap: 0.5rem; }
     .error-grid { grid-template-columns: 1fr; }
 }
+
+/* --- ESTILOS DE IMPRESSÃO DO CRONOGRAMA --- */
+@media print {
+    @page {
+        size: A4 portrait;
+        margin: 1.5cm;
+    }
+
+    body {
+        background: #fff !important;
+        color: #000 !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+
+    body * {
+        visibility: hidden;
+        background: transparent !important;
+    }
+
+    #tasks, #tasks * {
+        visibility: visible;
+    }
+
+    #tasks {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+
+    #btn-print-schedule,
+    .add-subject-wrapper,
+    .subject-bank-panel,
+    #btn-add-cycle,
+    .btn-remove-row {
+        display: none !important;
+    }
+
+    #tasks h2 {
+        text-align: center;
+        font-size: 18pt !important;
+        font-weight: 700 !important;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        margin-bottom: 1.2cm !important;
+        color: #000 !important;
+        border-bottom: 2px solid #000; 
+        padding-bottom: 10px;
+    }
+
+    .table-responsive {
+        overflow: visible !important;
+    }
+
+    .schedule-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-family: 'Inter', Arial, sans-serif !important;
+        border: 2px solid #000 !important; 
+    }
+
+    .schedule-table th, .schedule-table td {
+        border: 1px solid #888 !important; 
+        padding: 1.4rem 0.5rem !important; 
+        text-align: center !important;
+        vertical-align: middle !important;
+        font-size: 10pt !important;
+        color: #000 !important;
+        background-color: #fff !important; 
+    }
+
+    .schedule-table th {
+        background-color: #eaeaea !important; 
+        font-weight: bold !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.05em !important;
+        font-size: 9pt !important;
+        border-bottom: 2px solid #000 !important;
+    }
+
+    .schedule-table td.time-cell {
+        background-color: #f7f7f7 !important;
+        font-weight: 600 !important;
+        white-space: nowrap !important;
+    }
+}

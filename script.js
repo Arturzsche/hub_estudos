@@ -42,6 +42,8 @@ const elements = {
     timeMain: document.getElementById('time-main'),
     timeMs: document.getElementById('time-ms'),
     btnToggle: document.getElementById('btn-toggle'),
+    btnSkipPhase: document.getElementById('btn-skip-phase'),
+    btnSkipBlock: document.getElementById('btn-skip-block'),
     iconPlay: document.getElementById('icon-play'),
     iconPause: document.getElementById('icon-pause'),
     btnReset: document.getElementById('btn-reset'),
@@ -565,11 +567,53 @@ function resetTimer() {
     updateTimerDisplay();
 }
 
+// --- NOVAS FUNÇÕES: LÓGICA DE AVANÇAR (SKIP) ---
+function skipPhase() {
+    if (todaysSubjects.length === 0 || appData.cycleState.subjectIndex >= todaysSubjects.length) return;
+
+    appData.cycleState.phaseIndex++;
+    
+    if (appData.cycleState.phaseIndex >= CYCLE_PHASES.length) {
+        appData.cycleState.phaseIndex = 0;
+        appData.cycleState.subjectIndex++;
+    }
+    
+    if (appData.cycleState.subjectIndex < todaysSubjects.length) {
+        appData.cycleState.msRemaining = CYCLE_PHASES[appData.cycleState.phaseIndex].ms;
+    } else {
+        appData.cycleState.msRemaining = 0;
+        pauseTimer(); 
+    }
+    
+    saveData();
+    updateTimerDisplay();
+}
+
+function skipBlock() {
+    if (todaysSubjects.length === 0 || appData.cycleState.subjectIndex >= todaysSubjects.length) return;
+
+    appData.cycleState.phaseIndex = 0;
+    appData.cycleState.subjectIndex++;
+    
+    if (appData.cycleState.subjectIndex < todaysSubjects.length) {
+        appData.cycleState.msRemaining = CYCLE_PHASES[0].ms;
+    } else {
+        appData.cycleState.msRemaining = 0;
+        pauseTimer();
+    }
+    
+    saveData();
+    updateTimerDisplay();
+}
+
 elements.btnToggle.addEventListener('click', () => {
     if (isRunning) pauseTimer();
     else startTimer();
 });
 elements.btnReset.addEventListener('click', resetTimer);
+
+if (elements.btnSkipPhase) elements.btnSkipPhase.addEventListener('click', skipPhase);
+if (elements.btnSkipBlock) elements.btnSkipBlock.addEventListener('click', skipBlock);
 
 function getChartData() {
     const labels = [];
@@ -814,20 +858,23 @@ document.addEventListener('keydown', (e) => {
     const isTyping = document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA' || document.activeElement.tagName === 'SELECT' || document.activeElement.isContentEditable;
     if (isTyping) return;
 
-    if (e.ctrlKey && e.code === 'Space') {
-        e.preventDefault(); 
-        if (isRunning) pauseTimer();
-        else startTimer();
-        return; 
-    }
-
     const isTimerActive = document.getElementById('timer').classList.contains('active');
     if (!isTimerActive) return;
 
-    if (e.code === 'Space' && !e.ctrlKey) {
+    // Novos atalhos de Skip no teclado
+    if (e.code === 'Space' && e.shiftKey && e.ctrlKey) {
+        e.preventDefault();
+        skipBlock();
+        return;
+    } else if (e.code === 'Space' && e.shiftKey) {
+        e.preventDefault();
+        skipPhase();
+        return;
+    } else if (e.code === 'Space' && !e.ctrlKey) {
         e.preventDefault(); 
         if (isRunning) pauseTimer();
         else startTimer();
+        return;
     }
     
     if (e.code === 'Delete') {
@@ -986,13 +1033,11 @@ if(elements.libraryContainer) {
             if (fileIndex !== -1) {
                 appData.mappedPdfs[fileIndex].status = newStatus;
 
-                // --- MÁGICA DAS REVISÕES ---
                 if (newStatus === 'completed') {
-                    // Adiciona na fila quando fica verde
                     const existingRev = appData.reviews.find(r => r.path === path);
                     if (!existingRev) {
                         const d = new Date();
-                        d.setDate(d.getDate() + REVIEW_INTERVALS[0]); // Agenda pro Passo 0 (1 dia)
+                        d.setDate(d.getDate() + REVIEW_INTERVALS[0]); 
                         appData.reviews.push({
                             id: 'rev_' + Date.now(),
                             path: path,
@@ -1003,7 +1048,6 @@ if(elements.libraryContainer) {
                         renderPendingReviews();
                     }
                 } else {
-                    // Se desmarcou o verde (voltou pra vermelho ou amarelo), remove das revisões
                     const existingRevIndex = appData.reviews.findIndex(r => r.path === path);
                     if (existingRevIndex !== -1) {
                         appData.reviews.splice(existingRevIndex, 1);
@@ -1108,7 +1152,6 @@ if(btnStartMapping) {
     });
 }
 
-// --- LÓGICA DO CADERNO DE ERROS ---
 const errElements = {
     grid: document.getElementById('err-grid'),
     emptyState: document.getElementById('err-empty-state'),
@@ -1325,6 +1368,13 @@ function initErrors() {
                 errElements.modalTitle.textContent = originalTitle;
             }
         }
+    });
+}
+
+const btnPrintSchedule = document.getElementById('btn-print-schedule');
+if (btnPrintSchedule) {
+    btnPrintSchedule.addEventListener('click', () => {
+        window.print();
     });
 }
 
