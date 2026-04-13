@@ -5,16 +5,20 @@ import PIL.Image
 import os
 import time
 import json
+import subprocess # <--- Importante para executar programas do Windows
 
 app = Flask(__name__)
 CORS(app) 
 
 # --- CONFIGURAÇÕES ---
 # 1. Coloque a sua chave de API NOVA aqui:
-client = genai.Client(api_key="AIzaSyAhljNrc1YmUYo104caV1kEePVaADZZA8c")
+client = genai.Client(api_key="COLE_SUA_NOVA_CHAVE_AQUI")
 
-# 2. Confirme o caminho da sua pasta de PDFs:
+# 2. Caminho da sua pasta de estudos:
 PASTA_ALVO = r"C:\Users\artur\OneDrive\Área de Trabalho\ESTUDOS"
+
+# 3. Caminho do executável do Xournal++ no seu PC:
+XOURNAL_PATH = r"C:\Program Files\Xournal++\bin\xournalpp.exe"
 
 @app.route('/mapear')
 def mapear_pdfs():
@@ -40,14 +44,25 @@ def mapear_pdfs():
 
     return Response(gerar_eventos(), mimetype='text/event-stream')
 
-@app.route('/abrir')
-def abrir_pdf():
+# --- NOVA ROTA: ABRIR DIRETO NO XOURNAL++ ---
+@app.route('/abrir_local')
+def abrir_local():
     caminho = request.args.get('caminho')
     if caminho and os.path.exists(caminho):
-        return send_file(caminho)
-    return "Arquivo não encontrado", 404
+        try:
+            # Tenta forçar a abertura no Xournal++
+            subprocess.Popen([XOURNAL_PATH, caminho])
+            return jsonify({"status": "ok", "message": "Abrindo no Xournal++"})
+        except Exception as e:
+            # Se o caminho do Xournal estiver errado, ele abre no leitor de PDF padrão do Windows como plano B
+            try:
+                os.startfile(caminho)
+                return jsonify({"status": "fallback", "message": "Xournal não encontrado, abrindo leitor padrão."})
+            except Exception as e2:
+                return jsonify({"status": "error", "message": str(e2)}), 500
+    return jsonify({"error": "Arquivo não encontrado"}), 404
 
-# --- NOVA ROTA: INTELIGÊNCIA ARTIFICIAL ---
+# --- ROTA DE INTELIGÊNCIA ARTIFICIAL ---
 @app.route('/analisar_erro', methods=['POST'])
 def analisar_erro():
     if 'image' not in request.files:
@@ -75,7 +90,6 @@ def analisar_erro():
         
         text = response.text.strip()
         
-        # Limpeza blindada para garantir que o Javascript consiga ler o JSON
         if text.startswith("```json"):
             text = text[7:]
         elif text.startswith("```"):
@@ -85,8 +99,6 @@ def analisar_erro():
             text = text[:-3]
             
         text = text.strip()
-        
-        # Valida se é um JSON de verdade antes de mandar pro site
         dados_json = json.loads(text)
         return jsonify(dados_json)
         
@@ -95,5 +107,5 @@ def analisar_erro():
         return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
-    print("Servidor rodando na porta 5000. IA Ativada com a nova biblioteca e chave segura!")
+    print("Servidor rodando na porta 5000. IA e Ponte para o Xournal++ Ativadas!")
     app.run(port=5000, debug=True)
