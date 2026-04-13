@@ -232,7 +232,7 @@ function mergeData(parsedSaved) {
     if (parsedSaved.reviews) appData.reviews = parsedSaved.reviews;
 }
 
-// Nova função LoadData que puxa do Firebase
+// Função LoadData que puxa do Firebase
 async function loadData() {
     try {
         const snapshot = await database.ref('appData').once('value');
@@ -265,7 +265,7 @@ async function loadData() {
     }
 }
 
-// Nova função SaveData que escreve no Firebase
+// Função SaveData que escreve no Firebase
 function saveData() {
     // Salva no navegador como Backup Offline
     localStorage.setItem('studyAppData', JSON.stringify(appData));
@@ -932,14 +932,15 @@ document.addEventListener('keydown', (e) => {
     }
 });
 
+// EVENTOS DE DESCARREGAMENTO DE PÁGINA: O CULPADO FOI REMOVIDO DAQUI
 window.addEventListener('beforeunload', () => {
     if (isRunning) pauseTimer();
-    saveData();
+    // saveData removido para não sobrescrever o Firebase ao recarregar a tela!
 });
 
 document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'hidden') {
-        saveData();
+        // saveData removido para não sobrescrever o Firebase
         if (isRunning) {
             localStorage.setItem('lastTick', Date.now().toString());
         }
