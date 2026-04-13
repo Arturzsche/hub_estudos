@@ -1,4 +1,4 @@
-const API_URL = "http" + "://" + "127.0.0.1:5000";
+const API_URL = "http://127.0.0.1:5000";
 
 let timerInterval;
 let isRunning = false;
@@ -11,27 +11,7 @@ const CYCLE_PHASES = [
     { name: "Questões (30min)", ms: 30 * 60 * 1000, isStudy: true }
 ];
 
-let defaultFlashcards = [
-    { id: 'def_1', subject: "Direito Administrativo", q: "Quais são os princípios expressos da Administração Pública (LIMPE)?", a: "Legalidade, Impessoalidade, Moralidade, Publicidade e Eficiência.", reps: 0, interval: 0, efactor: 2.5 },
-    { id: 'def_2', subject: "Direito Administrativo", q: "Qual a diferença entre Administração Direta e Indireta?", a: "Direta: atua pelo próprio ente (União, Estados, Municípios). Indireta: criação de novas entidades (Autarquias, Fundações, EP, SEM).", reps: 0, interval: 0, efactor: 2.5 },
-    { id: 'def_3', subject: "Direito Administrativo", q: "O que é Poder de Polícia?", a: "Prerrogativa de direito público que autoriza a Administração Pública a restringir o uso e o gozo da liberdade e da propriedade em favor do interesse da coletividade.", reps: 0, interval: 0, efactor: 2.5 },
-    { id: 'def_4', subject: "Direito Administrativo", q: "O que caracteriza um Ato Administrativo Discricionário?", a: "A margem de liberdade (conveniência e oportunidade) conferida por lei ao administrador para escolher a melhor ação, dentro dos limites legais.", reps: 0, interval: 0, efactor: 2.5 },
-    { id: 'def_5', subject: "Português", q: "Qual a regra geral de concordância verbal?", a: "O verbo concorda com o núcleo do sujeito em número e pessoa.", reps: 0, interval: 0, efactor: 2.5 },
-    { id: 'def_6', subject: "Português", q: "O que é Próclise, Mesóclise e Ênclise?", a: "Posição do pronome oblíquo: Próclise (antes do verbo), Mesóclise (no meio do verbo) e Ênclise (depois do verbo).", reps: 0, interval: 0, efactor: 2.5 }
-];
-
-let defaultEdital = [
-    {
-        id: "subj_da",
-        name: "Direito Administrativo",
-        topics: [
-            { id: "t_da1", name: "1. Princípios da Administração Pública", theory: false, summary: false, questions: false },
-            { id: "t_da2", name: "2. Organização Administrativa (Direta e Indireta)", theory: false, summary: false, questions: false },
-            { id: "t_da3", name: "3. Poderes Administrativos", theory: false, summary: false, questions: false },
-            { id: "t_da4", name: "4. Atos Administrativos", theory: false, summary: false, questions: false }
-        ]
-    }
-];
+const REVIEW_INTERVALS = [1, 7, 15, 30, 60];
 
 let appData = {
     history: {}, 
@@ -52,9 +32,8 @@ let appData = {
         msRemaining: CYCLE_PHASES[0].ms
     },
     mappedPdfs: [],
-    flashcards: [],
-    edital: [],
-    errors: []
+    errors: [],
+    reviews: []
 };
 
 let todaysSubjects = [];
@@ -108,8 +87,6 @@ function init() {
     initChart();
     setupClearModal();
     renderPdfLibrary();
-    initFlashcards();
-    initEdital();
     initErrors();
     
     if (localStorage.getItem('theme') === 'light') {
@@ -237,26 +214,12 @@ function loadData() {
         
         if (parsedSaved.cycleState) appData.cycleState = parsedSaved.cycleState;
         if (parsedSaved.mappedPdfs) appData.mappedPdfs = parsedSaved.mappedPdfs;
-        if (parsedSaved.flashcards) appData.flashcards = parsedSaved.flashcards;
-        if (parsedSaved.edital) appData.edital = parsedSaved.edital;
         if (parsedSaved.errors) appData.errors = parsedSaved.errors;
-    }
-    
-    if (!appData.flashcards || appData.flashcards.length === 0) {
-        appData.flashcards = JSON.parse(JSON.stringify(defaultFlashcards));
-    } else {
-        appData.flashcards.forEach((fc, idx) => {
-            if (!fc.id) fc.id = 'fc_' + Date.now() + '_' + idx;
-        });
+        if (parsedSaved.reviews) appData.reviews = parsedSaved.reviews;
     }
 
-    if (!appData.edital || appData.edital.length === 0) {
-        appData.edital = JSON.parse(JSON.stringify(defaultEdital));
-    }
-
-    if (!appData.errors) {
-        appData.errors = [];
-    }
+    if (!appData.errors) appData.errors = [];
+    if (!appData.reviews) appData.reviews = [];
     
     const today = getTodayDate();
     if (!appData.history[today]) {
@@ -340,6 +303,95 @@ function renderHeatmap() {
     }
 }
 
+function renderPendingReviews() {
+    const list = document.getElementById('pending-reviews-list');
+    const msg = document.getElementById('no-reviews-msg');
+    const badge = document.getElementById('review-count-badge');
+    
+    const todayList = document.getElementById('reviews-today-list');
+    const statToday = document.getElementById('rev-stat-today');
+    const statTotal = document.getElementById('rev-stat-total');
+    
+    if(!list) return;
+    list.innerHTML = '';
+    if(todayList) todayList.innerHTML = '';
+    
+    const today = getTodayDate();
+    let pending = [];
+    
+    appData.reviews.forEach(rev => {
+        if (rev.nextReview <= today) pending.push(rev);
+    });
+    
+    if(statToday) statToday.textContent = pending.length;
+    if(statTotal) statTotal.textContent = appData.reviews.length;
+    
+    if(pending.length > 0) {
+        msg.style.display = 'none';
+        badge.style.display = 'inline-block';
+        badge.textContent = pending.length;
+        
+        pending.forEach(rev => {
+            const days = REVIEW_INTERVALS[rev.step];
+            const html = `
+                <div class="rev-info">
+                    <span class="rev-name" title="${rev.name}">${rev.name}</span>
+                    <span class="rev-step">Revisão de ${days} dia(s)</span>
+                </div>
+                <button class="icon-btn-small btn-complete-rev" data-id="${rev.id}" title="Marcar como revisado" style="color: var(--success-color); border: 2px solid var(--success-color); padding: 8px;">
+                    <svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+                </button>
+            `;
+            
+            const divSmall = document.createElement('div');
+            divSmall.className = 'review-item due-today';
+            divSmall.innerHTML = html;
+            list.appendChild(divSmall);
+            
+            if(todayList) {
+                const divBig = document.createElement('div');
+                divBig.className = 'review-item due-today';
+                divBig.style.padding = '1.5rem';
+                divBig.innerHTML = html;
+                todayList.appendChild(divBig);
+            }
+        });
+        
+        const attachListeners = (container) => {
+            if(!container) return;
+            container.querySelectorAll('.btn-complete-rev').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const id = e.currentTarget.getAttribute('data-id');
+                    const rev = appData.reviews.find(r => r.id === id);
+                    if(rev) {
+                        rev.step++;
+                        if(rev.step >= REVIEW_INTERVALS.length) {
+                            rev.step = REVIEW_INTERVALS.length - 1; 
+                        }
+                        const nextInterval = REVIEW_INTERVALS[rev.step];
+                        const d = new Date();
+                        d.setDate(d.getDate() + nextInterval);
+                        rev.nextReview = d.toISOString().split('T')[0];
+                        
+                        saveData();
+                        renderPendingReviews();
+                    }
+                });
+            });
+        };
+        
+        attachListeners(list);
+        attachListeners(todayList);
+
+    } else {
+        msg.style.display = 'block';
+        badge.style.display = 'none';
+        if(todayList) {
+            todayList.innerHTML = `<div class="empty-msg" style="padding: 3rem; border: 1px dashed var(--border-color); border-radius: var(--radius); text-align: center; color: var(--text-muted);">Nenhuma revisão pendente para hoje. Excelente trabalho!</div>`;
+        }
+    }
+}
+
 function updateUI() {
     updateTodaysSubjects();
 
@@ -366,6 +418,7 @@ function updateUI() {
 
     if (chartInstance) updateChartData();
     renderHeatmap(); 
+    renderPendingReviews();
 }
 
 function loadTimerState() {
@@ -539,17 +592,17 @@ function initChart() {
     const ctx = document.getElementById('weeklyChart').getContext('2d');
     const { labels, data } = getChartData();
     const textColor = getComputedStyle(document.body).getPropertyValue('--text-muted').trim() || '#999999';
-    const barColor = getComputedStyle(document.body).getPropertyValue('--accent-color').trim() || '#ffffff';
+    const barColor = getComputedStyle(document.body).getPropertyValue('--text-main').trim() || '#ffffff';
 
     chartInstance = new Chart(ctx, {
         type: 'bar',
-        data: { labels: labels, datasets: [{ label: 'Horas', data: data, backgroundColor: barColor, borderRadius: 4, barThickness: 45 }] },
+        data: { labels: labels, datasets: [{ label: 'Horas', data: data, backgroundColor: barColor, borderRadius: 6, barThickness: 45 }] },
         options: {
             responsive: true, maintainAspectRatio: false,
             plugins: { legend: { display: false }, tooltip: { callbacks: { label: function(context) { const hours = Math.floor(context.raw); const minutes = Math.round((context.raw - hours) * 60); return `${hours}h ${minutes}m`; } } } },
             scales: {
-                y: { beginAtZero: true, grid: { color: 'rgba(150, 150, 150, 0.1)', borderColor: 'transparent' }, ticks: { color: textColor, stepSize: 1, font: { size: 13 } } },
-                x: { grid: { display: false }, ticks: { color: textColor, font: { family: 'Inter', weight: 600, size: 13 } } }
+                y: { beginAtZero: true, grid: { color: 'rgba(150, 150, 150, 0.05)', borderColor: 'transparent' }, ticks: { color: textColor, stepSize: 1, font: { size: 12 } } },
+                x: { grid: { display: false }, ticks: { color: textColor, font: { family: 'Inter', weight: 600, size: 12 } } }
             }
         }
     });
@@ -559,7 +612,7 @@ function updateChartData() {
     const { labels, data } = getChartData();
     chartInstance.data.labels = labels;
     chartInstance.data.datasets[0].data = data;
-    const barColor = getComputedStyle(document.body).getPropertyValue('--accent-color').trim();
+    const barColor = getComputedStyle(document.body).getPropertyValue('--text-main').trim();
     chartInstance.data.datasets[0].backgroundColor = barColor;
     chartInstance.update();
 }
@@ -578,6 +631,7 @@ function setupNavigation() {
             localStorage.setItem('activeView', targetId);
             
             if (targetId === 'timer') updateTimerDisplay(); 
+            if (targetId === 'reviews') renderPendingReviews();
         });
     });
 
@@ -650,7 +704,7 @@ function renderSubjectBank() {
             appData.savedSubjects.splice(index, 1);
             saveData();
             renderSubjectBank();
-            updateFlashcardSubjects();
+            updateErrorSubjects();
         });
 
         elements.subjectBank.appendChild(pill);
@@ -664,7 +718,7 @@ elements.btnAddSubject.addEventListener('click', () => {
         elements.newSubjectInput.value = '';
         saveData();
         renderSubjectBank();
-        updateFlashcardSubjects();
+        updateErrorSubjects();
     }
 });
 
@@ -825,17 +879,6 @@ function renderPdfLibrary() {
     
     if(pdfCountDisplay) pdfCountDisplay.textContent = appData.mappedPdfs.length;
 
-    let editalOptionsHTML = `<option value="">Vincular a um tópico...</option>`;
-    appData.edital.forEach(subj => {
-        if(subj.topics && subj.topics.length > 0) {
-            editalOptionsHTML += `<optgroup label="${subj.name}">`;
-            subj.topics.forEach(t => {
-                editalOptionsHTML += `<option value="${t.id}">${t.name}</option>`;
-            });
-            editalOptionsHTML += `</optgroup>`;
-        }
-    });
-
     const groupedPdfs = {};
     
     appData.mappedPdfs.forEach(file => {
@@ -883,7 +926,7 @@ function renderPdfLibrary() {
         `;
         
         summary.addEventListener('click', (e) => {
-            if (!e.target.closest('.pdf-edital-link') && !e.target.closest('.status-dot')) {
+            if (!e.target.closest('.status-dot')) {
                 folderGroup.classList.toggle('open');
             }
         });
@@ -897,11 +940,6 @@ function renderPdfLibrary() {
         files.forEach(file => {
             const currentStatus = file.status || 'unread';
             const sizeBadge = file.size ? `<span class="size-badge">${formatSize(file.size)}</span>` : '';
-            
-            let fileOptionsHTML = editalOptionsHTML;
-            if(file.linkedTopicId) {
-                fileOptionsHTML = fileOptionsHTML.replace(`value="${file.linkedTopicId}"`, `value="${file.linkedTopicId}" selected`);
-            }
 
             const fileItem = document.createElement('div');
             fileItem.className = 'file-item';
@@ -911,17 +949,11 @@ function renderPdfLibrary() {
                     ${file.name}
                 </a>
                 <div class="file-actions">
-                    <div class="edital-link-wrapper">
-                        <svg viewBox="0 0 24 24" width="14" height="14" style="flex-shrink: 0;"><path fill="currentColor" d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z"/></svg>
-                        <select class="pdf-edital-link" data-path="${file.path}">
-                            ${fileOptionsHTML}
-                        </select>
-                    </div>
                     ${sizeBadge}
                     <div class="status-selectors">
                         <div class="status-dot status-red ${currentStatus === 'unread' ? 'active' : ''}" data-status="unread" data-path="${file.path}" title="Não Lida"></div>
                         <div class="status-dot status-orange ${currentStatus === 'started' ? 'active' : ''}" data-status="started" data-path="${file.path}" title="Iniciada"></div>
-                        <div class="status-dot status-green ${currentStatus === 'completed' ? 'active' : ''}" data-status="completed" data-path="${file.path}" title="Concluída"></div>
+                        <div class="status-dot status-green ${currentStatus === 'completed' ? 'active' : ''}" data-status="completed" data-path="${file.path}" title="Concluída (Envia para Revisão)"></div>
                     </div>
                 </div>
             `;
@@ -942,19 +974,6 @@ if(sortSelect) {
 }
 
 if(elements.libraryContainer) {
-    elements.libraryContainer.addEventListener('change', (e) => {
-        if (e.target.classList.contains('pdf-edital-link')) {
-            const path = e.target.getAttribute('data-path');
-            const topicId = e.target.value;
-            const fileIndex = appData.mappedPdfs.findIndex(f => f.path === path);
-            
-            if (fileIndex !== -1) {
-                appData.mappedPdfs[fileIndex].linkedTopicId = topicId;
-                saveData();
-            }
-        }
-    });
-
     elements.libraryContainer.addEventListener('click', (e) => {
         if (e.target.classList.contains('status-dot')) {
             e.preventDefault();
@@ -966,14 +985,30 @@ if(elements.libraryContainer) {
             
             if (fileIndex !== -1) {
                 appData.mappedPdfs[fileIndex].status = newStatus;
-                
-                if (newStatus === 'completed' && appData.mappedPdfs[fileIndex].linkedTopicId) {
-                    const tId = appData.mappedPdfs[fileIndex].linkedTopicId;
-                    appData.edital.forEach(s => {
-                        const topic = s.topics.find(t => t.id === tId);
-                        if (topic) topic.theory = true; 
-                    });
-                    renderEdital(); 
+
+                // --- MÁGICA DAS REVISÕES ---
+                if (newStatus === 'completed') {
+                    // Adiciona na fila quando fica verde
+                    const existingRev = appData.reviews.find(r => r.path === path);
+                    if (!existingRev) {
+                        const d = new Date();
+                        d.setDate(d.getDate() + REVIEW_INTERVALS[0]); // Agenda pro Passo 0 (1 dia)
+                        appData.reviews.push({
+                            id: 'rev_' + Date.now(),
+                            path: path,
+                            name: appData.mappedPdfs[fileIndex].name,
+                            step: 0,
+                            nextReview: d.toISOString().split('T')[0]
+                        });
+                        renderPendingReviews();
+                    }
+                } else {
+                    // Se desmarcou o verde (voltou pra vermelho ou amarelo), remove das revisões
+                    const existingRevIndex = appData.reviews.findIndex(r => r.path === path);
+                    if (existingRevIndex !== -1) {
+                        appData.reviews.splice(existingRevIndex, 1);
+                        renderPendingReviews();
+                    }
                 }
 
                 saveData();
@@ -1024,7 +1059,7 @@ if(btnStartMapping) {
     btnStartMapping.addEventListener('click', () => {
         const existingPdfs = {};
         appData.mappedPdfs.forEach(pdf => {
-            existingPdfs[pdf.path] = { status: pdf.status || 'unread', linkedTopicId: pdf.linkedTopicId || '' };
+            existingPdfs[pdf.path] = { status: pdf.status || 'unread' };
         });
 
         appData.mappedPdfs = [];
@@ -1046,15 +1081,14 @@ if(btnStartMapping) {
                 if(pdfCountDisplay) pdfCountDisplay.textContent = tempCount;
                 if(mappingStatus) mappingStatus.textContent = `Varrendo: ${data.file.path}`;
 
-                const previousData = existingPdfs[data.file.path] || { status: 'unread', linkedTopicId: '' };
+                const previousData = existingPdfs[data.file.path] || { status: 'unread' };
 
                 appData.mappedPdfs.unshift({
                     name: data.file.name,
                     path: data.file.path,
                     size: data.file.size || 0,
                     mtime: data.file.mtime || 0,
-                    status: previousData.status,
-                    linkedTopicId: previousData.linkedTopicId
+                    status: previousData.status
                 });
             } 
             else if (data.status === "done") {
@@ -1074,606 +1108,6 @@ if(btnStartMapping) {
     });
 }
 
-// --- LÓGICA DOS FLASHCARDS ---
-let currentFcDeck = [];
-let currentFcIndex = 0;
-let isFcFlipped = false;
-let currentFcMode = 'study';
-
-const fcElements = {
-    subjectSelect: document.getElementById('fc-subject-select'),
-    progressFill: document.getElementById('fc-progress-fill'),
-    progressText: document.getElementById('fc-progress-text'),
-    card: document.getElementById('fc-card'),
-    cardContainer: document.getElementById('fc-card-container'),
-    questionText: document.getElementById('fc-question-text'),
-    answerText: document.getElementById('fc-answer-text'),
-    controlsFront: document.getElementById('fc-controls-front'),
-    controlsBack: document.getElementById('fc-controls-back'),
-    btnShow: document.getElementById('btn-fc-show'),
-    rateBtns: document.querySelectorAll('.fc-rate-btn'),
-    emptyState: document.getElementById('fc-empty-state'),
-    
-    studyView: document.getElementById('fc-study-view'),
-    manageView: document.getElementById('fc-manage-view'),
-    btnStudyMode: document.getElementById('btn-fc-study-mode'),
-    btnManageMode: document.getElementById('btn-fc-manage-mode'),
-    manageTbody: document.getElementById('fc-manage-tbody'),
-    manageEmpty: document.getElementById('fc-manage-empty'),
-    
-    btnAdd: document.getElementById('btn-add-fc'),
-    modalAdd: document.getElementById('fc-add-modal'),
-    newSubject: document.getElementById('fc-new-subject'),
-    newQ: document.getElementById('fc-new-q'),
-    newA: document.getElementById('fc-new-a'),
-    btnCancelAdd: document.getElementById('btn-fc-cancel-add'),
-    btnSaveAdd: document.getElementById('btn-fc-save-add'),
-    
-    modalEdit: document.getElementById('fc-edit-modal'),
-    editSubject: document.getElementById('fc-edit-subject'),
-    editQ: document.getElementById('fc-edit-q'),
-    editA: document.getElementById('fc-edit-a'),
-    btnCancelEdit: document.getElementById('btn-fc-cancel-edit'),
-    btnSaveEdit: document.getElementById('btn-fc-save-edit')
-};
-
-let currentEditId = null;
-
-function getNextInterval(card, quality) {
-    let reps = card.reps || 0;
-    let interval = card.interval || 0;
-    let efactor = card.efactor || 2.5;
-
-    if (quality === 0) return 1; 
-
-    if (reps === 0) {
-        return quality === 1 ? 1 : 4; 
-    } else if (reps === 1) {
-        return quality === 1 ? 6 : 10;
-    } else {
-        let nextI = Math.round(interval * efactor);
-        if (quality === 2) nextI = Math.round(nextI * 1.3);
-        return nextI;
-    }
-}
-
-function updateFlashcardSubjects() {
-    if(!fcElements.subjectSelect) return;
-    fcElements.subjectSelect.innerHTML = '';
-    fcElements.newSubject.innerHTML = '';
-    fcElements.editSubject.innerHTML = '';
-    
-    appData.savedSubjects.forEach(sub => {
-        fcElements.subjectSelect.appendChild(new Option(sub, sub));
-        fcElements.newSubject.appendChild(new Option(sub, sub));
-        fcElements.editSubject.appendChild(new Option(sub, sub));
-    });
-    
-    if (appData.savedSubjects.length > 0) {
-        if(currentFcMode === 'study') loadDeck(appData.savedSubjects[0]);
-        else renderManageView(appData.savedSubjects[0]);
-    }
-}
-
-function switchFcMode(mode) {
-    currentFcMode = mode;
-    const subject = fcElements.subjectSelect.value;
-    if(mode === 'study') {
-        fcElements.btnStudyMode.classList.add('active');
-        fcElements.btnManageMode.classList.remove('active');
-        fcElements.studyView.style.display = 'block';
-        fcElements.manageView.style.display = 'none';
-        if(subject) loadDeck(subject);
-    } else {
-        fcElements.btnManageMode.classList.add('active');
-        fcElements.btnStudyMode.classList.remove('active');
-        fcElements.studyView.style.display = 'none';
-        fcElements.manageView.style.display = 'block';
-        if(subject) renderManageView(subject);
-    }
-}
-
-function loadDeck(subjectName) {
-    const today = getTodayDate();
-    
-    currentFcDeck = appData.flashcards.filter(card => {
-        if (card.subject !== subjectName) return false;
-        if (!card.nextReview) return true; 
-        return card.nextReview <= today;
-    });
-
-    currentFcDeck.sort((a, b) => {
-        if(!a.nextReview && b.nextReview) return -1;
-        if(a.nextReview && !b.nextReview) return 1;
-        if(a.nextReview < b.nextReview) return -1;
-        if(a.nextReview > b.nextReview) return 1;
-        return 0;
-    });
-
-    currentFcIndex = 0;
-    isFcFlipped = false;
-    
-    if (currentFcDeck.length > 0) {
-        fcElements.emptyState.style.display = 'none';
-        fcElements.cardContainer.style.display = 'block';
-        fcElements.controlsFront.style.display = 'flex';
-        fcElements.controlsBack.style.display = 'none';
-        renderCurrentCard();
-    } else {
-        const futureCards = appData.flashcards.filter(card => card.subject === subjectName);
-        let msg = "Não há cartões criados para esta matéria.";
-        if (futureCards.length > 0) {
-            msg = `Todos os ${futureCards.length} cartões desta matéria estão em dia! Volte amanhã.`;
-        }
-        
-        fcElements.emptyState.querySelector('p').textContent = msg;
-        fcElements.emptyState.style.display = 'block';
-        fcElements.cardContainer.style.display = 'none';
-        fcElements.controlsFront.style.display = 'none';
-        fcElements.controlsBack.style.display = 'none';
-        fcElements.progressText.textContent = "0 / 0 Cartões";
-        fcElements.progressFill.style.width = "0%";
-    }
-}
-
-function renderCurrentCard() {
-    if (currentFcIndex >= currentFcDeck.length) {
-        fcElements.emptyState.querySelector('p').textContent = "Você finalizou todas as revisões pendentes desta matéria por hoje!";
-        fcElements.emptyState.style.display = 'block';
-        fcElements.cardContainer.style.display = 'none';
-        fcElements.controlsFront.style.display = 'none';
-        fcElements.controlsBack.style.display = 'none';
-        return;
-    }
-
-    const card = currentFcDeck[currentFcIndex];
-    fcElements.questionText.textContent = card.q;
-    fcElements.answerText.textContent = card.a;
-    
-    fcElements.card.classList.remove('flipped');
-    isFcFlipped = false;
-    
-    fcElements.controlsFront.style.display = 'flex';
-    fcElements.controlsBack.style.display = 'none';
-
-    const progress = ((currentFcIndex) / currentFcDeck.length) * 100;
-    fcElements.progressFill.style.width = `${progress}%`;
-    fcElements.progressText.textContent = `${currentFcIndex + 1} / ${currentFcDeck.length} Cartões`;
-}
-
-function rateCard(quality) {
-    const card = currentFcDeck[currentFcIndex];
-    const cardInDb = appData.flashcards.find(c => c.id === card.id);
-
-    if(cardInDb) {
-        let interval = getNextInterval(cardInDb, quality);
-
-        if (quality === 0) {
-            cardInDb.reps = 0;
-        } else {
-            cardInDb.reps = (cardInDb.reps || 0) + 1;
-            let qValue = quality === 1 ? 4 : 5;
-            cardInDb.efactor = (cardInDb.efactor || 2.5) + (0.1 - (5 - qValue) * (0.08 + (5 - qValue) * 0.02));
-            if (cardInDb.efactor < 1.3) cardInDb.efactor = 1.3;
-        }
-        cardInDb.interval = interval;
-
-        const d = new Date();
-        d.setDate(d.getDate() + interval);
-        cardInDb.nextReview = d.toISOString().split('T')[0];
-
-        saveData();
-    }
-
-    currentFcIndex++;
-    
-    if (currentFcIndex >= currentFcDeck.length) {
-        fcElements.progressFill.style.width = `100%`;
-        setTimeout(renderCurrentCard, 300); 
-    } else {
-        renderCurrentCard();
-    }
-}
-
-function renderManageView(subjectName) {
-    fcElements.manageTbody.innerHTML = '';
-    const cards = appData.flashcards.filter(c => c.subject === subjectName);
-    
-    if(cards.length === 0) {
-        fcElements.manageTbody.parentElement.style.display = 'none';
-        fcElements.manageEmpty.style.display = 'block';
-    } else {
-        fcElements.manageTbody.parentElement.style.display = 'table';
-        fcElements.manageEmpty.style.display = 'none';
-        
-        cards.forEach(card => {
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td style="text-align: left; padding-left: 1rem; color: var(--text-main); font-weight: 500;">${card.q}</td>
-                <td style="text-align: left; padding-left: 1rem; color: var(--text-muted); font-size: 0.85rem;">${card.a}</td>
-                <td style="text-align: center;">
-                    <div style="display: flex; justify-content: center; gap: 0.5rem;">
-                        <button class="fc-action-btn edit-btn" data-id="${card.id}" title="Editar">
-                            <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
-                        </button>
-                        <button class="fc-action-btn delete delete-btn" data-id="${card.id}" title="Excluir">
-                            <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M16 9v10H8V9h8m-1.5-6h-5l-1 1H5v2h14V4h-3.5l-1-1zM18 7H6v12c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7z"/></svg>
-                        </button>
-                    </div>
-                </td>
-            `;
-            fcElements.manageTbody.appendChild(tr);
-        });
-
-        fcElements.manageTbody.querySelectorAll('.delete-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const id = e.currentTarget.getAttribute('data-id');
-                appData.flashcards = appData.flashcards.filter(c => c.id !== id);
-                saveData();
-                renderManageView(fcElements.subjectSelect.value);
-            });
-        });
-
-        fcElements.manageTbody.querySelectorAll('.edit-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const id = e.currentTarget.getAttribute('data-id');
-                const card = appData.flashcards.find(c => c.id === id);
-                if(card) {
-                    currentEditId = id;
-                    fcElements.editSubject.value = card.subject;
-                    fcElements.editQ.value = card.q;
-                    fcElements.editA.value = card.a;
-                    fcElements.modalEdit.classList.add('active');
-                }
-            });
-        });
-    }
-}
-
-function initFlashcards() {
-    if(!fcElements.subjectSelect) return;
-    
-    updateFlashcardSubjects();
-
-    fcElements.btnStudyMode.addEventListener('click', () => switchFcMode('study'));
-    fcElements.btnManageMode.addEventListener('click', () => switchFcMode('manage'));
-
-    fcElements.subjectSelect.addEventListener('change', (e) => {
-        if(currentFcMode === 'study') loadDeck(e.target.value);
-        else renderManageView(e.target.value);
-    });
-
-    const flipCard = () => {
-        if (!isFcFlipped && currentFcIndex < currentFcDeck.length) {
-            fcElements.card.classList.add('flipped');
-            isFcFlipped = true;
-            fcElements.controlsFront.style.display = 'none';
-            fcElements.controlsBack.style.display = 'flex';
-            
-            const card = currentFcDeck[currentFcIndex];
-            document.getElementById('fc-hard-time').textContent = `(${getNextInterval(card, 0)}d)`;
-            document.getElementById('fc-good-time').textContent = `(${getNextInterval(card, 1)}d)`;
-            document.getElementById('fc-easy-time').textContent = `(${getNextInterval(card, 2)}d)`;
-        }
-    };
-
-    fcElements.btnShow.addEventListener('click', flipCard);
-    fcElements.cardContainer.addEventListener('click', flipCard);
-
-    fcElements.rateBtns.forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            const quality = parseInt(e.currentTarget.getAttribute('data-rating'));
-            rateCard(quality);
-        });
-    });
-
-    fcElements.btnAdd.addEventListener('click', () => {
-        fcElements.newSubject.value = fcElements.subjectSelect.value;
-        fcElements.modalAdd.classList.add('active');
-    });
-
-    fcElements.btnCancelAdd.addEventListener('click', () => {
-        fcElements.modalAdd.classList.remove('active');
-        fcElements.newQ.value = '';
-        fcElements.newA.value = '';
-    });
-
-    fcElements.btnSaveAdd.addEventListener('click', () => {
-        const sub = fcElements.newSubject.value;
-        const q = fcElements.newQ.value.trim();
-        const a = fcElements.newA.value.trim();
-
-        if (q && a) {
-            appData.flashcards.push({
-                id: 'fc_' + Date.now(),
-                subject: sub,
-                q: q,
-                a: a,
-                reps: 0,
-                interval: 0,
-                efactor: 2.5
-            });
-            saveData();
-            fcElements.modalAdd.classList.remove('active');
-            fcElements.newQ.value = '';
-            fcElements.newA.value = '';
-            
-            if (sub === fcElements.subjectSelect.value) {
-                if(currentFcMode === 'study') loadDeck(sub);
-                else renderManageView(sub);
-            }
-        }
-    });
-
-    fcElements.btnCancelEdit.addEventListener('click', () => {
-        fcElements.modalEdit.classList.remove('active');
-        currentEditId = null;
-    });
-
-    fcElements.btnSaveEdit.addEventListener('click', () => {
-        if(currentEditId) {
-            const cardIndex = appData.flashcards.findIndex(c => c.id === currentEditId);
-            if(cardIndex !== -1) {
-                appData.flashcards[cardIndex].subject = fcElements.editSubject.value;
-                appData.flashcards[cardIndex].q = fcElements.editQ.value.trim();
-                appData.flashcards[cardIndex].a = fcElements.editA.value.trim();
-                saveData();
-                
-                fcElements.modalEdit.classList.remove('active');
-                if(currentFcMode === 'study') loadDeck(fcElements.subjectSelect.value);
-                else renderManageView(fcElements.subjectSelect.value);
-            }
-        }
-    });
-}
-
-// --- LÓGICA DO EDITAL VERTICALIZADO ---
-const editalElements = {
-    container: document.getElementById('edital-container'),
-    overallPercentage: document.getElementById('edital-overall-percentage'),
-    overallFill: document.getElementById('edital-overall-fill'),
-    
-    btnAddSubject: document.getElementById('btn-edital-add-subject'),
-    modalSubject: document.getElementById('edital-subject-modal'),
-    inputSubject: document.getElementById('edital-new-subject-input'),
-    btnCancelSubject: document.getElementById('btn-edital-cancel-subject'),
-    btnSaveSubject: document.getElementById('btn-edital-save-subject'),
-
-    modalTopic: document.getElementById('edital-topic-modal'),
-    inputTopic: document.getElementById('edital-new-topic-input'),
-    btnCancelTopic: document.getElementById('btn-edital-cancel-topic'),
-    btnSaveTopic: document.getElementById('btn-edital-save-topic')
-};
-
-let currentSubjectIdForTopic = null;
-
-function renderEdital() {
-    if (!editalElements.container) return;
-    editalElements.container.innerHTML = '';
-    
-    let totalCheckboxes = 0;
-    let checkedCheckboxes = 0;
-
-    appData.edital.forEach((subjectData) => {
-        let subjTotal = 0;
-        let subjChecked = 0;
-
-        const contentDiv = document.createElement('div');
-        contentDiv.className = 'folder-content';
-
-        subjectData.topics.forEach(topic => {
-            subjTotal += 3;
-            totalCheckboxes += 3;
-            if (topic.theory) { subjChecked++; checkedCheckboxes++; }
-            if (topic.summary) { subjChecked++; checkedCheckboxes++; }
-            if (topic.questions) { subjChecked++; checkedCheckboxes++; }
-
-            const topicRow = document.createElement('div');
-            topicRow.className = 'edital-topic-row';
-            topicRow.innerHTML = `
-                <div class="edital-topic-name">${topic.name}</div>
-                <div class="edital-checks">
-                    <button class="edital-chk-btn theory ${topic.theory ? 'active' : ''}" data-subj="${subjectData.id}" data-topic="${topic.id}" data-type="theory">Teoria</button>
-                    <button class="edital-chk-btn summary ${topic.summary ? 'active' : ''}" data-subj="${subjectData.id}" data-topic="${topic.id}" data-type="summary">Resumo</button>
-                    <button class="edital-chk-btn questions ${topic.questions ? 'active' : ''}" data-subj="${subjectData.id}" data-topic="${topic.id}" data-type="questions">Questões</button>
-                    <button class="fc-action-btn delete edital-del-topic" data-subj="${subjectData.id}" data-topic="${topic.id}" title="Excluir Tópico" style="margin-left: 8px;">
-                        <svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M16 9v10H8V9h8m-1.5-6h-5l-1 1H5v2h14V4h-3.5l-1-1zM18 7H6v12c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7z"/></svg>
-                    </button>
-                </div>
-            `;
-            contentDiv.appendChild(topicRow);
-        });
-
-        const subjProgress = subjTotal === 0 ? 0 : Math.round((subjChecked / subjTotal) * 100);
-
-        const folderGroup = document.createElement('div');
-        folderGroup.className = 'folder-group';
-        
-        const summary = document.createElement('div');
-        summary.className = 'folder-summary';
-        summary.innerHTML = `
-            <div class="folder-header-left">
-                <svg class="folder-icon" viewBox="0 0 24 24" width="20" height="20" style="color: #4caf50;"><path fill="currentColor" d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>
-                ${subjectData.name}
-            </div>
-            <div style="display: flex; align-items: center; gap: 1rem;">
-                <span class="folder-count">${subjProgress}%</span>
-                <div class="edital-subject-progress">
-                    <div class="edital-subject-fill" style="width: ${subjProgress}%;"></div>
-                </div>
-                <button class="fc-action-btn edital-add-topic-btn" data-subj="${subjectData.id}" title="Adicionar Tópico" style="margin-left: 8px; z-index: 2; position: relative;">
-                    <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
-                </button>
-                <button class="fc-action-btn delete edital-del-subj" data-subj="${subjectData.id}" title="Excluir Matéria" style="z-index: 2; position: relative;">
-                    <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M16 9v10H8V9h8m-1.5-6h-5l-1 1H5v2h14V4h-3.5l-1-1zM18 7H6v12c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7z"/></svg>
-                </button>
-                <svg class="folder-chevron" viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/></svg>
-            </div>
-        `;
-        
-        summary.addEventListener('click', (e) => {
-            if (!e.target.closest('.fc-action-btn')) {
-                folderGroup.classList.toggle('open');
-            }
-        });
-        
-        const wrapper = document.createElement('div');
-        wrapper.className = 'folder-content-wrapper';
-        wrapper.appendChild(contentDiv);
-
-        folderGroup.appendChild(summary);
-        folderGroup.appendChild(wrapper);
-        editalElements.container.appendChild(folderGroup);
-    });
-
-    const overall = totalCheckboxes === 0 ? 0 : Math.round((checkedCheckboxes / totalCheckboxes) * 100);
-    editalElements.overallPercentage.textContent = `${overall}%`;
-    editalElements.overallFill.style.width = `${overall}%`;
-    
-    attachEditalListeners();
-}
-
-function attachEditalListeners() {
-    document.querySelectorAll('.edital-chk-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            const subjId = e.currentTarget.getAttribute('data-subj');
-            const topicId = e.currentTarget.getAttribute('data-topic');
-            const type = e.currentTarget.getAttribute('data-type');
-
-            const subj = appData.edital.find(s => s.id === subjId);
-            if (subj) {
-                const topic = subj.topics.find(t => t.id === topicId);
-                if (topic) {
-                    topic[type] = !topic[type];
-                    saveData();
-                    
-                    e.currentTarget.classList.toggle('active');
-                    
-                    let subjTotal = 0;
-                    let subjChecked = 0;
-                    let totalCheckboxes = 0;
-                    let checkedCheckboxes = 0;
-
-                    appData.edital.forEach(s => {
-                        s.topics.forEach(t => {
-                            totalCheckboxes += 3;
-                            if (t.theory) checkedCheckboxes++;
-                            if (t.summary) checkedCheckboxes++;
-                            if (t.questions) checkedCheckboxes++;
-                            
-                            if (s.id === subjId) {
-                                subjTotal += 3;
-                                if (t.theory) subjChecked++;
-                                if (t.summary) subjChecked++;
-                                if (t.questions) subjChecked++;
-                            }
-                        });
-                    });
-
-                    const subjProgress = subjTotal === 0 ? 0 : Math.round((subjChecked / subjTotal) * 100);
-                    const overall = totalCheckboxes === 0 ? 0 : Math.round((checkedCheckboxes / totalCheckboxes) * 100);
-                    
-                    const group = e.currentTarget.closest('.folder-group');
-                    group.querySelector('.folder-count').textContent = `${subjProgress}%`;
-                    group.querySelector('.edital-subject-fill').style.width = `${subjProgress}%`;
-                    
-                    editalElements.overallPercentage.textContent = `${overall}%`;
-                    editalElements.overallFill.style.width = `${overall}%`;
-                }
-            }
-        });
-    });
-
-    document.querySelectorAll('.edital-del-topic').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            const subjId = e.currentTarget.getAttribute('data-subj');
-            const topicId = e.currentTarget.getAttribute('data-topic');
-            const subj = appData.edital.find(s => s.id === subjId);
-            if (subj) {
-                subj.topics = subj.topics.filter(t => t.id !== topicId);
-                saveData();
-                renderEdital();
-            }
-        });
-    });
-
-    document.querySelectorAll('.edital-del-subj').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            const subjId = e.currentTarget.getAttribute('data-subj');
-            appData.edital = appData.edital.filter(s => s.id !== subjId);
-            saveData();
-            renderEdital();
-        });
-    });
-
-    document.querySelectorAll('.edital-add-topic-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            currentSubjectIdForTopic = e.currentTarget.getAttribute('data-subj');
-            editalElements.modalTopic.classList.add('active');
-            editalElements.inputTopic.focus();
-        });
-    });
-}
-
-function initEdital() {
-    if (!editalElements.container) return;
-
-    renderEdital();
-
-    editalElements.btnAddSubject.addEventListener('click', () => {
-        editalElements.modalSubject.classList.add('active');
-        editalElements.inputSubject.focus();
-    });
-
-    editalElements.btnCancelSubject.addEventListener('click', () => {
-        editalElements.modalSubject.classList.remove('active');
-        editalElements.inputSubject.value = '';
-    });
-
-    editalElements.btnSaveSubject.addEventListener('click', () => {
-        const val = editalElements.inputSubject.value.trim();
-        if (val) {
-            appData.edital.push({
-                id: 'subj_' + Date.now(),
-                name: val,
-                topics: []
-            });
-            saveData();
-            renderEdital();
-            updateErrorSubjects(); 
-            editalElements.modalSubject.classList.remove('active');
-            editalElements.inputSubject.value = '';
-        }
-    });
-
-    editalElements.btnCancelTopic.addEventListener('click', () => {
-        editalElements.modalTopic.classList.remove('active');
-        editalElements.inputTopic.value = '';
-        currentSubjectIdForTopic = null;
-    });
-
-    editalElements.btnSaveTopic.addEventListener('click', () => {
-        const val = editalElements.inputTopic.value.trim();
-        if (val && currentSubjectIdForTopic) {
-            const subj = appData.edital.find(s => s.id === currentSubjectIdForTopic);
-            if (subj) {
-                subj.topics.push({
-                    id: 'top_' + Date.now(),
-                    name: val,
-                    theory: false,
-                    summary: false,
-                    questions: false
-                });
-                saveData();
-                renderEdital();
-                editalElements.modalTopic.classList.remove('active');
-                editalElements.inputTopic.value = '';
-                currentSubjectIdForTopic = null;
-            }
-        }
-    });
-}
-
 // --- LÓGICA DO CADERNO DE ERROS ---
 const errElements = {
     grid: document.getElementById('err-grid'),
@@ -1684,7 +1118,7 @@ const errElements = {
     modal: document.getElementById('err-modal'),
     modalTitle: document.getElementById('err-modal-title'),
     subjSelect: document.getElementById('err-subject-select'),
-    topicSelect: document.getElementById('err-topic-select'),
+    topicInput: document.getElementById('err-topic-input'),
     conceptInput: document.getElementById('err-concept-input'),
     contextInput: document.getElementById('err-context-input'),
     btnCancel: document.getElementById('btn-err-cancel'),
@@ -1696,27 +1130,9 @@ let currentErrorEditId = null;
 function updateErrorSubjects() {
     if(!errElements.subjSelect) return;
     errElements.subjSelect.innerHTML = '<option value="">Selecione...</option>';
-    appData.edital.forEach(subj => {
-        errElements.subjSelect.appendChild(new Option(subj.name, subj.id));
+    appData.savedSubjects.forEach(subj => {
+        errElements.subjSelect.appendChild(new Option(subj, subj));
     });
-}
-
-function updateErrorTopics(subjId) {
-    errElements.topicSelect.innerHTML = '<option value="">Selecione a matéria antes...</option>';
-    errElements.topicSelect.disabled = true;
-    
-    if(subjId) {
-        const subj = appData.edital.find(s => s.id === subjId);
-        if (subj && subj.topics.length > 0) {
-            errElements.topicSelect.innerHTML = '<option value="">Geral / Nenhum tópico específico</option>';
-            subj.topics.forEach(t => {
-                errElements.topicSelect.appendChild(new Option(t.name, t.id));
-            });
-            errElements.topicSelect.disabled = false;
-        } else {
-            errElements.topicSelect.innerHTML = '<option value="">Nenhum tópico cadastrado nesta matéria</option>';
-        }
-    }
 }
 
 function renderErrors() {
@@ -1746,42 +1162,31 @@ function renderErrors() {
         errElements.grid.style.display = 'grid';
 
         filteredErrors.reverse().forEach(err => {
-            const subj = appData.edital.find(s => s.id === err.subjectId);
-            const subjName = subj ? subj.name : 'Matéria Excluída';
-            let topicName = '';
-            if (subj && err.topicId) {
-                const topic = subj.topics.find(t => t.id === err.topicId);
-                if (topic) topicName = topic.name;
-            }
-
-            const topicHTML = topicName ? `<span class="err-topic-badge"><svg viewBox="0 0 24 24" width="14" height="14"><path fill="currentColor" d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg> ${topicName}</span>` : '';
+            const topicHTML = err.topic ? `<span class="err-topic-badge"><svg viewBox="0 0 24 24" width="14" height="14"><path fill="currentColor" d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg> ${err.topic}</span>` : '';
 
             const card = document.createElement('div');
             card.className = 'error-card';
             card.innerHTML = `
                 <div class="error-header">
                     <div class="error-tags">
-                        <span class="err-subj-badge">${subjName}</span>
+                        <span class="err-subj-badge">${err.subject}</span>
                         ${topicHTML}
                     </div>
                     <div style="display: flex; gap: 4px;">
-                        <button class="fc-action-btn edit-err-btn" data-id="${err.id}" title="Editar">
+                        <button class="icon-btn-small edit-err-btn" data-id="${err.id}" title="Editar">
                             <svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
                         </button>
-                        <button class="fc-action-btn delete del-err-btn" data-id="${err.id}" title="Excluir">
+                        <button class="icon-btn-small delete del-err-btn" data-id="${err.id}" title="Excluir" style="color: var(--danger-color);">
                             <svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M16 9v10H8V9h8m-1.5-6h-5l-1 1H5v2h14V4h-3.5l-1-1zM18 7H6v12c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7z"/></svg>
                         </button>
                     </div>
                 </div>
                 <div class="error-content">
                     <p class="err-concept">${err.concept}</p>
-                    <p class="err-context"><strong>Pegadinha/Contexto:</strong><br>${err.context}</p>
+                    <p class="err-context"><strong>Pegadinha da Banca:</strong><br>${err.context}</p>
                 </div>
                 <div class="error-footer">
-                    <span style="font-size: 0.75rem; color: var(--text-muted);">Registrado em: ${err.date}</span>
-                    <button class="btn primary btn-err-to-fc" data-id="${err.id}" style="padding: 0.4rem 0.8rem; font-size: 0.75rem; display: flex; align-items: center; gap: 4px;">
-                        <svg viewBox="0 0 24 24" width="14" height="14"><path fill="currentColor" d="M7 2v11h3v9l7-12h-4l4-8z"/></svg> Transformar em Flashcard
-                    </button>
+                    <span>Registrado em: ${err.date}</span>
                 </div>
             `;
             errElements.grid.appendChild(card);
@@ -1803,45 +1208,11 @@ function renderErrors() {
                 if(err) {
                     currentErrorEditId = id;
                     errElements.modalTitle.textContent = "Editar Erro";
-                    errElements.subjSelect.value = err.subjectId;
-                    updateErrorTopics(err.subjectId);
-                    errElements.topicSelect.value = err.topicId || '';
+                    errElements.subjSelect.value = err.subject;
+                    errElements.topicInput.value = err.topic || '';
                     errElements.conceptInput.value = err.concept;
                     errElements.contextInput.value = err.context;
                     errElements.modal.classList.add('active');
-                }
-            });
-        });
-
-        errElements.grid.querySelectorAll('.btn-err-to-fc').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const id = e.currentTarget.getAttribute('data-id');
-                const err = appData.errors.find(err => err.id === id);
-                if(err) {
-                    const subj = appData.edital.find(s => s.id === err.subjectId);
-                    let subjName = subj ? subj.name : 'Geral';
-                    let topicName = '';
-                    if (subj && err.topicId) {
-                        const topic = subj.topics.find(t => t.id === err.topicId);
-                        if (topic) topicName = topic.name;
-                    }
-
-                    if (!appData.savedSubjects.includes(subjName)) {
-                        appData.savedSubjects.push(subjName);
-                        saveData();
-                        renderSubjectBank();
-                        updateFlashcardSubjects();
-                    }
-
-                    fcElements.newSubject.value = subjName;
-                    
-                    let questionText = `O que diz a regra sobre:\n${err.context}`;
-                    if(topicName) questionText = `[${topicName}]\n` + questionText;
-                    
-                    fcElements.newQ.value = questionText;
-                    fcElements.newA.value = err.concept;
-                    
-                    fcElements.modalAdd.classList.add('active');
                 }
             });
         });
@@ -1854,10 +1225,6 @@ function initErrors() {
     updateErrorSubjects();
     renderErrors();
 
-    errElements.subjSelect.addEventListener('change', (e) => {
-        updateErrorTopics(e.target.value);
-    });
-
     errElements.searchInput.addEventListener('input', () => {
         renderErrors();
     });
@@ -1866,8 +1233,7 @@ function initErrors() {
         currentErrorEditId = null;
         errElements.modalTitle.textContent = "Registrar Erro";
         errElements.subjSelect.value = '';
-        errElements.topicSelect.innerHTML = '<option value="">Selecione a matéria antes...</option>';
-        errElements.topicSelect.disabled = true;
+        errElements.topicInput.value = '';
         errElements.conceptInput.value = '';
         errElements.contextInput.value = '';
         errElements.modal.classList.add('active');
@@ -1878,17 +1244,17 @@ function initErrors() {
     });
 
     errElements.btnSave.addEventListener('click', () => {
-        const subjId = errElements.subjSelect.value;
-        const topicId = errElements.topicSelect.value;
+        const subj = errElements.subjSelect.value;
+        const topic = errElements.topicInput.value.trim();
         const concept = errElements.conceptInput.value.trim();
         const context = errElements.contextInput.value.trim();
 
-        if (subjId && concept && context) {
+        if (subj && concept && context) {
             if (currentErrorEditId) {
                 const errIndex = appData.errors.findIndex(e => e.id === currentErrorEditId);
                 if (errIndex !== -1) {
-                    appData.errors[errIndex].subjectId = subjId;
-                    appData.errors[errIndex].topicId = topicId;
+                    appData.errors[errIndex].subject = subj;
+                    appData.errors[errIndex].topic = topic;
                     appData.errors[errIndex].concept = concept;
                     appData.errors[errIndex].context = context;
                 }
@@ -1897,8 +1263,8 @@ function initErrors() {
                 const dateStr = d.toLocaleDateString('pt-BR');
                 appData.errors.push({
                     id: 'err_' + Date.now(),
-                    subjectId: subjId,
-                    topicId: topicId,
+                    subject: subj,
+                    topic: topic,
                     concept: concept,
                     context: context,
                     date: dateStr
@@ -1909,7 +1275,7 @@ function initErrors() {
             renderErrors();
             errElements.modal.classList.remove('active');
         } else {
-            alert("Por favor, preencha a Matéria, o Conceito e o Contexto.");
+            alert("Por favor, preencha a Matéria, o Conceito e a Pegadinha.");
         }
     });
 
