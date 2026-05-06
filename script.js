@@ -27,6 +27,7 @@ const CYCLE_PHASES = [
     { name: "Questões (30min)", ms: 30 * 60 * 1000, isStudy: true }
 ];
 
+// O SEU CICLO DE ESPAÇAMENTO DE DIAS FICA AQUI:
 const REVIEW_INTERVALS = [1, 7, 15, 30, 60];
 
 let appData = {
@@ -91,10 +92,16 @@ const elements = {
     cycleSubject: document.getElementById('cycle-subject'),
     cyclePhaseBadge: document.getElementById('cycle-phase-badge'),
     
-    libraryContainer: document.getElementById('library-container')
+    libraryContainer: document.getElementById('library-container'),
+
+    // NOVOS ELEMENTOS DA REVISÃO MANUAL AQUI:
+    btnOpenManualRev: document.getElementById('btn-add-manual-review'),
+    modalManualRev: document.getElementById('manual-rev-modal'),
+    inputManualRevName: document.getElementById('manual-rev-name'),
+    btnCancelManualRev: document.getElementById('btn-manual-rev-cancel'),
+    btnSaveManualRev: document.getElementById('btn-manual-rev-save')
 };
 
-// Agora o init é async para aguardar a nuvem carregar
 async function init() {
     await loadData(); 
     checkStreak();
@@ -107,6 +114,7 @@ async function init() {
     setupClearModal();
     renderPdfLibrary();
     initErrors();
+    initManualReviews(); // ATIVANDO A NOVA FUNÇÃO AQUI
     
     if (localStorage.getItem('theme') === 'light') {
         document.body.classList.remove('dark-mode');
@@ -239,11 +247,9 @@ async function loadData() {
         const cloudData = snapshot.val();
 
         if (cloudData) {
-            // Nuvem tem dados! Sincroniza e atualiza o backup local
             mergeData(cloudData);
             localStorage.setItem('studyAppData', JSON.stringify(appData)); 
         } else {
-            // Nuvem Vazia (Primeiro uso do Firebase). Pega do navegador e joga na nuvem!
             const localData = localStorage.getItem('studyAppData');
             if (localData) {
                 mergeData(JSON.parse(localData));
@@ -267,10 +273,8 @@ async function loadData() {
 
 // Função SaveData que escreve no Firebase
 function saveData() {
-    // Salva no navegador como Backup Offline
     localStorage.setItem('studyAppData', JSON.stringify(appData));
     
-    // Salva na nuvem (Firebase) em tempo real
     database.ref('appData').set(appData).catch(error => {
         console.error("Erro ao salvar na nuvem:", error);
     });
@@ -435,6 +439,43 @@ function renderPendingReviews() {
             todayList.innerHTML = `<div class="empty-msg" style="padding: 3rem; border: 1px dashed var(--border-color); border-radius: var(--radius); text-align: center; color: var(--text-muted);">Nenhuma revisão pendente para hoje. Excelente trabalho!</div>`;
         }
     }
+}
+
+// NOVA FUNÇÃO: ADICIONAR REVISÕES MANUAIS
+function initManualReviews() {
+    if (!elements.btnOpenManualRev) return;
+
+    elements.btnOpenManualRev.addEventListener('click', () => {
+        elements.inputManualRevName.value = '';
+        elements.modalManualRev.classList.add('active');
+    });
+
+    elements.btnCancelManualRev.addEventListener('click', () => {
+        elements.modalManualRev.classList.remove('active');
+    });
+
+    elements.btnSaveManualRev.addEventListener('click', () => {
+        const contentName = elements.inputManualRevName.value.trim();
+        
+        if (contentName) {
+            const d = new Date();
+            d.setDate(d.getDate() + REVIEW_INTERVALS[0]); // Calcula o 1º dia do ciclo (geralmente +1 dia)
+            
+            appData.reviews.push({
+                id: 'rev_manual_' + Date.now(),
+                path: 'manual_entry', 
+                name: contentName,
+                step: 0,
+                nextReview: d.toISOString().split('T')[0]
+            });
+            
+            saveData();
+            renderPendingReviews();
+            elements.modalManualRev.classList.remove('active');
+        } else {
+            alert("Por favor, digite o nome do conteúdo ou aula!");
+        }
+    });
 }
 
 function updateUI() {
@@ -932,15 +973,12 @@ document.addEventListener('keydown', (e) => {
     }
 });
 
-// EVENTOS DE DESCARREGAMENTO DE PÁGINA: O CULPADO FOI REMOVIDO DAQUI
 window.addEventListener('beforeunload', () => {
     if (isRunning) pauseTimer();
-    // saveData removido para não sobrescrever o Firebase ao recarregar a tela!
 });
 
 document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'hidden') {
-        // saveData removido para não sobrescrever o Firebase
         if (isRunning) {
             localStorage.setItem('lastTick', Date.now().toString());
         }

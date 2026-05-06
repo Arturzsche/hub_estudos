@@ -237,6 +237,9 @@
                     <div>
                         <h2 style="font-size: 1.5rem; color: var(--text-main); margin-bottom: 0.3rem;">SISTEMA DE REVISÕES</h2>
                     </div>
+                    <button id="btn-add-manual-review" class="btn primary" style="padding: 0.6rem 1rem; display: flex; align-items: center; gap: 6px; font-size: 0.8rem;">
+                        <svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg> Alimentar Revisão
+                    </button>
                 </div>
 
                 <div class="dashboard-grid" style="grid-template-columns: 2fr 1fr; align-items: start;">
@@ -304,6 +307,23 @@
                 <button id="btn-clear-today" class="btn secondary">Apagar Apenas Hoje</button>
                 <button id="btn-clear-all" class="btn danger">Zerar Tudo</button>
                 <button id="btn-cancel-clear" class="btn primary">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="manual-rev-modal" class="modal-overlay">
+        <div class="modal-content" style="max-width: 450px; text-align: left;">
+            <h2 style="margin-bottom: 1rem; font-size: 1.3rem; color: var(--text-main);">Registrar Novo Conteúdo</h2>
+            <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1.5rem; line-height: 1.4;">Insira o nome da matéria/aula que você acabou de estudar. O site criará revisões automáticas para 1, 7, 15, 30 e 60 dias.</p>
+            
+            <div style="margin-bottom: 1rem;">
+                <label style="display: block; margin-bottom: 0.5rem; font-size: 0.85rem; color: var(--text-muted); font-weight: 600;">Nome do Conteúdo / Assunto</label>
+                <input type="text" id="manual-rev-name" style="width: 100%; border-radius: 6px; padding: 0.8rem; border: 1px solid var(--border-color); background: var(--bg-color); color: var(--text-main); font-family: 'Inter', sans-serif;" placeholder="Ex: Aula 01 - Atos Administrativos">
+            </div>
+
+            <div style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: 1.5rem;">
+                <button id="btn-manual-rev-cancel" class="btn secondary">Cancelar</button>
+                <button id="btn-manual-rev-save" class="btn primary">Salvar na Agenda</button>
             </div>
         </div>
     </div>
