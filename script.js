@@ -14,8 +14,6 @@ firebase.initializeApp(firebaseConfig);
 const database = firebase.database();
 // ------------------------------
 
-const API_URL = "http://127.0.0.1:5000";
-
 let timerInterval;
 let isRunning = false;
 let lastTickTime = 0; 
@@ -27,7 +25,6 @@ const CYCLE_PHASES = [
     { name: "Questões (30min)", ms: 30 * 60 * 1000, isStudy: true }
 ];
 
-// O SEU CICLO DE ESPAÇAMENTO DE DIAS FICA AQUI:
 const REVIEW_INTERVALS = [1, 7, 15, 30, 60];
 
 let appData = {
@@ -48,8 +45,6 @@ let appData = {
         phaseIndex: 0,
         msRemaining: CYCLE_PHASES[0].ms
     },
-    mappedPdfs: [],
-    errors: [],
     reviews: []
 };
 
@@ -86,20 +81,20 @@ const elements = {
     subjectBank: document.getElementById('subject-bank'),
     newSubjectInput: document.getElementById('new-subject-input'),
     btnAddSubject: document.getElementById('btn-add-subject'),
-    
     btnAddCycle: document.getElementById('btn-add-cycle'),
-    
     cycleSubject: document.getElementById('cycle-subject'),
     cyclePhaseBadge: document.getElementById('cycle-phase-badge'),
     
-    libraryContainer: document.getElementById('library-container'),
-
-    // NOVOS ELEMENTOS DA REVISÃO MANUAL AQUI:
+    // Gerenciador de Revisões
     btnOpenManualRev: document.getElementById('btn-add-manual-review'),
     modalManualRev: document.getElementById('manual-rev-modal'),
     inputManualRevName: document.getElementById('manual-rev-name'),
+    selectManualRevSubject: document.getElementById('manual-rev-subject'),
+    inputManualRevNotes: document.getElementById('manual-rev-notes'),
     btnCancelManualRev: document.getElementById('btn-manual-rev-cancel'),
-    btnSaveManualRev: document.getElementById('btn-manual-rev-save')
+    btnSaveManualRev: document.getElementById('btn-manual-rev-save'),
+    allReviewsList: document.getElementById('all-reviews-list'),
+    filterReviewSubject: document.getElementById('filter-review-subject')
 };
 
 async function init() {
@@ -112,9 +107,7 @@ async function init() {
     setupNavigation();
     initChart();
     setupClearModal();
-    renderPdfLibrary();
-    initErrors();
-    initManualReviews(); // ATIVANDO A NOVA FUNÇÃO AQUI
+    initManualReviews(); 
     
     if (localStorage.getItem('theme') === 'light') {
         document.body.classList.remove('dark-mode');
@@ -129,6 +122,12 @@ function getTodayDate() {
     const offset = today.getTimezoneOffset();
     today.setMinutes(today.getMinutes() - offset);
     return today.toISOString().split('T')[0];
+}
+
+function formatDateBR(dateStr) {
+    if(!dateStr) return '';
+    const parts = dateStr.split('-');
+    return `${parts[2]}/${parts[1]}/${parts[0]}`;
 }
 
 function playBeep() {
@@ -152,14 +151,6 @@ function formatHoursText(totalSeconds) {
     const m = Math.floor((totalSeconds % 3600) / 60);
     if (h === 0) return `${m}m`;
     return `${h}h ${m}m`;
-}
-
-function formatSize(bytes) {
-    if (!bytes) return '';
-    const k = 1024;
-    const sizes = ['B', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
 }
 
 function updateTodaysSubjects() {
@@ -235,12 +226,9 @@ function mergeData(parsedSaved) {
     appData.recordWeek = parsedSaved.recordWeek || 0;
     appData.dailyGoalSeconds = parsedSaved.dailyGoalSeconds || 14400; 
     if (parsedSaved.cycleState) appData.cycleState = parsedSaved.cycleState;
-    if (parsedSaved.mappedPdfs) appData.mappedPdfs = parsedSaved.mappedPdfs;
-    if (parsedSaved.errors) appData.errors = parsedSaved.errors;
     if (parsedSaved.reviews) appData.reviews = parsedSaved.reviews;
 }
 
-// Função LoadData que puxa do Firebase
 async function loadData() {
     try {
         const snapshot = await database.ref('appData').once('value');
@@ -262,7 +250,6 @@ async function loadData() {
         if (localData) mergeData(JSON.parse(localData));
     }
 
-    if (!appData.errors) appData.errors = [];
     if (!appData.reviews) appData.reviews = [];
     
     const today = getTodayDate();
@@ -271,13 +258,9 @@ async function loadData() {
     }
 }
 
-// Função SaveData que escreve no Firebase
 function saveData() {
     localStorage.setItem('studyAppData', JSON.stringify(appData));
-    
-    database.ref('appData').set(appData).catch(error => {
-        console.error("Erro ao salvar na nuvem:", error);
-    });
+    database.ref('appData').set(appData).catch(error => console.error("Erro ao salvar:", error));
 }
 
 function checkStreak() {
@@ -352,6 +335,73 @@ function renderHeatmap() {
     }
 }
 
+// ----------------- SISTEMA DE REVISÕES ----------------- //
+
+function updateReviewSubjects() {
+    if(elements.selectManualRevSubject) {
+        elements.selectManualRevSubject.innerHTML = '<option value="">Selecione a matéria...</option>';
+        appData.savedSubjects.forEach(subj => {
+            elements.selectManualRevSubject.appendChild(new Option(subj, subj));
+        });
+    }
+    if(elements.filterReviewSubject) {
+        const currentFilter = elements.filterReviewSubject.value;
+        elements.filterReviewSubject.innerHTML = '<option value="all">Todas as Matérias</option>';
+        appData.savedSubjects.forEach(subj => {
+            elements.filterReviewSubject.appendChild(new Option(subj, subj));
+        });
+        elements.filterReviewSubject.value = currentFilter || 'all';
+    }
+}
+
+function initManualReviews() {
+    if (!elements.btnOpenManualRev) return;
+
+    updateReviewSubjects();
+
+    elements.btnOpenManualRev.addEventListener('click', () => {
+        elements.inputManualRevName.value = '';
+        elements.selectManualRevSubject.value = '';
+        elements.inputManualRevNotes.value = '';
+        elements.modalManualRev.classList.add('active');
+    });
+
+    elements.btnCancelManualRev.addEventListener('click', () => {
+        elements.modalManualRev.classList.remove('active');
+    });
+
+    elements.btnSaveManualRev.addEventListener('click', () => {
+        const contentName = elements.inputManualRevName.value.trim();
+        const subject = elements.selectManualRevSubject.value;
+        const notes = elements.inputManualRevNotes.value.trim();
+        
+        if (contentName && subject) {
+            const d = new Date();
+            d.setDate(d.getDate() + REVIEW_INTERVALS[0]); 
+            
+            appData.reviews.push({
+                id: 'rev_' + Date.now(),
+                subject: subject,
+                name: contentName,
+                notes: notes,
+                step: 0,
+                nextReview: d.toISOString().split('T')[0]
+            });
+            
+            saveData();
+            renderPendingReviews();
+            renderAllReviews();
+            elements.modalManualRev.classList.remove('active');
+        } else {
+            alert("Por favor, selecione a matéria e digite o nome do conteúdo!");
+        }
+    });
+
+    if (elements.filterReviewSubject) {
+        elements.filterReviewSubject.addEventListener('change', renderAllReviews);
+    }
+}
+
 function renderPendingReviews() {
     const list = document.getElementById('pending-reviews-list');
     const msg = document.getElementById('no-reviews-msg');
@@ -361,8 +411,7 @@ function renderPendingReviews() {
     const statToday = document.getElementById('rev-stat-today');
     const statTotal = document.getElementById('rev-stat-total');
     
-    if(!list) return;
-    list.innerHTML = '';
+    if(list) list.innerHTML = '';
     if(todayList) todayList.innerHTML = '';
     
     const today = getTodayDate();
@@ -376,31 +425,39 @@ function renderPendingReviews() {
     if(statTotal) statTotal.textContent = appData.reviews.length;
     
     if(pending.length > 0) {
-        msg.style.display = 'none';
-        badge.style.display = 'inline-block';
-        badge.textContent = pending.length;
+        if(msg) msg.style.display = 'none';
+        if(badge) {
+            badge.style.display = 'inline-block';
+            badge.textContent = pending.length;
+        }
         
         pending.forEach(rev => {
             const days = REVIEW_INTERVALS[rev.step];
+            const isOverdue = rev.nextReview < today;
+            const overdueBadge = isOverdue ? `<span style="background: var(--danger-color); color: white; font-size: 0.6rem; padding: 2px 6px; border-radius: 4px; margin-left: 6px;">Atrasada</span>` : '';
+            
             const html = `
-                <div class="rev-info">
-                    <span class="rev-name" title="${rev.name}">${rev.name}</span>
-                    <span class="rev-step">Revisão de ${days} dia(s)</span>
+                <div class="rev-info" style="flex: 1;">
+                    <span class="err-subj-badge" style="font-size: 0.65rem; color: var(--text-muted);">${rev.subject || 'Geral'}</span>
+                    <span class="rev-name" title="${rev.name}" style="font-weight: 600; display: block; margin: 2px 0;">${rev.name} ${overdueBadge}</span>
+                    <span class="rev-step" style="font-size: 0.75rem; color: var(--text-muted);">Revisão de ${days} dia(s)</span>
                 </div>
-                <button class="icon-btn-small btn-complete-rev" data-id="${rev.id}" title="Marcar como revisado" style="color: var(--success-color); border: 2px solid var(--success-color); padding: 8px;">
-                    <svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+                <button class="icon-btn-small btn-complete-rev" data-id="${rev.id}" title="Marcar como revisada" style="color: var(--success-color); border: 2px solid var(--success-color); padding: 10px; flex-shrink: 0;">
+                    <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
                 </button>
             `;
             
-            const divSmall = document.createElement('div');
-            divSmall.className = 'review-item due-today';
-            divSmall.innerHTML = html;
-            list.appendChild(divSmall);
+            if(list) {
+                const divSmall = document.createElement('div');
+                divSmall.className = 'review-item due-today';
+                divSmall.innerHTML = html;
+                list.appendChild(divSmall);
+            }
             
             if(todayList) {
                 const divBig = document.createElement('div');
                 divBig.className = 'review-item due-today';
-                divBig.style.padding = '1.5rem';
+                divBig.style.padding = '1.2rem';
                 divBig.innerHTML = html;
                 todayList.appendChild(divBig);
             }
@@ -411,19 +468,24 @@ function renderPendingReviews() {
             container.querySelectorAll('.btn-complete-rev').forEach(btn => {
                 btn.addEventListener('click', (e) => {
                     const id = e.currentTarget.getAttribute('data-id');
-                    const rev = appData.reviews.find(r => r.id === id);
-                    if(rev) {
+                    const revIndex = appData.reviews.findIndex(r => r.id === id);
+                    if(revIndex !== -1) {
+                        const rev = appData.reviews[revIndex];
                         rev.step++;
+                        
                         if(rev.step >= REVIEW_INTERVALS.length) {
-                            rev.step = REVIEW_INTERVALS.length - 1; 
+                            appData.reviews.splice(revIndex, 1);
+                            alert(`🎉 Parabéns! Você concluiu todo o ciclo de revisões de "${rev.name}"!`);
+                        } else {
+                            const nextInterval = REVIEW_INTERVALS[rev.step];
+                            const d = new Date();
+                            d.setDate(d.getDate() + nextInterval);
+                            rev.nextReview = d.toISOString().split('T')[0];
                         }
-                        const nextInterval = REVIEW_INTERVALS[rev.step];
-                        const d = new Date();
-                        d.setDate(d.getDate() + nextInterval);
-                        rev.nextReview = d.toISOString().split('T')[0];
                         
                         saveData();
                         renderPendingReviews();
+                        renderAllReviews();
                     }
                 });
             });
@@ -433,50 +495,76 @@ function renderPendingReviews() {
         attachListeners(todayList);
 
     } else {
-        msg.style.display = 'block';
-        badge.style.display = 'none';
+        if(msg) msg.style.display = 'block';
+        if(badge) badge.style.display = 'none';
         if(todayList) {
-            todayList.innerHTML = `<div class="empty-msg" style="padding: 3rem; border: 1px dashed var(--border-color); border-radius: var(--radius); text-align: center; color: var(--text-muted);">Nenhuma revisão pendente para hoje. Excelente trabalho!</div>`;
+            todayList.innerHTML = `<div class="empty-msg" style="padding: 3rem; border: 1px dashed var(--border-color); border-radius: var(--radius); text-align: center; color: var(--text-muted); font-size: 1rem;">Nenhuma revisão pendente. Excelente trabalho!</div>`;
         }
     }
 }
 
-// NOVA FUNÇÃO: ADICIONAR REVISÕES MANUAIS
-function initManualReviews() {
-    if (!elements.btnOpenManualRev) return;
+function renderAllReviews() {
+    const list = elements.allReviewsList;
+    if(!list) return;
+    list.innerHTML = '';
+    
+    const filter = elements.filterReviewSubject ? elements.filterReviewSubject.value : 'all';
+    
+    let filtered = appData.reviews;
+    if(filter && filter !== 'all') {
+        filtered = filtered.filter(r => r.subject === filter);
+    }
 
-    elements.btnOpenManualRev.addEventListener('click', () => {
-        elements.inputManualRevName.value = '';
-        elements.modalManualRev.classList.add('active');
-    });
+    filtered.sort((a, b) => new Date(a.nextReview) - new Date(b.nextReview));
 
-    elements.btnCancelManualRev.addEventListener('click', () => {
-        elements.modalManualRev.classList.remove('active');
-    });
+    if(filtered.length === 0) {
+        list.innerHTML = `<div class="empty-msg" style="grid-column: 1 / -1; padding: 4rem 2rem; text-align: center; color: var(--text-muted); border: 1px dashed var(--border-color); border-radius: var(--radius);">Você não tem nenhuma revisão futura programada para esta matéria.</div>`;
+        return;
+    }
 
-    elements.btnSaveManualRev.addEventListener('click', () => {
-        const contentName = elements.inputManualRevName.value.trim();
+    const today = getTodayDate();
+
+    filtered.forEach(rev => {
+        const stepText = rev.step < REVIEW_INTERVALS.length ? `${REVIEW_INTERVALS[rev.step]} dias` : 'Concluído';
+        const notesHtml = rev.notes ? `<p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.5rem; border-left: 2px solid var(--border-color); padding-left: 8px;">${rev.notes}</p>` : '';
+        const isOverdue = rev.nextReview < today;
+        const dateColor = isOverdue ? 'var(--danger-color)' : 'var(--text-main)';
         
-        if (contentName) {
-            const d = new Date();
-            d.setDate(d.getDate() + REVIEW_INTERVALS[0]); // Calcula o 1º dia do ciclo (geralmente +1 dia)
-            
-            appData.reviews.push({
-                id: 'rev_manual_' + Date.now(),
-                path: 'manual_entry', 
-                name: contentName,
-                step: 0,
-                nextReview: d.toISOString().split('T')[0]
-            });
-            
-            saveData();
-            renderPendingReviews();
-            elements.modalManualRev.classList.remove('active');
-        } else {
-            alert("Por favor, digite o nome do conteúdo ou aula!");
-        }
+        const card = document.createElement('div');
+        card.className = 'error-card'; // Reaproveitando o CSS limpo dos cards
+        card.style.padding = '1.2rem';
+        card.innerHTML = `
+            <div class="error-header" style="margin-bottom: 0;">
+                <div>
+                    <span class="err-subj-badge">${rev.subject || 'Geral'}</span>
+                    <h4 style="margin: 0.4rem 0; font-size: 1rem; color: var(--text-main); font-weight: 600;">${rev.name}</h4>
+                    ${notesHtml}
+                </div>
+                <button class="icon-btn-small del-rev-btn" data-id="${rev.id}" title="Excluir Revisão Definitivamente" style="color: var(--danger-color); opacity: 0.5;">
+                    <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M16 9v10H8V9h8m-1.5-6h-5l-1 1H5v2h14V4h-3.5l-1-1zM18 7H6v12c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7z"/></svg>
+                </button>
+            </div>
+            <div class="error-footer" style="display: flex; justify-content: space-between; align-items: center; margin-top: 1rem; border-top: 1px dashed var(--border-color); padding-top: 0.8rem;">
+                <span style="font-size: 0.8rem; color: var(--text-muted);">Próxima: <strong style="color: ${dateColor};">${formatDateBR(rev.nextReview)}</strong></span>
+                <span style="font-size: 0.75rem; background: var(--bg-color); padding: 4px 8px; border-radius: 4px; border: 1px solid var(--border-color); font-weight: 600;">Etapa: ${stepText}</span>
+            </div>
+        `;
+        list.appendChild(card);
+    });
+
+    list.querySelectorAll('.del-rev-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const id = e.currentTarget.getAttribute('data-id');
+            if(confirm('Tem certeza que deseja apagar esta revisão da sua agenda para sempre?')) {
+                appData.reviews = appData.reviews.filter(r => r.id !== id);
+                saveData();
+                renderAllReviews();
+                renderPendingReviews();
+            }
+        });
     });
 }
+// ------------------------------------------------------- //
 
 function updateUI() {
     updateTodaysSubjects();
@@ -505,6 +593,7 @@ function updateUI() {
     if (chartInstance) updateChartData();
     renderHeatmap(); 
     renderPendingReviews();
+    renderAllReviews();
 }
 
 function loadTimerState() {
@@ -758,11 +847,12 @@ function setupNavigation() {
             localStorage.setItem('activeView', targetId);
             
             if (targetId === 'timer') updateTimerDisplay(); 
-            if (targetId === 'reviews') renderPendingReviews();
         });
     });
 
-    const savedView = localStorage.getItem('activeView') || 'dashboard';
+    let savedView = localStorage.getItem('activeView') || 'dashboard';
+    if (savedView === 'library' || savedView === 'errors') savedView = 'dashboard';
+    
     const btnToClick = document.querySelector(`.nav-btn[data-target="${savedView}"]`);
     if (btnToClick) btnToClick.click();
 }
@@ -831,7 +921,7 @@ function renderSubjectBank() {
             appData.savedSubjects.splice(index, 1);
             saveData();
             renderSubjectBank();
-            updateErrorSubjects();
+            updateReviewSubjects();
         });
 
         elements.subjectBank.appendChild(pill);
@@ -845,7 +935,7 @@ elements.btnAddSubject.addEventListener('click', () => {
         elements.newSubjectInput.value = '';
         saveData();
         renderSubjectBank();
-        updateErrorSubjects();
+        updateReviewSubjects();
     }
 });
 
@@ -984,472 +1074,6 @@ document.addEventListener('visibilitychange', () => {
         }
     }
 });
-
-if ('mediaSession' in navigator) {
-    navigator.mediaSession.setActionHandler('play', () => {
-        if (!isRunning) startTimer();
-    });
-    navigator.mediaSession.setActionHandler('pause', () => {
-        if (isRunning) pauseTimer();
-    });
-}
-
-const btnStartMapping = document.getElementById('btn-start-mapping');
-const pdfCountDisplay = document.getElementById('pdf-count');
-const mappingStatus = document.getElementById('mapping-status');
-const searchInput = document.getElementById('search-pdf'); 
-const sortSelect = document.getElementById('sort-pdf'); 
-
-function renderPdfLibrary() {
-    if(!elements.libraryContainer) return;
-    elements.libraryContainer.innerHTML = '';
-    
-    if(pdfCountDisplay) pdfCountDisplay.textContent = appData.mappedPdfs.length;
-
-    const groupedPdfs = {};
-    
-    appData.mappedPdfs.forEach(file => {
-        const parts = file.path.split(/[\\/]/);
-        const folderName = parts.length > 1 ? parts[parts.length - 2] : "Arquivos Avulsos";
-        
-        if(!groupedPdfs[folderName]) {
-            groupedPdfs[folderName] = [];
-        }
-        groupedPdfs[folderName].push(file);
-    });
-
-    const sortOption = sortSelect ? sortSelect.value : 'name-asc';
-
-    for (const folder in groupedPdfs) {
-        groupedPdfs[folder].sort((a, b) => {
-            if (sortOption === 'name-asc') return a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' });
-            if (sortOption === 'name-desc') return b.name.localeCompare(a.name, undefined, { numeric: true, sensitivity: 'base' });
-            if (sortOption === 'date-desc') return (b.mtime || 0) - (a.mtime || 0);
-            if (sortOption === 'date-asc') return (a.mtime || 0) - (b.mtime || 0);
-            if (sortOption === 'size-desc') return (b.size || 0) - (a.size || 0);
-            if (sortOption === 'size-asc') return (a.size || 0) - (b.size || 0);
-            return 0;
-        });
-    }
-
-    const sortedFolders = Object.keys(groupedPdfs).sort((a, b) => a.localeCompare(b));
-
-    for (const folder of sortedFolders) {
-        const files = groupedPdfs[folder];
-        const folderGroup = document.createElement('div');
-        folderGroup.className = 'folder-group';
-        
-        const summary = document.createElement('div');
-        summary.className = 'folder-summary';
-        summary.innerHTML = `
-            <div class="folder-header-left">
-                <svg class="folder-icon" viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>
-                ${folder}
-            </div>
-            <div style="display: flex; align-items: center; gap: 1rem;">
-                <span class="folder-count">${files.length}</span>
-                <svg class="folder-chevron" viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/></svg>
-            </div>
-        `;
-        
-        summary.addEventListener('click', (e) => {
-            if (!e.target.closest('.status-dot')) {
-                folderGroup.classList.toggle('open');
-            }
-        });
-        
-        const wrapper = document.createElement('div');
-        wrapper.className = 'folder-content-wrapper';
-
-        const contentDiv = document.createElement('div');
-        contentDiv.className = 'folder-content';
-
-        files.forEach(file => {
-            const currentStatus = file.status || 'unread';
-            const sizeBadge = file.size ? `<span class="size-badge">${formatSize(file.size)}</span>` : '';
-
-            const fileItem = document.createElement('div');
-            fileItem.className = 'file-item';
-            fileItem.innerHTML = `
-                <a class="file-link" href="${API_URL}/abrir?caminho=${encodeURIComponent(file.path)}" target="_blank">
-                    <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M20 2H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-8.5 7.5c0 .83-.67 1.5-1.5 1.5H9v2H7.5V7H10c.83 0 1.5.67 1.5 1.5v1zm5 2c0 .83-.67 1.5-1.5 1.5h-2.5V7H15c.83 0 1.5.67 1.5 1.5v3zm4-3H19v1h1.5V11H19v2h-1.5V7h3v1.5zM9 9.5h1v-1H9v1zM4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm10 5.5h1v-3h-1v3z"/></svg>
-                    ${file.name}
-                </a>
-                <div class="file-actions">
-                    ${sizeBadge}
-                    <div class="status-selectors">
-                        <div class="status-dot status-red ${currentStatus === 'unread' ? 'active' : ''}" data-status="unread" data-path="${file.path}" title="Não Lida"></div>
-                        <div class="status-dot status-orange ${currentStatus === 'started' ? 'active' : ''}" data-status="started" data-path="${file.path}" title="Iniciada"></div>
-                        <div class="status-dot status-green ${currentStatus === 'completed' ? 'active' : ''}" data-status="completed" data-path="${file.path}" title="Concluída (Envia para Revisão)"></div>
-                    </div>
-                </div>
-            `;
-            contentDiv.appendChild(fileItem);
-        });
-
-        wrapper.appendChild(contentDiv);
-        folderGroup.appendChild(summary);
-        folderGroup.appendChild(wrapper);
-        elements.libraryContainer.appendChild(folderGroup);
-    }
-}
-
-if(sortSelect) {
-    sortSelect.addEventListener('change', () => {
-        renderPdfLibrary();
-    });
-}
-
-if(elements.libraryContainer) {
-    elements.libraryContainer.addEventListener('click', (e) => {
-        if (e.target.classList.contains('status-dot')) {
-            e.preventDefault();
-            e.stopPropagation(); 
-            
-            const path = e.target.getAttribute('data-path');
-            const newStatus = e.target.getAttribute('data-status');
-            const fileIndex = appData.mappedPdfs.findIndex(f => f.path === path);
-            
-            if (fileIndex !== -1) {
-                appData.mappedPdfs[fileIndex].status = newStatus;
-
-                if (newStatus === 'completed') {
-                    const existingRev = appData.reviews.find(r => r.path === path);
-                    if (!existingRev) {
-                        const d = new Date();
-                        d.setDate(d.getDate() + REVIEW_INTERVALS[0]); 
-                        appData.reviews.push({
-                            id: 'rev_' + Date.now(),
-                            path: path,
-                            name: appData.mappedPdfs[fileIndex].name,
-                            step: 0,
-                            nextReview: d.toISOString().split('T')[0]
-                        });
-                        renderPendingReviews();
-                    }
-                } else {
-                    const existingRevIndex = appData.reviews.findIndex(r => r.path === path);
-                    if (existingRevIndex !== -1) {
-                        appData.reviews.splice(existingRevIndex, 1);
-                        renderPendingReviews();
-                    }
-                }
-
-                saveData();
-                
-                const selectorsContainer = e.target.parentElement;
-                selectorsContainer.querySelectorAll('.status-dot').forEach(dot => {
-                    dot.classList.remove('active');
-                });
-                e.target.classList.add('active');
-            }
-        }
-    });
-}
-
-if(searchInput) {
-    searchInput.addEventListener('input', (e) => {
-        const term = e.target.value.toLowerCase();
-        const folderGroups = elements.libraryContainer.querySelectorAll('.folder-group');
-        
-        folderGroups.forEach(group => {
-            let hasMatch = false;
-            const fileItems = group.querySelectorAll('.file-item');
-            
-            fileItems.forEach(item => {
-                const text = item.textContent.toLowerCase();
-                if(text.includes(term)) {
-                    item.style.display = 'flex';
-                    hasMatch = true;
-                } else {
-                    item.style.display = 'none';
-                }
-            });
-
-            if(term === '') {
-                group.style.display = 'block';
-                group.classList.remove('open');
-            } else if (hasMatch) {
-                group.style.display = 'block';
-                group.classList.add('open');
-            } else {
-                group.style.display = 'none';
-            }
-        });
-    });
-}
-
-if(btnStartMapping) {
-    btnStartMapping.addEventListener('click', () => {
-        const existingPdfs = {};
-        appData.mappedPdfs.forEach(pdf => {
-            existingPdfs[pdf.path] = { status: pdf.status || 'unread' };
-        });
-
-        appData.mappedPdfs = [];
-        saveData();
-        renderPdfLibrary();
-        
-        let tempCount = 0;
-        if(searchInput) searchInput.value = ''; 
-        if(mappingStatus) mappingStatus.textContent = "Iniciando servidor local e buscando arquivos...";
-        btnStartMapping.disabled = true;
-
-        const eventSource = new EventSource(`${API_URL}/mapear`);
-
-        eventSource.onmessage = function(event) {
-            const data = JSON.parse(event.data);
-            
-            if (data.status === "processing") {
-                tempCount++;
-                if(pdfCountDisplay) pdfCountDisplay.textContent = tempCount;
-                if(mappingStatus) mappingStatus.textContent = `Varrendo: ${data.file.path}`;
-
-                const previousData = existingPdfs[data.file.path] || { status: 'unread' };
-
-                appData.mappedPdfs.unshift({
-                    name: data.file.name,
-                    path: data.file.path,
-                    size: data.file.size || 0,
-                    mtime: data.file.mtime || 0,
-                    status: previousData.status
-                });
-            } 
-            else if (data.status === "done") {
-                saveData();
-                renderPdfLibrary();
-                if(mappingStatus) mappingStatus.textContent = "Mapeamento concluído e salvo localmente!";
-                btnStartMapping.disabled = false;
-                eventSource.close(); 
-            }
-        };
-
-        eventSource.onerror = function() {
-            if(mappingStatus) mappingStatus.textContent = "Erro de conexão. Certifique-se de que o script Python está rodando na porta 5000.";
-            btnStartMapping.disabled = false;
-            eventSource.close();
-        };
-    });
-}
-
-const errElements = {
-    grid: document.getElementById('err-grid'),
-    emptyState: document.getElementById('err-empty-state'),
-    searchInput: document.getElementById('err-search-input'),
-    btnAdd: document.getElementById('btn-add-error'),
-    
-    modal: document.getElementById('err-modal'),
-    modalTitle: document.getElementById('err-modal-title'),
-    subjSelect: document.getElementById('err-subject-select'),
-    topicInput: document.getElementById('err-topic-input'),
-    conceptInput: document.getElementById('err-concept-input'),
-    contextInput: document.getElementById('err-context-input'),
-    btnCancel: document.getElementById('btn-err-cancel'),
-    btnSave: document.getElementById('btn-err-save')
-};
-
-let currentErrorEditId = null;
-
-function updateErrorSubjects() {
-    if(!errElements.subjSelect) return;
-    errElements.subjSelect.innerHTML = '<option value="">Selecione...</option>';
-    appData.savedSubjects.forEach(subj => {
-        errElements.subjSelect.appendChild(new Option(subj, subj));
-    });
-}
-
-function renderErrors() {
-    if(!errElements.grid) return;
-    errElements.grid.innerHTML = '';
-    
-    const searchTerm = errElements.searchInput.value.toLowerCase();
-    
-    const filteredErrors = appData.errors.filter(err => {
-        const conceptMatch = err.concept.toLowerCase().includes(searchTerm);
-        const contextMatch = err.context.toLowerCase().includes(searchTerm);
-        return conceptMatch || contextMatch;
-    });
-
-    if (appData.errors.length === 0) {
-        errElements.emptyState.style.display = 'block';
-        errElements.grid.style.display = 'none';
-        errElements.emptyState.querySelector('h3').textContent = 'Seu caderno está vazio';
-        errElements.emptyState.querySelector('p').textContent = 'Registre as pegadinhas e os conceitos que você mais erra nas questões.';
-    } else if (filteredErrors.length === 0) {
-        errElements.emptyState.style.display = 'block';
-        errElements.grid.style.display = 'none';
-        errElements.emptyState.querySelector('h3').textContent = 'Nenhum erro encontrado';
-        errElements.emptyState.querySelector('p').textContent = 'Nenhum registro corresponde à sua busca.';
-    } else {
-        errElements.emptyState.style.display = 'none';
-        errElements.grid.style.display = 'grid';
-
-        filteredErrors.reverse().forEach(err => {
-            const topicHTML = err.topic ? `<span class="err-topic-badge"><svg viewBox="0 0 24 24" width="14" height="14"><path fill="currentColor" d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg> ${err.topic}</span>` : '';
-
-            const card = document.createElement('div');
-            card.className = 'error-card';
-            card.innerHTML = `
-                <div class="error-header">
-                    <div class="error-tags">
-                        <span class="err-subj-badge">${err.subject}</span>
-                        ${topicHTML}
-                    </div>
-                    <div style="display: flex; gap: 4px;">
-                        <button class="icon-btn-small edit-err-btn" data-id="${err.id}" title="Editar">
-                            <svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
-                        </button>
-                        <button class="icon-btn-small delete del-err-btn" data-id="${err.id}" title="Excluir" style="color: var(--danger-color);">
-                            <svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M16 9v10H8V9h8m-1.5-6h-5l-1 1H5v2h14V4h-3.5l-1-1zM18 7H6v12c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7z"/></svg>
-                        </button>
-                    </div>
-                </div>
-                <div class="error-content">
-                    <p class="err-concept">${err.concept}</p>
-                    <p class="err-context"><strong>Pegadinha da Banca:</strong><br>${err.context}</p>
-                </div>
-                <div class="error-footer">
-                    <span>Registrado em: ${err.date}</span>
-                </div>
-            `;
-            errElements.grid.appendChild(card);
-        });
-
-        errElements.grid.querySelectorAll('.del-err-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const id = e.currentTarget.getAttribute('data-id');
-                appData.errors = appData.errors.filter(err => err.id !== id);
-                saveData();
-                renderErrors();
-            });
-        });
-
-        errElements.grid.querySelectorAll('.edit-err-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const id = e.currentTarget.getAttribute('data-id');
-                const err = appData.errors.find(err => err.id === id);
-                if(err) {
-                    currentErrorEditId = id;
-                    errElements.modalTitle.textContent = "Editar Erro";
-                    errElements.subjSelect.value = err.subject;
-                    errElements.topicInput.value = err.topic || '';
-                    errElements.conceptInput.value = err.concept;
-                    errElements.contextInput.value = err.context;
-                    errElements.modal.classList.add('active');
-                }
-            });
-        });
-    }
-}
-
-function initErrors() {
-    if(!errElements.grid) return;
-    
-    updateErrorSubjects();
-    renderErrors();
-
-    errElements.searchInput.addEventListener('input', () => {
-        renderErrors();
-    });
-
-    errElements.btnAdd.addEventListener('click', () => {
-        currentErrorEditId = null;
-        errElements.modalTitle.textContent = "Registrar Erro";
-        errElements.subjSelect.value = '';
-        errElements.topicInput.value = '';
-        errElements.conceptInput.value = '';
-        errElements.contextInput.value = '';
-        errElements.modal.classList.add('active');
-    });
-
-    errElements.btnCancel.addEventListener('click', () => {
-        errElements.modal.classList.remove('active');
-    });
-
-    errElements.btnSave.addEventListener('click', () => {
-        const subj = errElements.subjSelect.value;
-        const topic = errElements.topicInput.value.trim();
-        const concept = errElements.conceptInput.value.trim();
-        const context = errElements.contextInput.value.trim();
-
-        if (subj && concept && context) {
-            if (currentErrorEditId) {
-                const errIndex = appData.errors.findIndex(e => e.id === currentErrorEditId);
-                if (errIndex !== -1) {
-                    appData.errors[errIndex].subject = subj;
-                    appData.errors[errIndex].topic = topic;
-                    appData.errors[errIndex].concept = concept;
-                    appData.errors[errIndex].context = context;
-                }
-            } else {
-                const d = new Date();
-                const dateStr = d.toLocaleDateString('pt-BR');
-                appData.errors.push({
-                    id: 'err_' + Date.now(),
-                    subject: subj,
-                    topic: topic,
-                    concept: concept,
-                    context: context,
-                    date: dateStr
-                });
-            }
-            
-            saveData();
-            renderErrors();
-            errElements.modal.classList.remove('active');
-        } else {
-            alert("Por favor, preencha a Matéria, o Conceito e a Pegadinha.");
-        }
-    });
-
-    window.addEventListener('paste', async (e) => {
-        if (!errElements.modal.classList.contains('active')) return;
-        
-        const clipboardItems = e.clipboardData ? e.clipboardData.items : [];
-        let imageFile = null;
-
-        for (let i = 0; i < clipboardItems.length; i++) {
-            const item = clipboardItems[i];
-            if (item.type.indexOf('image') !== -1) {
-                imageFile = item.getAsFile();
-                break;
-            }
-        }
-
-        if (imageFile) {
-            e.preventDefault(); 
-            const originalTitle = errElements.modalTitle.textContent;
-            errElements.modalTitle.textContent = "🤖 Analisando questão com IA...";
-            errElements.conceptInput.value = "Aguarde, extraindo a regra da questão (Isso pode levar uns 10 segundos)...";
-            errElements.contextInput.value = "Aguarde, dissecando a pegadinha da banca...";
-
-            const formData = new FormData();
-            formData.append('image', imageFile);
-
-            try {
-                const response = await fetch(`${API_URL}/analisar_erro`, {
-                    method: 'POST',
-                    body: formData
-                });
-                
-                if (!response.ok) {
-                    throw new Error("Erro no servidor Python.");
-                }
-
-                const data = await response.json();
-                
-                errElements.conceptInput.value = data.conceito || "Conceito não encontrado na resposta da IA.";
-                errElements.contextInput.value = data.contexto || "Contexto não encontrado na resposta da IA.";
-                errElements.modalTitle.textContent = originalTitle;
-            } catch (error) {
-                console.error("Erro na API:", error);
-                errElements.conceptInput.value = "Erro na conexão com a Inteligência Artificial.";
-                errElements.contextInput.value = "Verifique o terminal do Python (VS Code) para ver qual foi o erro exato. Lembre-se de colar a chave de API no arquivo app.py e reiniciar o servidor no terminal!";
-                errElements.modalTitle.textContent = originalTitle;
-            }
-        }
-    });
-}
 
 const btnPrintSchedule = document.getElementById('btn-print-schedule');
 if (btnPrintSchedule) {
