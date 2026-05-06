@@ -247,6 +247,7 @@ body.dark-mode .error-card { box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
 }
 
 /* --- ESTILOS DE IMPRESSÃO DO CRONOGRAMA --- */
+/* --- ESTILOS DE IMPRESSÃO DO CRONOGRAMA --- */
 @media print {
     @page { 
         size: A4 portrait; 
@@ -278,7 +279,7 @@ body.dark-mode .error-card { box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
         margin: 0 !important; 
     }
     
-    /* Oculta os botões, opções de adicionar matéria e o TÍTULO do cronograma */
+    /* Oculta botões, adicionar matéria e o título */
     #btn-print-schedule, 
     .add-subject-wrapper, 
     .subject-bank-panel, 
@@ -291,17 +292,25 @@ body.dark-mode .error-card { box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
     .table-responsive { 
         overflow: visible !important; 
     }
+
+    /* ESSA REGRA ESCONDE A COLUNA DE HORÁRIOS APENAS NA IMPRESSÃO */
+    #schedule-table th:first-child,
+    #schedule-table td:first-child {
+        display: none !important;
+    }
     
-    /* Formatação da Tabela: Simples, sem cores e com bordas fortes */
-    .schedule-table { 
+    /* Forçando a tabela a juntar as bordas */
+    #schedule-table { 
         width: 100%; 
-        border-collapse: collapse; 
+        border-collapse: collapse !important; 
         font-family: 'Inter', Arial, sans-serif !important; 
         border: 2px solid #000 !important; 
         margin-top: 1cm !important;
     }
     
-    .schedule-table th, .schedule-table td { 
+    /* Forçando o navegador a desenhar as bordas internas de todas as células */
+    #schedule-table th, 
+    #schedule-table td { 
         border: 1px solid #000 !important; 
         padding: 1.5rem 0.5rem !important; 
         text-align: center !important; 
@@ -311,16 +320,11 @@ body.dark-mode .error-card { box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
         background-color: #fff !important; 
     }
     
-    .schedule-table th { 
+    #schedule-table th { 
         font-weight: bold !important; 
         text-transform: uppercase !important; 
         letter-spacing: 0.05em !important; 
         font-size: 10pt !important; 
         border-bottom: 2px solid #000 !important; 
-    }
-    
-    .schedule-table td.time-cell { 
-        font-weight: 600 !important; 
-        white-space: nowrap !important; 
     }
 }
