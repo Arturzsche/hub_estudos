@@ -124,6 +124,10 @@
                 </div>
                 
                 <div class="controls">
+                    <button id="btn-timer-mode" class="icon-btn" title="Modo Livre / Ciclo">
+                        <svg viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M12 20a8 8 0 1 0 0-16 8 8 0 0 0 0 16zm1-13h-2v4.25l2.85 2.85 1.42-1.42-2.27-2.27V7z"/></svg>
+                    </button>
+
                     <button id="btn-toggle" class="icon-btn" title="Iniciar/Pausar (Espaço)">
                         <svg id="icon-play" viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M8 5v14l11-7z"/></svg>
                         <svg id="icon-pause" viewBox="0 0 24 24" width="24" height="24" style="display: none;"><path fill="currentColor" d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
@@ -137,7 +141,7 @@
                         <svg viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M4 18l8.5-6L4 6v12zm9-12v12l8.5-6L13 6z"/></svg>
                     </button>
 
-                    <button id="btn-reset" class="icon-btn" title="Reiniciar Ciclo (Delete)">
+                    <button id="btn-reset" class="icon-btn" title="Zerar / Reiniciar (Delete)">
                         <svg viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"/></svg>
                     </button>
                     <button id="focus-toggle" class="icon-btn" title="Modo Foco (Enter)">
@@ -149,7 +153,6 @@
 
         <section id="tasks" class="view">
             <div class="container">
-                
                 <div style="margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: center;">
                     <h2 style="font-size: 1.5rem; color: var(--text-main); margin-bottom: 0;">Cronograma da Semana</h2>
                     <button id="btn-print-schedule" class="btn secondary" style="padding: 0.5rem 1rem; display: flex; align-items: center; gap: 8px;">
@@ -163,8 +166,7 @@
                         <input type="text" id="new-subject-input" placeholder="Digite uma nova matéria...">
                         <button id="btn-add-subject" class="btn primary">Adicionar</button>
                     </div>
-                    <div id="subject-bank" class="subject-bank">
-                    </div>
+                    <div id="subject-bank" class="subject-bank"></div>
                 </div>
                 
                 <div class="table-responsive">
@@ -181,8 +183,7 @@
                                 <th>Domingo</th>
                             </tr>
                         </thead>
-                        <tbody>
-                        </tbody>
+                        <tbody></tbody>
                     </table>
                     
                     <div style="text-align: center; margin-top: 1rem;">
@@ -198,39 +199,28 @@
             <div class="container">
                 <div style="margin-bottom: 2.5rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
                     <div>
-                        <h2 style="font-size: 1.5rem; color: var(--text-main); margin-bottom: 0.3rem;">Central de Revisões</h2>
-                        <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 0.5rem;">Gerencie o seu ciclo de repetição espaçada (1, 7, 15, 30 e 60 dias).</p>
+                        <h2 style="font-size: 1.5rem; color: var(--text-main); margin-bottom: 0.3rem;">Foco de Hoje</h2>
+                        <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 0.5rem;">As revisões que vencem hoje aparecerão abaixo.</p>
                     </div>
-                    <button id="btn-add-manual-review" class="btn primary" style="padding: 0.8rem 1.5rem; display: flex; align-items: center; gap: 8px; font-size: 0.9rem;">
-                        <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg> Alimentar Revisão
-                    </button>
+                    <div style="display: flex; gap: 1rem;">
+                        <button id="btn-manage-reviews" class="btn secondary" style="padding: 0.8rem 1.5rem; display: flex; align-items: center; gap: 8px; font-size: 0.9rem;">
+                            <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M3 13h2v-2H3v2zm0 4h2v-2H3v2zm0-8h2V7H3v2zm4 4h14v-2H7v2zm0 4h14v-2H7v2zM7 7v2h14V7H7z"/></svg> Gerenciar Agenda
+                        </button>
+                        <button id="btn-add-manual-review" class="btn primary" style="padding: 0.8rem 1.5rem; display: flex; align-items: center; gap: 8px; font-size: 0.9rem;">
+                            <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg> Alimentar Revisão
+                        </button>
+                    </div>
                 </div>
 
                 <div class="dashboard-grid" style="grid-template-columns: 1fr;">
-                    
                     <div style="background: var(--surface-color); border: 1px solid var(--border-color); border-radius: var(--radius); padding: 1.5rem; margin-bottom: 1.5rem;">
                         <h3 style="margin-bottom: 1.5rem; color: var(--danger-color); display: flex; align-items: center; gap: 0.5rem; font-size: 1.1rem; text-transform: uppercase; letter-spacing: 0.05em;">
                             <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
-                            Pendentes para Hoje (<span id="rev-stat-today">0</span>)
+                            Pendentes para Hoje (<span id="rev-stat-today-main">0</span>)
                         </h3>
-                        <div id="reviews-today-list" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1rem;">
+                        <div id="reviews-today-list-main" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 1rem;">
                         </div>
                     </div>
-
-                    <div style="background: var(--surface-color); border: 1px solid var(--border-color); border-radius: var(--radius); padding: 1.5rem;">
-                        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.5rem;">
-                            <h3 style="font-size: 1.1rem; color: var(--text-main); text-transform: uppercase; letter-spacing: 0.05em;">Todas as Revisões Programadas (<span id="rev-stat-total">0</span>)</h3>
-                            <div style="display: flex; align-items: center; gap: 0.5rem;">
-                                <span style="font-size: 0.85rem; color: var(--text-muted);">Filtrar:</span>
-                                <select id="filter-review-subject" class="sort-select" style="min-width: 200px;">
-                                    <option value="all">Todas as Matérias</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div id="all-reviews-list" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1.5rem;">
-                        </div>
-                    </div>
-
                 </div>
             </div>
         </section>
@@ -238,7 +228,7 @@
     </main>
 
     <div id="clear-modal" class="modal-overlay">
-        <div class="modal-content">
+        <div class="modal-content" style="max-width: 400px;">
             <h2>Limpar Histórico</h2>
             <p>O que você deseja apagar? Esta ação não pode ser desfeita.</p>
             <div class="modal-options">
@@ -261,12 +251,10 @@
                         <option value="">Selecione a matéria...</option>
                     </select>
                 </div>
-
                 <div>
                     <label style="display: block; margin-bottom: 0.5rem; font-size: 0.85rem; color: var(--text-muted); font-weight: 600;">Nome do Conteúdo / Assunto</label>
                     <input type="text" id="manual-rev-name" style="width: 100%; border-radius: 6px; padding: 0.8rem; border: 1px solid var(--border-color); background: var(--bg-color); color: var(--text-main); font-family: 'Inter', sans-serif;" placeholder="Ex: Aula 01 - Atos Administrativos">
                 </div>
-
                 <div>
                     <label style="display: block; margin-bottom: 0.5rem; font-size: 0.85rem; color: var(--text-muted); font-weight: 600;">Observações (Opcional)</label>
                     <textarea id="manual-rev-notes" rows="2" style="width: 100%; padding: 0.8rem; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-color); color: var(--text-main); font-family: 'Inter', sans-serif; resize: vertical;" placeholder="Ex: Focar na tabela de prazos decadenciais da página 14."></textarea>
@@ -276,6 +264,50 @@
             <div style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: 1.5rem;">
                 <button id="btn-manual-rev-cancel" class="btn secondary">Cancelar</button>
                 <button id="btn-manual-rev-save" class="btn primary">Salvar na Agenda</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="manage-rev-modal" class="modal-overlay">
+        <div class="modal-content" style="max-width: 900px; width: 95%; max-height: 90vh; overflow-y: auto; text-align: left; padding: 2rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; border-bottom: 1px solid var(--border-color); padding-bottom: 1rem;">
+                <h2 style="font-size: 1.3rem; color: var(--text-main); margin: 0;">Gerenciador de Agenda (<span id="rev-stat-total">0</span>)</h2>
+                <div style="display: flex; align-items: center; gap: 1rem;">
+                    <span style="font-size: 0.85rem; color: var(--text-muted);">Filtrar por matéria:</span>
+                    <select id="filter-review-subject" class="sort-select" style="min-width: 200px; padding: 0.5rem;">
+                        <option value="all">Todas as Matérias</option>
+                    </select>
+                    <button id="btn-close-manage" class="icon-btn-small" style="font-size: 1.5rem; font-weight: bold; margin-left: 1rem;">&times;</button>
+                </div>
+            </div>
+            
+            <div id="all-reviews-list" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1.5rem;">
+                </div>
+        </div>
+    </div>
+
+    <div id="edit-rev-modal" class="modal-overlay">
+        <div class="modal-content" style="max-width: 500px; text-align: left;">
+            <h2 style="margin-bottom: 1.5rem; font-size: 1.3rem; color: var(--text-main);">Editar Revisão</h2>
+            
+            <div style="display: grid; grid-template-columns: 1fr; gap: 1rem; margin-bottom: 1rem;">
+                <div>
+                    <label style="display: block; margin-bottom: 0.5rem; font-size: 0.85rem; color: var(--text-muted); font-weight: 600;">Matéria da Revisão</label>
+                    <select id="edit-rev-subject" class="sort-select" style="width: 100%; border-radius: 6px; padding: 0.8rem; border-color: var(--border-color);"></select>
+                </div>
+                <div>
+                    <label style="display: block; margin-bottom: 0.5rem; font-size: 0.85rem; color: var(--text-muted); font-weight: 600;">Nome do Conteúdo</label>
+                    <input type="text" id="edit-rev-name" style="width: 100%; border-radius: 6px; padding: 0.8rem; border: 1px solid var(--border-color); background: var(--bg-color); color: var(--text-main);">
+                </div>
+                <div>
+                    <label style="display: block; margin-bottom: 0.5rem; font-size: 0.85rem; color: var(--text-muted); font-weight: 600;">Observações</label>
+                    <textarea id="edit-rev-notes" rows="2" style="width: 100%; padding: 0.8rem; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-color); color: var(--text-main); resize: vertical;"></textarea>
+                </div>
+            </div>
+
+            <div style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: 1.5rem;">
+                <button id="btn-edit-rev-cancel" class="btn secondary">Cancelar</button>
+                <button id="btn-edit-rev-save" class="btn primary">Salvar Alterações</button>
             </div>
         </div>
     </div>

@@ -246,7 +246,23 @@ body.dark-mode .error-card { box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
     .btn-remove-row { left: 0; }
 }
 
-/* --- ESTILOS DE IMPRESSÃO DO CRONOGRAMA --- */
+/* --- ESTILOS EXTRAS PARA AS NOVAS TELAS FLUTUANTES --- */
+#manage-rev-modal .modal-content {
+    background: var(--bg-color); /* Fundo um pouco mais escuro para contrastar os cards */
+}
+
+#manage-rev-modal .error-card {
+    background: var(--surface-color); /* Mantém os cards em destaque */
+}
+
+#manage-rev-modal::-webkit-scrollbar {
+    width: 8px;
+}
+#manage-rev-modal::-webkit-scrollbar-thumb {
+    background: var(--border-color);
+    border-radius: 4px;
+}
+
 @media print {
     @page { 
         size: A4 landscape; /* Mudei para paisagem (deitado) para caber melhor os 7 dias, mas se quiser em pé, volte para 'portrait' */
