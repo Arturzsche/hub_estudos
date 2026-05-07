@@ -44,8 +44,8 @@ let appData = {
         msRemaining: CYCLE_PHASES[0].ms
     },
     reviews: [],
-    timerMode: 'pomodoro', // 'pomodoro' ou 'stopwatch'
-    stopwatchMs: 0 // Guarda o tempo do modo livre
+    timerMode: 'pomodoro', 
+    stopwatchMs: 0 
 };
 
 let todaysSubjects = [];
@@ -57,7 +57,7 @@ const elements = {
     btnToggle: document.getElementById('btn-toggle'),
     btnSkipPhase: document.getElementById('btn-skip-phase'),
     btnSkipBlock: document.getElementById('btn-skip-block'),
-    btnTimerMode: document.getElementById('btn-timer-mode'), // NOVO
+    btnTimerMode: document.getElementById('btn-timer-mode'), 
     iconPlay: document.getElementById('icon-play'),
     iconPause: document.getElementById('icon-pause'),
     btnReset: document.getElementById('btn-reset'),
@@ -82,7 +82,6 @@ const elements = {
     cycleSubject: document.getElementById('cycle-subject'),
     cyclePhaseBadge: document.getElementById('cycle-phase-badge'),
     
-    // Elementos de Revisão
     btnOpenManualRev: document.getElementById('btn-add-manual-review'),
     modalManualRev: document.getElementById('manual-rev-modal'),
     inputManualRevName: document.getElementById('manual-rev-name'),
@@ -91,14 +90,12 @@ const elements = {
     btnCancelManualRev: document.getElementById('btn-manual-rev-cancel'),
     btnSaveManualRev: document.getElementById('btn-manual-rev-save'),
     
-    // Janela Gerenciador
     btnManageReviews: document.getElementById('btn-manage-reviews'),
     modalManageRev: document.getElementById('manage-rev-modal'),
     btnCloseManage: document.getElementById('btn-close-manage'),
     allReviewsList: document.getElementById('all-reviews-list'),
     filterReviewSubject: document.getElementById('filter-review-subject'),
     
-    // Janela Editar
     modalEditRev: document.getElementById('edit-rev-modal'),
     editRevSubject: document.getElementById('edit-rev-subject'),
     editRevName: document.getElementById('edit-rev-name'),
@@ -120,7 +117,6 @@ async function init() {
     
     if (localStorage.getItem('theme') === 'light') document.body.classList.remove('dark-mode');
 
-    // Botão de Limpar Modal (Mantido do anterior)
     document.getElementById('btn-open-clear').addEventListener('click', () => document.getElementById('clear-modal').classList.add('active'));
     document.getElementById('btn-cancel-clear').addEventListener('click', () => document.getElementById('clear-modal').classList.remove('active'));
     document.getElementById('btn-clear-today').addEventListener('click', () => {
@@ -139,10 +135,13 @@ async function init() {
     updateUI();
 }
 
+// CORREÇÃO: Pega a data local blindada contra fusos horários do UTC
 function getTodayDate() {
-    const today = new Date();
-    today.setMinutes(today.getMinutes() - today.getTimezoneOffset());
-    return today.toISOString().split('T')[0];
+    const d = new Date();
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
 }
 
 function formatDateBR(dateStr) {
@@ -191,7 +190,6 @@ function updateTodaysSubjects() {
     }
 }
 
-// ATUALIZADO: Lógica de Exibição do Timer Livre / Ciclo
 function updateTimerDisplay() {
     if (appData.timerMode === 'stopwatch') {
         elements.cycleSubject.textContent = "Estudo Livre";
@@ -310,7 +308,12 @@ function calculateRecords() {
         let cw = 0; let start = new Date(dates[i]);
         for (let j = 0; j < 7; j++) {
             let checkDate = new Date(start); checkDate.setDate(checkDate.getDate() + j);
-            let checkDateStr = checkDate.toISOString().split('T')[0];
+            
+            const y = checkDate.getFullYear();
+            const m = String(checkDate.getMonth() + 1).padStart(2, '0');
+            const d = String(checkDate.getDate()).padStart(2, '0');
+            const checkDateStr = `${y}-${m}-${d}`;
+            
             if (appData.history[checkDateStr]) cw += appData.history[checkDateStr].time;
         }
         if (cw > maxWeek) maxWeek = cw;
@@ -323,7 +326,12 @@ function renderHeatmap() {
     const today = new Date();
     for(let i = 29; i >= 0; i--) {
         let d = new Date(today); d.setDate(today.getDate() - i);
-        let dateStr = d.toISOString().split('T')[0];
+        
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        let dateStr = `${y}-${m}-${day}`;
+        
         let time = appData.history[dateStr] ? appData.history[dateStr].time : 0;
         let cell = document.createElement('div'); cell.className = 'heatmap-cell';
         if (time === 0) cell.classList.add('level-0');
@@ -335,12 +343,10 @@ function renderHeatmap() {
     }
 }
 
-// --- FUNÇÃO DO GOOGLE CALENDAR (NOTIFICAÇÃO) ---
 function createGoogleCalendarLink(rev) {
-    const nextDateStr = rev.nextReview.replace(/-/g, ''); // Converte 2024-05-15 para 20240515
-    const text = encodeURIComponent(`Revisar: ${rev.name}`);
+    const nextDateStr = rev.nextReview.replace(/-/g, ''); 
+    const text = encodeURIComponent(`Revisão: ${rev.name}`);
     const details = encodeURIComponent(`Matéria: ${rev.subject}\nObservações: ${rev.notes || 'Nenhuma'}\n\nAgendado pelo MeusEstudos.com`);
-    // Agenda para as 08:00am da manhã
     return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${text}&dates=${nextDateStr}T110000Z/${nextDateStr}T120000Z&details=${details}`;
 }
 
@@ -367,12 +373,13 @@ function initManualReviews() {
     if (!elements.btnOpenManualRev) return;
     updateReviewSubjects();
 
-    // Modal Alimentar
     elements.btnOpenManualRev.addEventListener('click', () => {
         elements.inputManualRevName.value = ''; elements.selectManualRevSubject.value = ''; elements.inputManualRevNotes.value = '';
         elements.modalManualRev.classList.add('active');
     });
+    
     elements.btnCancelManualRev.addEventListener('click', () => elements.modalManualRev.classList.remove('active'));
+    
     elements.btnSaveManualRev.addEventListener('click', () => {
         const contentName = elements.inputManualRevName.value.trim();
         const subject = elements.selectManualRevSubject.value;
@@ -380,20 +387,29 @@ function initManualReviews() {
         
         if (contentName && subject) {
             const d = new Date(); d.setDate(d.getDate() + REVIEW_INTERVALS[0]); 
+            
+            const nextYear = d.getFullYear();
+            const nextMonth = String(d.getMonth() + 1).padStart(2, '0');
+            const nextDay = String(d.getDate()).padStart(2, '0');
+            const formattedNext = `${nextYear}-${nextMonth}-${nextDay}`;
+            
             appData.reviews.push({
-                id: 'rev_' + Date.now(), subject: subject, name: contentName, notes: notes, step: 0, nextReview: d.toISOString().split('T')[0]
+                id: 'rev_' + Date.now(), subject: subject, name: contentName, notes: notes, step: 0, nextReview: formattedNext
             });
             saveData(); renderPendingReviews(); renderAllReviews();
             elements.modalManualRev.classList.remove('active');
         } else alert("Por favor, selecione a matéria e digite o nome!");
     });
 
-    // Modal Gerenciar
-    elements.btnManageReviews.addEventListener('click', () => elements.modalManageRev.classList.add('active'));
+    elements.btnManageReviews.addEventListener('click', () => {
+        elements.filterReviewSubject.value = 'all'; 
+        renderAllReviews(); 
+        elements.modalManageRev.classList.add('active');
+    });
+    
     elements.btnCloseManage.addEventListener('click', () => elements.modalManageRev.classList.remove('active'));
     elements.filterReviewSubject.addEventListener('change', renderAllReviews);
 
-    // Modal Editar
     elements.btnCancelEditRev.addEventListener('click', () => elements.modalEditRev.classList.remove('active'));
     elements.btnSaveEditRev.addEventListener('click', () => {
         const revIndex = appData.reviews.findIndex(r => r.id === currentEditingRevId);
@@ -436,7 +452,7 @@ function renderPendingReviews() {
                     <div style="display: flex; gap: 8px; margin-top: 6px; align-items: center;">
                         <span class="rev-step" style="font-size: 0.75rem; color: var(--text-muted); background: var(--bg-color); padding: 2px 6px; border-radius: 4px; border: 1px solid var(--border-color);">Etapa: ${days} dia(s)</span>
                         <a href="${gCalLink}" target="_blank" title="Agendar Notificação no Google Calendar" style="color: var(--text-muted); display: flex; align-items: center; transition: 0.2s;">
-                            <svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20a2 2 0 0 0 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10zM9 14H7v-2h2v2zm4 0h-2v-2h2v2zm4 0h-2v-2h2v2zm-8 4H7v-2h2v2zm4 0h-2v-2h2v2zm4 0h-2v-2h2v2z"/></svg>
+                            <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20a2 2 0 0 0 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10zM9 14H7v-2h2v2zm4 0h-2v-2h2v2zm4 0h-2v-2h2v2zm-8 4H7v-2h2v2zm4 0h-2v-2h2v2zm4 0h-2v-2h2v2z"/></svg>
                         </a>
                     </div>
                 </div>
@@ -469,7 +485,11 @@ function renderPendingReviews() {
                         } else {
                             const nextInterval = REVIEW_INTERVALS[rev.step];
                             const d = new Date(); d.setDate(d.getDate() + nextInterval);
-                            rev.nextReview = d.toISOString().split('T')[0];
+                            
+                            const nextYear = d.getFullYear();
+                            const nextMonth = String(d.getMonth() + 1).padStart(2, '0');
+                            const nextDay = String(d.getDate()).padStart(2, '0');
+                            rev.nextReview = `${nextYear}-${nextMonth}-${nextDay}`;
                         }
                         saveData(); renderPendingReviews(); renderAllReviews();
                     }
@@ -493,10 +513,12 @@ function renderAllReviews() {
     if(filter && filter !== 'all') filtered = filtered.filter(r => r.subject === filter);
 
     filtered.sort((a, b) => new Date(a.nextReview) - new Date(b.nextReview));
-    document.getElementById('rev-stat-total').textContent = filtered.length;
+    
+    const statTotal = document.getElementById('rev-stat-total');
+    if(statTotal) statTotal.textContent = filtered.length;
 
     if(filtered.length === 0) {
-        list.innerHTML = `<div class="empty-msg" style="grid-column: 1 / -1; padding: 4rem 2rem; text-align: center; color: var(--text-muted); border: 1px dashed var(--border-color); border-radius: var(--radius);">Nenhuma revisão encontrada.</div>`;
+        list.innerHTML = `<div class="empty-msg" style="grid-column: 1 / -1; padding: 3rem 2rem; text-align: center; color: var(--text-muted); border: 1px dashed var(--border-color); border-radius: var(--radius); font-size: 0.9rem;">Nenhuma revisão encontrada.</div>`;
         return;
     }
 
@@ -504,32 +526,39 @@ function renderAllReviews() {
 
     filtered.forEach(rev => {
         const stepText = rev.step < REVIEW_INTERVALS.length ? `${REVIEW_INTERVALS[rev.step]} dias` : 'Concluído';
-        const notesHtml = rev.notes ? `<p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.5rem; border-left: 2px solid var(--border-color); padding-left: 8px;">${rev.notes}</p>` : '';
+        const notesHtml = rev.notes ? `<p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.3rem; border-left: 2px solid var(--border-color); padding-left: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${rev.notes}</p>` : '';
         const isOverdue = rev.nextReview < today;
         const dateColor = isOverdue ? 'var(--danger-color)' : 'var(--text-main)';
+        const gCalLink = createGoogleCalendarLink(rev);
         
         const card = document.createElement('div');
         card.className = 'error-card'; 
-        card.style.padding = '1.2rem';
+        card.style.padding = '0.8rem 1rem'; 
+        card.style.gap = '0.5rem';
         card.innerHTML = `
-            <div class="error-header" style="margin-bottom: 0;">
-                <div>
-                    <span class="err-subj-badge">${rev.subject || 'Geral'}</span>
-                    <h4 style="margin: 0.4rem 0; font-size: 1rem; color: var(--text-main); font-weight: 600;">${rev.name}</h4>
+            <div class="error-header" style="margin-bottom: 0; align-items: center;">
+                <div style="flex: 1; min-width: 0;">
+                    <span class="err-subj-badge" style="font-size: 0.6rem;">${rev.subject || 'Geral'}</span>
+                    <h4 style="margin: 0.2rem 0 0 0; font-size: 0.9rem; color: var(--text-main); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${rev.name}">${rev.name}</h4>
                     ${notesHtml}
                 </div>
-                <div style="display: flex; gap: 4px; flex-shrink: 0;">
-                    <button class="icon-btn-small edit-rev-btn" data-id="${rev.id}" title="Editar Revisão">
-                        <svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+                <div style="display: flex; gap: 4px; flex-shrink: 0; align-self: flex-start;">
+                    <button class="icon-btn-small edit-rev-btn" data-id="${rev.id}" title="Editar Revisão" style="padding: 4px;">
+                        <svg viewBox="0 0 24 24" width="14" height="14"><path fill="currentColor" d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
                     </button>
-                    <button class="icon-btn-small del-rev-btn" data-id="${rev.id}" title="Excluir Definitivamente" style="color: var(--danger-color);">
-                        <svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M16 9v10H8V9h8m-1.5-6h-5l-1 1H5v2h14V4h-3.5l-1-1zM18 7H6v12c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7z"/></svg>
+                    <button class="icon-btn-small del-rev-btn" data-id="${rev.id}" title="Excluir Definitivamente" style="color: var(--danger-color); padding: 4px;">
+                        <svg viewBox="0 0 24 24" width="14" height="14"><path fill="currentColor" d="M16 9v10H8V9h8m-1.5-6h-5l-1 1H5v2h14V4h-3.5l-1-1zM18 7H6v12c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7z"/></svg>
                     </button>
                 </div>
             </div>
-            <div class="error-footer" style="display: flex; justify-content: space-between; align-items: center; margin-top: 1rem; border-top: 1px dashed var(--border-color); padding-top: 0.8rem;">
-                <span style="font-size: 0.8rem; color: var(--text-muted);">Próxima: <strong style="color: ${dateColor};">${formatDateBR(rev.nextReview)}</strong></span>
-                <span style="font-size: 0.75rem; background: var(--bg-color); padding: 4px 8px; border-radius: 4px; border: 1px solid var(--border-color); font-weight: 600;">Etapa: ${stepText}</span>
+            <div class="error-footer" style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.5rem; border-top: 1px dashed var(--border-color); padding-top: 0.6rem;">
+                <div style="display: flex; align-items: center; gap: 6px;">
+                    <span style="font-size: 0.75rem; color: var(--text-muted);">Próxima: <strong style="color: ${dateColor};">${formatDateBR(rev.nextReview)}</strong></span>
+                    <a href="${gCalLink}" target="_blank" title="Agendar Notificação no Google Calendar" style="color: var(--text-muted); display: flex; align-items: center; transition: 0.2s;">
+                        <svg viewBox="0 0 24 24" width="14" height="14"><path fill="currentColor" d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20a2 2 0 0 0 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10zM9 14H7v-2h2v2zm4 0h-2v-2h2v2zm4 0h-2v-2h2v2zm-8 4H7v-2h2v2zm4 0h-2v-2h2v2zm4 0h-2v-2h2v2z"/></svg>
+                    </a>
+                </div>
+                <span style="font-size: 0.65rem; background: var(--bg-color); padding: 2px 6px; border-radius: 4px; border: 1px solid var(--border-color); font-weight: 600;">Etapa: ${stepText}</span>
             </div>
         `;
         list.appendChild(card);
@@ -619,7 +648,6 @@ function loadTimerState() {
     updateToggleBtn();
 }
 
-// ATUALIZADO: Motor do Timer que suporta os dois modos
 function startTimer() {
     if (isRunning) return;
     if (appData.timerMode === 'pomodoro' && todaysSubjects.length > 0 && appData.cycleState.subjectIndex >= todaysSubjects.length) return; 
@@ -650,7 +678,6 @@ function startTimer() {
         
         accumulatedMsToSave += delta;
 
-        // LÓGICA DE TEMPO: AQUI É ONDE O MODO LIVRE FUNCIONA
         if (appData.timerMode === 'stopwatch') {
             appData.stopwatchMs += delta;
         } else {
@@ -658,13 +685,11 @@ function startTimer() {
             if (todaysSubjects.length === 0) appData.cycleState.msRemaining = 0;
         }
 
-        // SALVAMENTO NO HISTÓRICO (Ocorre em ambos os modos)
         if (accumulatedMsToSave >= 1000) {
             const secondsPassed = Math.floor(accumulatedMsToSave / 1000);
             accumulatedMsToSave -= (secondsPassed * 1000); 
             
             const currentPhase = CYCLE_PHASES[appData.cycleState.phaseIndex];
-            // Se for modo livre, sempre soma o tempo estudado
             if (appData.timerMode === 'stopwatch' || todaysSubjects.length === 0 || (currentPhase && currentPhase.isStudy)) {
                 appData.history[today].time += secondsPassed;
                 if (appData.history[today].time % 5 === 0) saveData(); 
@@ -673,7 +698,6 @@ function startTimer() {
             }
         }
 
-        // LÓGICA DE PULAR FASE (Apenas no modo pomodoro)
         if (appData.timerMode === 'pomodoro' && appData.cycleState.msRemaining <= 0 && todaysSubjects.length > 0) {
             playBeep(); 
             appData.cycleState.phaseIndex++;
@@ -727,13 +751,11 @@ function skipBlock() {
     saveData(); updateTimerDisplay();
 }
 
-// Botoes do Cronometro
 elements.btnToggle.addEventListener('click', () => { if (isRunning) pauseTimer(); else startTimer(); });
 elements.btnReset.addEventListener('click', resetTimer);
 if (elements.btnSkipPhase) elements.btnSkipPhase.addEventListener('click', skipPhase);
 if (elements.btnSkipBlock) elements.btnSkipBlock.addEventListener('click', skipBlock);
 
-// NOVO: Alternar Modo de Timer
 if (elements.btnTimerMode) {
     elements.btnTimerMode.addEventListener('click', () => {
         pauseTimer();
@@ -748,7 +770,13 @@ function getChartData() {
     for (let i = 6; i >= 0; i--) {
         const d = new Date(today); d.setDate(today.getDate() - i);
         labels.push(d.toLocaleDateString('pt-BR', { weekday: 'short' }).toUpperCase());
-        const seconds = appData.history[d.toISOString().split('T')[0]] ? appData.history[d.toISOString().split('T')[0]].time : 0;
+        
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        const dateStr = `${y}-${m}-${day}`;
+        
+        const seconds = appData.history[dateStr] ? appData.history[dateStr].time : 0;
         data.push(seconds / 3600);
     }
     return { labels, data };
