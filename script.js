@@ -135,7 +135,6 @@ async function init() {
     updateUI();
 }
 
-// CORREÇÃO: Pega a data local blindada contra fusos horários do UTC
 function getTodayDate() {
     const d = new Date();
     const year = d.getFullYear();
@@ -404,7 +403,7 @@ function initManualReviews() {
     elements.btnManageReviews.addEventListener('click', () => {
         elements.filterReviewSubject.value = 'all'; 
         renderAllReviews(); 
-        elements.modalManageRev.classList.add('active');
+        setTimeout(() => elements.modalManageRev.classList.add('active'), 10);
     });
     
     elements.btnCloseManage.addEventListener('click', () => elements.modalManageRev.classList.remove('active'));
@@ -425,53 +424,43 @@ function initManualReviews() {
 
 function renderPendingReviews() {
     const badge = document.getElementById('review-count-badge');
-    const todayList = document.getElementById('reviews-today-list-main');
-    const statToday = document.getElementById('rev-stat-today-main');
+    const list = document.getElementById('pending-reviews-list');
+    const msg = document.getElementById('no-reviews-msg');
     
-    if(todayList) todayList.innerHTML = '';
+    if(list) list.innerHTML = '';
     
     const today = getTodayDate();
     let pending = [];
     appData.reviews.forEach(rev => { if (rev.nextReview <= today) pending.push(rev); });
     
-    if(statToday) statToday.textContent = pending.length;
-    
     if(pending.length > 0) {
         if(badge) { badge.style.display = 'inline-block'; badge.textContent = pending.length; }
+        if(msg) msg.style.display = 'none';
         
         pending.forEach(rev => {
             const days = REVIEW_INTERVALS[rev.step];
             const isOverdue = rev.nextReview < today;
             const overdueBadge = isOverdue ? `<span style="background: var(--danger-color); color: white; font-size: 0.6rem; padding: 2px 6px; border-radius: 4px; margin-left: 6px;">Atrasada</span>` : '';
-            const gCalLink = createGoogleCalendarLink(rev);
-
+            
             const html = `
                 <div class="rev-info" style="flex: 1;">
                     <span class="err-subj-badge" style="font-size: 0.65rem; color: var(--text-muted);">${rev.subject || 'Geral'}</span>
-                    <span class="rev-name" title="${rev.name}" style="font-weight: 600; display: block; margin: 4px 0; font-size: 1rem;">${rev.name} ${overdueBadge}</span>
-                    <div style="display: flex; gap: 8px; margin-top: 6px; align-items: center;">
-                        <span class="rev-step" style="font-size: 0.75rem; color: var(--text-muted); background: var(--bg-color); padding: 2px 6px; border-radius: 4px; border: 1px solid var(--border-color);">Etapa: ${days} dia(s)</span>
-                        <a href="${gCalLink}" target="_blank" title="Agendar Notificação no Google Calendar" style="color: var(--text-muted); display: flex; align-items: center; transition: 0.2s;">
-                            <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20a2 2 0 0 0 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10zM9 14H7v-2h2v2zm4 0h-2v-2h2v2zm4 0h-2v-2h2v2zm-8 4H7v-2h2v2zm4 0h-2v-2h2v2zm4 0h-2v-2h2v2z"/></svg>
-                        </a>
-                    </div>
+                    <span class="rev-name" title="${rev.name}" style="font-weight: 600; display: block; margin: 2px 0;">${rev.name} ${overdueBadge}</span>
+                    <span class="rev-step" style="font-size: 0.75rem; color: var(--text-muted);">Revisão de ${days} dia(s)</span>
                 </div>
-                <button class="icon-btn-small btn-complete-rev" data-id="${rev.id}" title="Marcar como revisada" style="color: var(--success-color); border: 2px solid var(--success-color); padding: 12px; flex-shrink: 0; background: rgba(39, 201, 63, 0.05);">
-                    <svg viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+                <button class="icon-btn-small btn-complete-rev-side" data-id="${rev.id}" title="Marcar como revisada" style="color: var(--success-color); border: 2px solid var(--success-color); padding: 8px; flex-shrink: 0;">
+                    <svg viewBox="0 0 24 24" width="14" height="14"><path fill="currentColor" d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
                 </button>
             `;
             
-            if(todayList) {
-                const divBig = document.createElement('div');
-                divBig.className = 'review-item due-today';
-                divBig.style.padding = '1.2rem';
-                divBig.innerHTML = html;
-                todayList.appendChild(divBig);
-            }
+            const divSmall = document.createElement('div');
+            divSmall.className = 'review-item due-today';
+            divSmall.innerHTML = html;
+            if(list) list.appendChild(divSmall);
         });
         
-        if(todayList) {
-            todayList.querySelectorAll('.btn-complete-rev').forEach(btn => {
+        if(list) {
+            list.querySelectorAll('.btn-complete-rev-side').forEach(btn => {
                 btn.addEventListener('click', (e) => {
                     const id = e.currentTarget.getAttribute('data-id');
                     const revIndex = appData.reviews.findIndex(r => r.id === id);
@@ -499,7 +488,7 @@ function renderPendingReviews() {
 
     } else {
         if(badge) badge.style.display = 'none';
-        if(todayList) todayList.innerHTML = `<div class="empty-msg" style="padding: 3rem; border: 1px dashed var(--border-color); border-radius: var(--radius); text-align: center; color: var(--text-muted); font-size: 1rem;">Nenhuma revisão pendente para hoje. Excelente trabalho!</div>`;
+        if(msg) msg.style.display = 'block';
     }
 }
 
@@ -527,9 +516,18 @@ function renderAllReviews() {
     filtered.forEach(rev => {
         const stepText = rev.step < REVIEW_INTERVALS.length ? `${REVIEW_INTERVALS[rev.step]} dias` : 'Concluído';
         const notesHtml = rev.notes ? `<p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.3rem; border-left: 2px solid var(--border-color); padding-left: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${rev.notes}</p>` : '';
-        const isOverdue = rev.nextReview < today;
+        const isOverdue = rev.nextReview <= today;
         const dateColor = isOverdue ? 'var(--danger-color)' : 'var(--text-main)';
         const gCalLink = createGoogleCalendarLink(rev);
+        
+        let completeBtnHtml = '';
+        if (isOverdue) {
+            completeBtnHtml = `
+                <button class="icon-btn-small btn-complete-rev" data-id="${rev.id}" title="Marcar etapa como Concluída" style="color: var(--success-color); border: 1px solid var(--success-color); padding: 4px; border-radius: 4px; margin-left: 8px;">
+                    <svg viewBox="0 0 24 24" width="14" height="14"><path fill="currentColor" d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+                </button>
+            `;
+        }
         
         const card = document.createElement('div');
         card.className = 'error-card'; 
@@ -554,14 +552,40 @@ function renderAllReviews() {
             <div class="error-footer" style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.5rem; border-top: 1px dashed var(--border-color); padding-top: 0.6rem;">
                 <div style="display: flex; align-items: center; gap: 6px;">
                     <span style="font-size: 0.75rem; color: var(--text-muted);">Próxima: <strong style="color: ${dateColor};">${formatDateBR(rev.nextReview)}</strong></span>
-                    <a href="${gCalLink}" target="_blank" title="Agendar Notificação no Google Calendar" style="color: var(--text-muted); display: flex; align-items: center; transition: 0.2s;">
+                    <a href="${gCalLink}" target="_blank" title="Agendar Notificação" style="color: var(--text-muted); display: flex; align-items: center; transition: 0.2s;">
                         <svg viewBox="0 0 24 24" width="14" height="14"><path fill="currentColor" d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20a2 2 0 0 0 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10zM9 14H7v-2h2v2zm4 0h-2v-2h2v2zm4 0h-2v-2h2v2zm-8 4H7v-2h2v2zm4 0h-2v-2h2v2zm4 0h-2v-2h2v2z"/></svg>
                     </a>
+                    ${completeBtnHtml}
                 </div>
                 <span style="font-size: 0.65rem; background: var(--bg-color); padding: 2px 6px; border-radius: 4px; border: 1px solid var(--border-color); font-weight: 600;">Etapa: ${stepText}</span>
             </div>
         `;
         list.appendChild(card);
+    });
+
+    list.querySelectorAll('.btn-complete-rev').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const id = e.currentTarget.getAttribute('data-id');
+            const revIndex = appData.reviews.findIndex(r => r.id === id);
+            if(revIndex !== -1) {
+                const rev = appData.reviews[revIndex];
+                rev.step++;
+                
+                if(rev.step >= REVIEW_INTERVALS.length) {
+                    appData.reviews.splice(revIndex, 1);
+                    alert(`🎉 Parabéns! Você concluiu todo o ciclo de revisões de "${rev.name}"!`);
+                } else {
+                    const nextInterval = REVIEW_INTERVALS[rev.step];
+                    const d = new Date(); d.setDate(d.getDate() + nextInterval);
+                    
+                    const nextYear = d.getFullYear();
+                    const nextMonth = String(d.getMonth() + 1).padStart(2, '0');
+                    const nextDay = String(d.getDate()).padStart(2, '0');
+                    rev.nextReview = `${nextYear}-${nextMonth}-${nextDay}`;
+                }
+                saveData(); renderAllReviews(); renderPendingReviews();
+            }
+        });
     });
 
     list.querySelectorAll('.del-rev-btn').forEach(btn => {

@@ -100,7 +100,7 @@
                             <span id="review-count-badge" style="background: var(--danger-color); color: white; font-size: 0.7rem; padding: 2px 6px; border-radius: 10px; font-weight: bold; display: none;">0</span>
                         </div>
                         <div id="pending-reviews-list" style="display: flex; flex-direction: column; gap: 0.8rem; max-height: 250px; overflow-y: auto; padding-right: 4px;">
-                            </div>
+                        </div>
                         <div id="no-reviews-msg" style="text-align: center; color: var(--text-muted); font-size: 0.85rem; padding: 1rem 0;">
                             Tudo em dia! Nenhuma revisão para hoje.
                         </div>
@@ -196,30 +196,18 @@
         </section>
 
         <section id="reviews" class="view">
-            <div class="container">
-                <div style="margin-bottom: 2.5rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
-                    <div>
-                        <h2 style="font-size: 1.5rem; color: var(--text-main); margin-bottom: 0.3rem;">Foco de Hoje</h2>
-                        <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 0.5rem;">As revisões que vencem hoje aparecerão abaixo.</p>
-                    </div>
-                    <div style="display: flex; gap: 1rem;">
-                        <button id="btn-manage-reviews" class="btn secondary" style="padding: 0.8rem 1.5rem; display: flex; align-items: center; gap: 8px; font-size: 0.9rem;">
-                            <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M3 13h2v-2H3v2zm0 4h2v-2H3v2zm0-8h2V7H3v2zm4 4h14v-2H7v2zm0 4h14v-2H7v2zM7 7v2h14V7H7z"/></svg> Gerenciar Agenda
-                        </button>
-                        <button id="btn-add-manual-review" class="btn primary" style="padding: 0.8rem 1.5rem; display: flex; align-items: center; gap: 8px; font-size: 0.9rem;">
-                            <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg> Alimentar Revisão
-                        </button>
-                    </div>
-                </div>
-
-                <div class="dashboard-grid" style="grid-template-columns: 1fr;">
-                    <div style="background: var(--surface-color); border: 1px solid var(--border-color); border-radius: var(--radius); padding: 1.5rem; margin-bottom: 1.5rem;">
-                        <h3 style="margin-bottom: 1.5rem; color: var(--danger-color); display: flex; align-items: center; gap: 0.5rem; font-size: 1.1rem; text-transform: uppercase; letter-spacing: 0.05em;">
-                            <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
-                            Pendentes para Hoje (<span id="rev-stat-today-main">0</span>)
-                        </h3>
-                            <div id="all-reviews-list" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 1rem;">                        </div>
-                    </div>
+            <div class="container" style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 70vh; text-align: center;">
+                <svg viewBox="0 0 24 24" width="64" height="64" style="color: var(--text-muted); opacity: 0.3; margin-bottom: 1.5rem;"><path fill="currentColor" d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19a2 2 0 0 0 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7v-5z"/></svg>
+                <h2 style="font-size: 2rem; color: var(--text-main); margin-bottom: 1rem; text-transform: none; letter-spacing: normal;">Sistema de Revisões</h2>
+                <p style="color: var(--text-muted); font-size: 1rem; margin-bottom: 2.5rem; max-width: 500px; line-height: 1.5;">Suas revisões agendadas ficam armazenadas aqui. Acesse o gerenciador para visualizar, concluir ou editar os conteúdos.</p>
+                
+                <div style="display: flex; gap: 1.5rem; flex-wrap: wrap; justify-content: center;">
+                    <button id="btn-manage-reviews" class="btn secondary" style="padding: 1rem 2rem; font-size: 1rem; display: flex; align-items: center; gap: 10px;">
+                        <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M3 13h2v-2H3v2zm0 4h2v-2H3v2zm0-8h2V7H3v2zm4 4h14v-2H7v2zm0 4h14v-2H7v2zM7 7v2h14V7H7z"/></svg> Gerenciar Agenda
+                    </button>
+                    <button id="btn-add-manual-review" class="btn primary" style="padding: 1rem 2rem; font-size: 1rem; display: flex; align-items: center; gap: 10px;">
+                        <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg> Alimentar Revisão
+                    </button>
                 </div>
             </div>
         </section>
@@ -280,8 +268,8 @@
                 </div>
             </div>
             
-            <div id="all-reviews-list" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1.5rem;">
-                </div>
+            <div id="all-reviews-list" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 1rem;">
+            </div>
         </div>
     </div>
 
