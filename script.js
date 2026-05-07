@@ -342,56 +342,14 @@ function renderHeatmap() {
     }
 }
 
-// ----------------- NOVO: GERADOR DE ARQUIVO .ICS (CALENDÁRIO UNIVERSAL) ----------------- //
-function generateAndDownloadICS(subject, name, notes) {
-    let icsContent = "BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//MeusEstudos//PT\n";
-    
-    // Para cada intervalo, gera um evento no calendário
-    REVIEW_INTERVALS.forEach(days => {
-        let d = new Date();
-        d.setDate(d.getDate() + days);
-
-        // Formatação UTC exigida pelo formato .ics
-        let year = d.getUTCFullYear();
-        let month = String(d.getUTCMonth() + 1).padStart(2, '0');
-        let day = String(d.getUTCDate()).padStart(2, '0');
-        
-        // Configura o evento para as 08:00h da manhã (Horário de Brasília) => 11:00h UTC
-        let dateStr = `${year}${month}${day}T110000Z`;
-        let endDateStr = `${year}${month}${day}T120000Z`;
-
-        icsContent += "BEGIN:VEVENT\n";
-        icsContent += `DTSTART:${dateStr}\n`;
-        icsContent += `DTEND:${endDateStr}\n`;
-        icsContent += `SUMMARY:Revisão (${days}d): ${subject} - ${name}\n`;
-        icsContent += `DESCRIPTION:Lembrete automático do seu ciclo de repetição espaçada.\\n\\nMatéria: ${subject}\\nObservações: ${notes || 'Nenhuma'}\n`;
-        
-        // Configura um alarme/notificação para apitar 10 minutos antes
-        icsContent += "BEGIN:VALARM\nACTION:DISPLAY\nDESCRIPTION:Lembrete de Revisão\nTRIGGER:-PT10M\nEND:VALARM\n";
-        icsContent += "END:VEVENT\n";
-    });
-
-    icsContent += "END:VCALENDAR";
-
-    // Força o navegador a baixar o arquivo
-    const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
-    const link = document.createElement('a');
-    link.href = window.URL.createObjectURL(blob);
-    link.setAttribute('download', `Revisoes_${subject.replace(/\s+/g, '_')}.ics`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-}
-
-// O link individual que ficava nos cards ainda é útil caso o arquivo original seja perdido
 function createGoogleCalendarLink(rev) {
     const nextDateStr = rev.nextReview.replace(/-/g, ''); 
     const text = encodeURIComponent(`Revisão: ${rev.name}`);
     const details = encodeURIComponent(`Matéria: ${rev.subject}\nObservações: ${rev.notes || 'Nenhuma'}\n\nAgendado pelo MeusEstudos.com`);
     return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${text}&dates=${nextDateStr}T110000Z/${nextDateStr}T120000Z&details=${details}`;
 }
-// ---------------------------------------------------------------------------------------- //
 
+// ----------------- SISTEMA DE REVISÕES ----------------- //
 
 function updateReviewSubjects() {
     if(elements.selectManualRevSubject) {
@@ -437,16 +395,8 @@ function initManualReviews() {
             appData.reviews.push({
                 id: 'rev_' + Date.now(), subject: subject, name: contentName, notes: notes, step: 0, nextReview: formattedNext
             });
-            
             saveData(); renderPendingReviews(); renderAllReviews();
             elements.modalManualRev.classList.remove('active');
-
-            // --- A MÁGICA ACONTECE AQUI: ---
-            generateAndDownloadICS(subject, contentName, notes);
-            setTimeout(() => {
-                alert("Sua revisão foi registrada no site! \n\nBaixamos um arquivo de calendário (.ics) no seu computador. Dê um duplo clique nele para agendar automaticamente TODOS os dias de repetição (1, 7, 15, 30 e 60) no seu Google Agenda/Outlook para você receber e-mails/notificações!");
-            }, 500);
-
         } else alert("Por favor, selecione a matéria e digite o nome!");
     });
 
