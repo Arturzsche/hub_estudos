@@ -342,14 +342,14 @@ function renderHeatmap() {
     }
 }
 
+// ----------------- INTEGRAÇÃO DIRETA COM O GOOGLE CALENDAR (AGENDAMENTO EM CASCATA) ----------------- //
 function createGoogleCalendarLink(rev) {
     const nextDateStr = rev.nextReview.replace(/-/g, ''); 
     const text = encodeURIComponent(`Revisão: ${rev.name}`);
-    const details = encodeURIComponent(`Matéria: ${rev.subject}\nObservações: ${rev.notes || 'Nenhuma'}\n\nAgendado pelo MeusEstudos.com`);
+    const details = encodeURIComponent(`Matéria: ${rev.subject}\nObservações: ${rev.notes || 'Nenhuma'}\n\nLembrete gerado pelo MeusEstudos.com`);
+    // Agenda o evento das 08:00h às 09:00h (Horário local do Brasil / UTC-3 = 11h UTC)
     return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${text}&dates=${nextDateStr}T110000Z/${nextDateStr}T120000Z&details=${details}`;
 }
-
-// ----------------- SISTEMA DE REVISÕES ----------------- //
 
 function updateReviewSubjects() {
     if(elements.selectManualRevSubject) {
@@ -379,6 +379,7 @@ function initManualReviews() {
     
     elements.btnCancelManualRev.addEventListener('click', () => elements.modalManualRev.classList.remove('active'));
     
+    // CRIAR NOVA REVISÃO E ABRIR O CALENDÁRIO
     elements.btnSaveManualRev.addEventListener('click', () => {
         const contentName = elements.inputManualRevName.value.trim();
         const subject = elements.selectManualRevSubject.value;
@@ -392,11 +393,18 @@ function initManualReviews() {
             const nextDay = String(d.getDate()).padStart(2, '0');
             const formattedNext = `${nextYear}-${nextMonth}-${nextDay}`;
             
-            appData.reviews.push({
+            const newRev = {
                 id: 'rev_' + Date.now(), subject: subject, name: contentName, notes: notes, step: 0, nextReview: formattedNext
-            });
+            };
+            appData.reviews.push(newRev);
+            
             saveData(); renderPendingReviews(); renderAllReviews();
             elements.modalManualRev.classList.remove('active');
+
+            // Magia em cascata: Abre o calendário para agendar a 1ª revisão
+            const gCalLink = createGoogleCalendarLink(newRev);
+            window.open(gCalLink, '_blank');
+
         } else alert("Por favor, selecione a matéria e digite o nome!");
     });
 
@@ -422,6 +430,7 @@ function initManualReviews() {
     });
 }
 
+// CONCLUIR REVISÃO E AGENDAR A PRÓXIMA (Tela Principal)
 function renderPendingReviews() {
     const badge = document.getElementById('review-count-badge');
     const list = document.getElementById('pending-reviews-list');
@@ -479,6 +488,10 @@ function renderPendingReviews() {
                             const nextMonth = String(d.getMonth() + 1).padStart(2, '0');
                             const nextDay = String(d.getDate()).padStart(2, '0');
                             rev.nextReview = `${nextYear}-${nextMonth}-${nextDay}`;
+                            
+                            // Magia em cascata: Abre o calendário para agendar a próxima etapa!
+                            const gCalLink = createGoogleCalendarLink(rev);
+                            window.open(gCalLink, '_blank');
                         }
                         saveData(); renderPendingReviews(); renderAllReviews();
                     }
@@ -492,6 +505,7 @@ function renderPendingReviews() {
     }
 }
 
+// CONCLUIR REVISÃO E AGENDAR A PRÓXIMA (Gerenciador de Agenda)
 function renderAllReviews() {
     const list = elements.allReviewsList;
     if(!list) return;
@@ -518,7 +532,6 @@ function renderAllReviews() {
         const notesHtml = rev.notes ? `<p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.3rem; border-left: 2px solid var(--border-color); padding-left: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${rev.notes}</p>` : '';
         const isOverdue = rev.nextReview <= today;
         const dateColor = isOverdue ? 'var(--danger-color)' : 'var(--text-main)';
-        const gCalLink = createGoogleCalendarLink(rev);
         
         let completeBtnHtml = '';
         if (isOverdue) {
@@ -552,9 +565,6 @@ function renderAllReviews() {
             <div class="error-footer" style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.5rem; border-top: 1px dashed var(--border-color); padding-top: 0.6rem;">
                 <div style="display: flex; align-items: center; gap: 6px;">
                     <span style="font-size: 0.75rem; color: var(--text-muted);">Próxima: <strong style="color: ${dateColor};">${formatDateBR(rev.nextReview)}</strong></span>
-                    <a href="${gCalLink}" target="_blank" title="Agendar Notificação" style="color: var(--text-muted); display: flex; align-items: center; transition: 0.2s;">
-                        <svg viewBox="0 0 24 24" width="14" height="14"><path fill="currentColor" d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20a2 2 0 0 0 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10zM9 14H7v-2h2v2zm4 0h-2v-2h2v2zm4 0h-2v-2h2v2zm-8 4H7v-2h2v2zm4 0h-2v-2h2v2zm4 0h-2v-2h2v2z"/></svg>
-                    </a>
                     ${completeBtnHtml}
                 </div>
                 <span style="font-size: 0.65rem; background: var(--bg-color); padding: 2px 6px; border-radius: 4px; border: 1px solid var(--border-color); font-weight: 600;">Etapa: ${stepText}</span>
@@ -582,6 +592,10 @@ function renderAllReviews() {
                     const nextMonth = String(d.getMonth() + 1).padStart(2, '0');
                     const nextDay = String(d.getDate()).padStart(2, '0');
                     rev.nextReview = `${nextYear}-${nextMonth}-${nextDay}`;
+
+                    // Magia em cascata: Abre o calendário para agendar a próxima etapa!
+                    const gCalLink = createGoogleCalendarLink(rev);
+                    window.open(gCalLink, '_blank');
                 }
                 saveData(); renderAllReviews(); renderPendingReviews();
             }
