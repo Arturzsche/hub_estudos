@@ -344,3 +344,5 @@ body.dark-mode .error-card { box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
         border-bottom: 3px solid #000 !important; 
     }
 }
+
+@keyframes spin { 100% { transform: rotate(360deg); } }
