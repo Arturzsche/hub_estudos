@@ -24,6 +24,7 @@
             <button class="nav-btn" data-target="timer">Cronômetro</button>
             <button class="nav-btn" data-target="tasks">Cronograma</button>
             <button class="nav-btn" data-target="reviews">Revisões</button>
+            <button class="nav-btn" data-target="flashcards">Flashcards</button>
         </nav>
 
         <div class="header-right">
@@ -104,45 +105,28 @@
                     </div>
 
                     <div class="stat-card outline" style="flex-direction: column; align-items: stretch; padding: 1.5rem; background: var(--surface-color);">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                            <h3 style="font-size: 0.85rem; text-transform: uppercase; color: var(--text-muted); letter-spacing: 0.05em; margin: 0;">Arsenal Lexical</h3>
-                            <div style="display: flex; gap: 8px; align-items: center;">
-                                <button id="btn-open-conectivos" style="background: var(--border-color); color: var(--text-main); border: none; padding: 4px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: bold; cursor: pointer; transition: all 0.2s;">CONECTIVOS</button>
-                                <span title="Atualizado diariamente via IA" style="font-size: 1.2rem; cursor: help;">🤖</span>
-                            </div>
-                        </div>
-                        
                         <div id="vocab-loading" style="text-align: center; color: var(--text-muted); font-size: 0.85rem; padding: 1rem 0;">
                             <svg viewBox="0 0 24 24" width="24" height="24" style="animation: spin 1s linear infinite; margin-bottom: 8px; color: var(--text-muted);"><path fill="currentColor" d="M12 2v4c5.52 0 10 4.48 10 10s-4.48 10-10 10S2 21.52 2 16H0c0 6.63 5.37 12 12 12s12-5.37 12-12S18.63 2 12 2z"/></svg>
-                            <br>Gerando Flashcards do dia...
+                            <br>Buscando palavra do dia...
                         </div>
 
                         <div id="vocab-content" style="display: none; flex-direction: column; gap: 0.5rem;">
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
-                                <button id="btn-vocab-prev" class="icon-btn-small" style="padding: 4px 10px; font-weight: bold;">&larr;</button>
-                                <span id="vocab-counter" style="font-size: 0.8rem; color: var(--text-muted); font-weight: bold;">1 / 3</span>
-                                <button id="btn-vocab-next" class="icon-btn-small" style="padding: 4px 10px; font-weight: bold;">&rarr;</button>
-                            </div>
+                            <h4 id="vocab-word" style="font-size: 1.8rem; color: var(--text-main); margin: 0; font-weight: 700;">Carregando...</h4>
+                            <p id="vocab-meaning" style="font-size: 0.85rem; color: var(--text-muted); font-style: italic; margin: 0 0 4px 0; line-height: 1.4;"></p>
                             
-                            <div class="flashcard-container" onclick="this.querySelector('.flashcard').classList.toggle('is-flipped')">
-                                <div class="flashcard">
-                                    <div class="flashcard-face flashcard-front">
-                                        <span style="font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 2px; margin-bottom: 8px;">Palavra do Dia</span>
-                                        <h4 id="vocab-word" style="font-size: 1.8rem; color: var(--text-main); margin: 0; font-weight: 700;">Carregando...</h4>
-                                        <span style="font-size: 0.75rem; color: var(--text-muted); margin-top: auto; opacity: 0.6;">(Clique para virar)</span>
-                                    </div>
-                                    <div class="flashcard-face flashcard-back">
-                                        <p id="vocab-meaning" style="font-size: 0.85rem; color: var(--text-main); font-style: italic; margin: 0 0 10px 0; line-height: 1.4; font-weight: 500;"></p>
-                                        <div id="vocab-synonyms" style="display: flex; gap: 4px; flex-wrap: wrap; justify-content: center; margin-bottom: 10px;"></div>
-                                        <div style="padding: 8px; background: var(--bg-color); border-left: 3px solid var(--text-main); border-radius: 4px; width: 100%; text-align: left;">
-                                            <p id="vocab-example" style="font-size: 0.8rem; font-family: serif; color: var(--text-muted); margin: 0; line-height: 1.4;"></p>
-                                        </div>
-                                    </div>
-                                </div>
+                            <div id="vocab-synonyms" style="display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px;"></div>
+                            
+                            <div style="padding: 12px; background: var(--bg-color); border-left: 3px solid var(--text-main); border-radius: 4px; margin-bottom: 0.5rem;">
+                                <p id="vocab-example" style="font-size: 0.9rem; font-family: serif; color: var(--text-main); margin: 0; line-height: 1.5;"></p>
+                            </div>
+
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 4px;">
+                                <button id="btn-open-conectivos" style="background: transparent; color: var(--text-muted); border: 1px solid var(--border-color); padding: 6px 10px; border-radius: 4px; font-size: 0.7rem; font-weight: bold; cursor: pointer; transition: all 0.2s;">CONECTIVOS</button>
+                                <button id="btn-save-flashcard" style="background: var(--text-main); color: var(--bg-color); border: none; padding: 6px 10px; border-radius: 4px; font-size: 0.7rem; font-weight: bold; cursor: pointer; transition: all 0.2s;">+ SALVAR FLASHCARD</button>
                             </div>
                         </div>
                     </div>
-                    </div>
+                </div>
             </div>
         </section>
 
@@ -212,6 +196,23 @@
                 </div>
             </div>
         </section>
+
+        <section id="flashcards" class="view">
+            <div class="container">
+                <div style="margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: center;">
+                    <h2 style="font-size: 1.5rem; color: var(--text-main); margin-bottom: 0;">Meus Flashcards</h2>
+                </div>
+                
+                <div id="flashcards-grid" class="flashcards-grid">
+                    </div>
+                
+                <div id="no-flashcards-msg" style="text-align: center; color: var(--text-muted); padding: 4rem 1rem; border: 1px dashed var(--border-color); border-radius: var(--radius); display: none;">
+                    <svg viewBox="0 0 24 24" width="48" height="48" style="opacity: 0.3; margin-bottom: 1rem;"><path fill="currentColor" d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V5h14v14zM7 10h2v7H7zm4-3h2v10h-2zm4 6h2v4h-2z"/></svg>
+                    <p style="font-size: 0.95rem;">Você ainda não salvou nenhum flashcard do dia.</p>
+                </div>
+            </div>
+        </section>
+
     </main>
 
     <div id="clear-modal" class="modal-overlay">

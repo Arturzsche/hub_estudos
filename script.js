@@ -16,8 +16,7 @@ let timerInterval;
 let isRunning = false;
 let lastTickTime = 0; 
 let chartInstance = null;
-let currentFlashcards = [];
-let currentCardIndex = 0;
+let currentPalavraObj = null;
 
 const CYCLE_PHASES = [
     { name: "Teoria (50min)", ms: 50 * 60 * 1000, isStudy: true },
@@ -35,7 +34,7 @@ let appData = {
         { time: "15:30 - 17:00", days: ["", "", "", "", "", "", ""] }
     ],
     cycleState: { date: "", subjectIndex: 0, phaseIndex: 0, msRemaining: CYCLE_PHASES[0].ms },
-    reviews: [], timerMode: 'pomodoro', stopwatchMs: 0 
+    reviews: [], flashcards: [], timerMode: 'pomodoro', stopwatchMs: 0 
 };
 
 let todaysSubjects = [];
@@ -66,12 +65,13 @@ const elements = {
     editRevName: document.getElementById('edit-rev-name'), editRevNotes: document.getElementById('edit-rev-notes'),
     btnCancelEditRev: document.getElementById('btn-edit-rev-cancel'), btnSaveEditRev: document.getElementById('btn-edit-rev-save'),
     
-    // Novos elementos do Flashcard e Modal de Conectivos
-    btnVocabPrev: document.getElementById('btn-vocab-prev'),
-    btnVocabNext: document.getElementById('btn-vocab-next'),
+    // Elementos novos
+    btnSaveFlashcard: document.getElementById('btn-save-flashcard'),
     btnOpenConectivos: document.getElementById('btn-open-conectivos'),
     btnCloseConectivos: document.getElementById('btn-close-conectivos'),
-    modalConectivos: document.getElementById('conectivos-modal')
+    modalConectivos: document.getElementById('conectivos-modal'),
+    flashcardsGrid: document.getElementById('flashcards-grid'),
+    noFlashcardsMsg: document.getElementById('no-flashcards-msg')
 };
 
 async function init() {
@@ -84,8 +84,9 @@ async function init() {
     initChart();
     initManualReviews(); 
     
-    carregarVocabularioDiario(); // Chamada da IA para os Flashcards
-    setupFlashcardsEConectivos(); // Eventos dos botões novos
+    carregarVocabularioDiario(); 
+    setupBotoesExtras(); 
+    renderFlashcards();
     
     if (localStorage.getItem('theme') === 'light') document.body.classList.remove('dark-mode');
 
@@ -231,6 +232,7 @@ function mergeData(parsedSaved) {
     appData.recordWeek = parsedSaved.recordWeek || 0;
     if (parsedSaved.cycleState) appData.cycleState = parsedSaved.cycleState;
     if (parsedSaved.reviews) appData.reviews = parsedSaved.reviews;
+    if (parsedSaved.flashcards) appData.flashcards = parsedSaved.flashcards; // Integração dos flashcards salvos
     if (parsedSaved.timerMode) appData.timerMode = parsedSaved.timerMode;
     if (parsedSaved.stopwatchMs !== undefined) appData.stopwatchMs = parsedSaved.stopwatchMs;
 }
@@ -250,6 +252,7 @@ async function loadData() {
         if (localData) { try { mergeData(JSON.parse(localData)); } catch(e) {} }
     }
     if (!appData.reviews) appData.reviews = [];
+    if (!appData.flashcards) appData.flashcards = [];
     if (!appData.timerMode) appData.timerMode = 'pomodoro';
     const today = getTodayDate();
     if (!appData.history[today]) appData.history[today] = { time: 0, sessions: 0 };
@@ -801,49 +804,66 @@ if (btnPrintSchedule) btnPrintSchedule.addEventListener('click', () => window.pr
 
 init();
 
-// --- 🧠 INTEGRAÇÃO IA: FLASHCARDS (TINDER DO VOCABULÁRIO) ---
+// --- 🧠 INTEGRAÇÃO IA: PALAVRA DO DIA ---
 async function carregarVocabularioDiario() {
     let API_KEY = localStorage.getItem('gemini_api_key');
     const hoje = getTodayDate();
-    const cardsSalvos = localStorage.getItem('flashcards_concurso');
+    const palavraSalva = localStorage.getItem('palavra_concurso');
     const dataSalva = localStorage.getItem('data_palavra');
 
     const vocabContent = document.getElementById('vocab-content');
     const vocabLoading = document.getElementById('vocab-loading');
 
-    // Se já gerou hoje, puxa do cache
-    if (cardsSalvos && dataSalva === hoje) {
+    const renderizarPalavra = (dados) => {
+        if(!vocabContent || !vocabLoading) return;
+        currentPalavraObj = dados; 
+        
+        const wordEl = document.getElementById('vocab-word');
+        if(wordEl) wordEl.textContent = dados.palavra;
+        
+        const meaningEl = document.getElementById('vocab-meaning');
+        if(meaningEl) meaningEl.textContent = dados.significado;
+        
+        const synContainer = document.getElementById('vocab-synonyms');
+        if(synContainer && Array.isArray(dados.sinonimos)) {
+            synContainer.innerHTML = '';
+            dados.sinonimos.forEach(syn => {
+                const span = document.createElement('span');
+                span.style.cssText = "font-size: 0.7rem; background: var(--border-color); color: var(--text-main); padding: 2px 8px; border-radius: 12px; font-weight: 500;";
+                span.textContent = syn;
+                synContainer.appendChild(span);
+            });
+        }
+        
+        const exampleEl = document.getElementById('vocab-example');
+        if(exampleEl) exampleEl.textContent = `"${dados.aplicacao}"`;
+        
+        vocabLoading.style.display = 'none';
+        vocabContent.style.display = 'flex';
+    };
+
+    if (palavraSalva && dataSalva === hoje) {
         try {
-            currentFlashcards = JSON.parse(cardsSalvos);
-            renderizarCardAtual();
-            vocabLoading.style.display = 'none';
-            vocabContent.style.display = 'flex';
+            renderizarPalavra(JSON.parse(palavraSalva));
             return;
         } catch(e) {} 
     }
 
     if (!API_KEY) {
-        API_KEY = prompt("Segurança ativada! 🛡️\n\nCole sua NOVA chave de API do Gemini aqui para habilitar os Flashcards.");
+        API_KEY = prompt("Segurança ativada! 🛡️\n\nCole sua NOVA chave de API do Gemini aqui.");
         if (API_KEY && API_KEY.trim() !== "") {
             localStorage.setItem('gemini_api_key', API_KEY.trim());
         } else {
-            console.warn("Chave ausente. Carregando pacote offline de emergência.");
-            currentFlashcards = [
-                { palavra: "Desídia", significado: "Disposição para evitar esforço físico ou moral; indolência, negligência.", sinonimos: ["Omissão", "Inércia"], aplicacao: "A impunidade é corolário da desídia estatal." },
-                { palavra: "Mitigar", significado: "Tornar mais brando, suave; atenuar o impacto.", sinonimos: ["Abrandar", "Reduzir"], aplicacao: "Políticas públicas são necessárias para mitigar as desigualdades." },
-                { palavra: "Dirimir", significado: "Extinguir por completo, resolver uma disputa.", sinonimos: ["Solucionar", "Suprimir"], aplicacao: "Cabe ao Judiciário dirimir os conflitos sociais com celeridade." }
-            ];
-            renderizarCardAtual();
-            vocabLoading.style.display = 'none';
-            vocabContent.style.display = 'flex';
+            console.warn("Chave ausente. Carregando palavra offline.");
+            renderizarPalavra({ palavra: "Desídia", significado: "Disposição para evitar esforço físico ou moral; indolência, negligência.", sinonimos: ["Omissão", "Inércia"], aplicacao: "A impunidade é corolário da desídia estatal." });
             return;
         }
     }
 
     try {
-        const promptText = `Atue como um avaliador rigoroso de redação de concursos (foco em tribunais e carreiras policiais). Forneça exatas 3 (TRÊS) palavras de vocabulário avançado e formal úteis para uma dissertação. O retorno deve ser EXATAMENTE E APENAS uma ARRAY JSON neste formato, sem marcações markdown ou texto fora da array: [{"palavra": "Exemplo1", "significado": "Significado 1", "sinonimos": ["SinônimoA", "SinônimoB"], "aplicacao": "Frase exemplo 1"}, {"palavra": "Exemplo2", "significado": "Significado 2", "sinonimos": ["SinônimoC", "SinônimoD"], "aplicacao": "Frase exemplo 2"}, {"palavra": "Exemplo3", "significado": "Significado 3", "sinonimos": ["SinônimoE", "SinônimoF"], "aplicacao": "Frase exemplo 3"}]`;
+        const promptText = `Atue como um avaliador rigoroso de redação de concursos (foco em tribunais e carreiras policiais). Forneça UMA palavra de vocabulário avançado e formal útil para uma dissertação. O retorno deve ser EXATAMENTE E APENAS um objeto JSON neste formato, sem marcações markdown ou texto extra: {"palavra": "Exemplo", "significado": "Significado", "sinonimos": ["SinônimoA", "SinônimoB"], "aplicacao": "Frase de exemplo"}`;
 
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${API_KEY}`, {
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`, {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ contents: [{ parts: [{ text: promptText }] }] })
         });
@@ -857,84 +877,19 @@ async function carregarVocabularioDiario() {
         const respostaTexto = data.candidates[0].content.parts[0].text;
         const jsonLimpo = respostaTexto.replace(/```json/g, '').replace(/```/g, '').trim();
         
-        currentFlashcards = JSON.parse(jsonLimpo);
-        localStorage.setItem('flashcards_concurso', JSON.stringify(currentFlashcards));
+        const palavraObj = JSON.parse(jsonLimpo);
+        localStorage.setItem('palavra_concurso', JSON.stringify(palavraObj));
         localStorage.setItem('data_palavra', hoje);
 
-        renderizarCardAtual();
-        vocabLoading.style.display = 'none';
-        vocabContent.style.display = 'flex';
+        renderizarPalavra(palavraObj);
     } catch (error) {
-        console.error("Erro ao buscar flashcards:", error);
-        currentFlashcards = [
-            { palavra: "Inevitável", significado: "Erro de conexão, usando fallback temporário.", sinonimos: ["Erro"], aplicacao: "Não foi possível conectar à IA." }
-        ];
-        renderizarCardAtual();
-        vocabLoading.style.display = 'none';
-        vocabContent.style.display = 'flex';
+        console.error("Erro ao buscar palavra via IA:", error);
+        renderizarPalavra({ palavra: "Desídia", significado: "Disposição para evitar esforço físico ou moral; indolência, negligência.", sinonimos: ["Omissão", "Inércia"], aplicacao: "A impunidade é corolário da desídia estatal." });
     }
 }
 
-function renderizarCardAtual() {
-    if(!currentFlashcards || currentFlashcards.length === 0) return;
-    const dados = currentFlashcards[currentCardIndex];
-    
-    // Força o flashcard a voltar para a frente antes de mudar o texto
-    const flashcardElement = document.querySelector('.flashcard');
-    if(flashcardElement) flashcardElement.classList.remove('is-flipped');
-
-    // Um pequeno delay para dar tempo do card girar antes do texto trocar
-    setTimeout(() => {
-        const wordEl = document.getElementById('vocab-word');
-        if(wordEl) wordEl.textContent = dados.palavra;
-        
-        const meaningEl = document.getElementById('vocab-meaning');
-        if(meaningEl) meaningEl.textContent = dados.significado;
-        
-        const synContainer = document.getElementById('vocab-synonyms');
-        if(synContainer && Array.isArray(dados.sinonimos)) {
-            synContainer.innerHTML = '';
-            dados.sinonimos.forEach(syn => {
-                const span = document.createElement('span');
-                span.style.cssText = "font-size: 0.65rem; background: var(--border-color); color: var(--text-main); padding: 2px 8px; border-radius: 12px; font-weight: 500;";
-                span.textContent = syn;
-                synContainer.appendChild(span);
-            });
-        }
-        
-        const exampleEl = document.getElementById('vocab-example');
-        if(exampleEl) exampleEl.textContent = `"${dados.aplicacao}"`;
-        
-        const counterEl = document.getElementById('vocab-counter');
-        if(counterEl) counterEl.textContent = `${currentCardIndex + 1} / ${currentFlashcards.length}`;
-        
-        // Desativar botões se for o primeiro ou último card
-        if(elements.btnVocabPrev) {
-            elements.btnVocabPrev.style.opacity = currentCardIndex === 0 ? '0.3' : '1';
-            elements.btnVocabPrev.style.pointerEvents = currentCardIndex === 0 ? 'none' : 'auto';
-        }
-        if(elements.btnVocabNext) {
-            elements.btnVocabNext.style.opacity = currentCardIndex === currentFlashcards.length - 1 ? '0.3' : '1';
-            elements.btnVocabNext.style.pointerEvents = currentCardIndex === currentFlashcards.length - 1 ? 'none' : 'auto';
-        }
-    }, 150);
-}
-
-function setupFlashcardsEConectivos() {
-    if(elements.btnVocabPrev) {
-        elements.btnVocabPrev.addEventListener('click', (e) => {
-            e.stopPropagation(); // Evita que clique na seta gire o card
-            if(currentCardIndex > 0) { currentCardIndex--; renderizarCardAtual(); }
-        });
-    }
-    if(elements.btnVocabNext) {
-        elements.btnVocabNext.addEventListener('click', (e) => {
-            e.stopPropagation();
-            if(currentCardIndex < currentFlashcards.length - 1) { currentCardIndex++; renderizarCardAtual(); }
-        });
-    }
-    
-    // Tabela de Conectivos
+// --- CONTROLE DE FLASHCARDS SALVOS E CONECTIVOS ---
+function setupBotoesExtras() {
     if(elements.btnOpenConectivos) {
         elements.btnOpenConectivos.addEventListener('click', () => {
             if(elements.modalConectivos) elements.modalConectivos.classList.add('active');
@@ -945,4 +900,79 @@ function setupFlashcardsEConectivos() {
             if(elements.modalConectivos) elements.modalConectivos.classList.remove('active');
         });
     }
+
+    if(elements.btnSaveFlashcard) {
+        elements.btnSaveFlashcard.addEventListener('click', () => {
+            if(currentPalavraObj) {
+                const jaExiste = appData.flashcards.some(f => f.palavra === currentPalavraObj.palavra);
+                if(jaExiste) {
+                    alert('Esta palavra já está nos seus Flashcards!');
+                } else {
+                    appData.flashcards.push(currentPalavraObj);
+                    saveData();
+                    renderFlashcards();
+                    alert('Palavra adicionada aos seus Flashcards com sucesso!');
+                }
+            }
+        });
+    }
+}
+
+function renderFlashcards() {
+    if(!elements.flashcardsGrid || !elements.noFlashcardsMsg) return;
+    elements.flashcardsGrid.innerHTML = '';
+    
+    if(!appData.flashcards || appData.flashcards.length === 0) {
+        elements.flashcardsGrid.style.display = 'none';
+        elements.noFlashcardsMsg.style.display = 'block';
+        return;
+    }
+    
+    elements.flashcardsGrid.style.display = 'grid';
+    elements.noFlashcardsMsg.style.display = 'none';
+
+    appData.flashcards.forEach((cardObj, index) => {
+        const container = document.createElement('div');
+        container.className = 'flashcard-container';
+        
+        let sinHtml = '';
+        if(Array.isArray(cardObj.sinonimos)) {
+            sinHtml = cardObj.sinonimos.map(s => `<span style="font-size: 0.65rem; background: var(--border-color); color: var(--text-main); padding: 2px 8px; border-radius: 12px; font-weight: 500;">${s}</span>`).join('');
+        }
+
+        container.innerHTML = `
+            <div class="flashcard">
+                <div class="flashcard-face flashcard-front">
+                    <button class="btn-delete-flashcard" data-index="${index}" title="Remover Flashcard" style="position: absolute; top: 10px; right: 10px; background: transparent; border: none; color: var(--danger-color); cursor: pointer; font-size: 1.2rem;">&times;</button>
+                    <h4 style="font-size: 1.8rem; color: var(--text-main); margin: 0; font-weight: 700;">${cardObj.palavra}</h4>
+                    <span style="font-size: 0.75rem; color: var(--text-muted); margin-top: auto; opacity: 0.6;">(Clique para virar)</span>
+                </div>
+                <div class="flashcard-face flashcard-back">
+                    <p style="font-size: 0.85rem; color: var(--text-main); font-style: italic; margin: 0 0 10px 0; line-height: 1.4; font-weight: 500;">${cardObj.significado}</p>
+                    <div style="display: flex; gap: 4px; flex-wrap: wrap; justify-content: center; margin-bottom: 10px;">${sinHtml}</div>
+                    <div style="padding: 8px; background: var(--bg-color); border-left: 3px solid var(--text-main); border-radius: 4px; width: 100%; text-align: left;">
+                        <p style="font-size: 0.8rem; font-family: serif; color: var(--text-muted); margin: 0; line-height: 1.4;">"${cardObj.aplicacao}"</p>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // Evento para girar o card
+        container.addEventListener('click', (e) => {
+            if(e.target.classList.contains('btn-delete-flashcard')) return; 
+            container.querySelector('.flashcard').classList.toggle('is-flipped');
+        });
+        
+        // Evento para deletar o card
+        container.querySelector('.btn-delete-flashcard').addEventListener('click', (e) => {
+            e.stopPropagation();
+            if(confirm(`Tem certeza que deseja apagar o flashcard "${cardObj.palavra}"?`)) {
+                appData.flashcards.splice(index, 1);
+                saveData();
+                renderFlashcards();
+            }
+        });
+
+        elements.flashcardsGrid.appendChild(container);
+    });
 }
