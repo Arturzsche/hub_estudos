@@ -68,7 +68,7 @@ const elements = {
     editRevName: document.getElementById('edit-rev-name'), editRevNotes: document.getElementById('edit-rev-notes'),
     btnCancelEditRev: document.getElementById('btn-edit-rev-cancel'), btnSaveEditRev: document.getElementById('btn-edit-rev-save'),
     
-    // Novos elementos IA & Flashcards
+    // Elementos IA & Flashcards
     btnRefreshWord: document.getElementById('btn-refresh-word'),
     btnSaveFlashcard: document.getElementById('btn-save-flashcard'),
     btnNavConectivos: document.getElementById('btn-nav-conectivos'),
@@ -372,7 +372,7 @@ function renderPendingReviews() {
                     const id = e.currentTarget.getAttribute('data-id'); const revIndex = appData.reviews.findIndex(r => r.id === id);
                     if(revIndex !== -1) {
                         const rev = appData.reviews[revIndex]; rev.step++;
-                        if(rev.step >= REVIEW_INTERVALS.length) { appData.reviews.splice(revIndex, 1); alert(`🎉 Parabéns! Você concluiu todo o ciclo de revisões de "${rev.name}"! O assunto está consolidado.`); } 
+                        if(rev.step >= REVIEW_INTERVALS.length) { appData.reviews.splice(revIndex, 1); alert(`🎉 Parabéns! Você concluiu todo o ciclo de revisões de "${rev.name}"!`); } 
                         else {
                             const d = new Date(); d.setDate(d.getDate() + REVIEW_INTERVALS[rev.step]);
                             rev.nextReview = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -710,7 +710,7 @@ if (btnPrintSchedule) btnPrintSchedule.addEventListener('click', () => window.pr
 
 init();
 
-// --- 🧠 INTEGRAÇÃO IA: PALAVRA DO DIA ---
+// --- 🧠 INTEGRAÇÃO IA: PALAVRA DO DIA BLINDADA CONTRA REPETIÇÃO ---
 async function carregarVocabularioDiario(forceRefresh = false) {
     let API_KEY = localStorage.getItem('gemini_api_key');
     const hoje = getTodayDate();
@@ -766,18 +766,38 @@ async function carregarVocabularioDiario(forceRefresh = false) {
         }
     }
 
-    // Reset interface para loading se for refresh forçado
-    if(vocabContent && vocabLoading) {
+    // Reset interface para loading
+    if (forceRefresh && vocabContent && vocabLoading) {
         vocabContent.style.display = 'none';
         vocabLoading.style.display = 'block';
     }
 
+    // LÓGICA ANTI-REPETIÇÃO
+    let palavraExcluida = "";
+    if (palavraSalva) {
+        try { palavraExcluida = JSON.parse(palavraSalva).palavra; } catch(e) {}
+    }
+    if (currentPalavraObj) {
+        palavraExcluida = currentPalavraObj.palavra;
+    }
+
     try {
-        const promptText = `Atue como um avaliador rigoroso de redação de concursos (foco em tribunais e carreiras policiais). Forneça UMA palavra de vocabulário avançado e formal útil para uma dissertação. Escolha uma palavra INÉDITA, diferente da última gerada. O retorno deve ser EXATAMENTE E APENAS um objeto JSON neste formato, sem marcações markdown ou texto extra: {"palavra": "Exemplo", "significado": "Significado", "sinonimos": ["SinônimoA", "SinônimoB"], "aplicacao": "Frase de exemplo"}`;
+        const promptText = `Atue como um avaliador rigoroso de redação de concursos (foco em tribunais e carreiras policiais). 
+        Forneça UMA palavra de vocabulário avançado e formal útil para uma dissertação. 
+        REGRAS CRUCIAIS:
+        1. A palavra deve ser INÉDITA e ALEATÓRIA (Código de variação: ${Date.now()}).
+        2. É EXPRESSAMENTE PROIBIDO retornar a palavra "${palavraExcluida}". Pense em outro termo!
+        O retorno deve ser EXATAMENTE E APENAS um objeto JSON neste formato, sem marcações markdown ou texto extra: {"palavra": "Exemplo", "significado": "Significado", "sinonimos": ["SinônimoA", "SinônimoB"], "aplicacao": "Frase de exemplo"}`;
 
         const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`, {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ contents: [{ parts: [{ text: promptText }] }] })
+            body: JSON.stringify({ 
+                contents: [{ parts: [{ text: promptText }] }],
+                generationConfig: {
+                    temperature: 1.1, // Aumenta a criatividade da IA para não repetir
+                    topP: 0.95
+                }
+            })
         });
 
         if (!response.ok) {
