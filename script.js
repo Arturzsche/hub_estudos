@@ -115,6 +115,8 @@ async function init() {
     initChart();
     initManualReviews(); 
     
+    carregarVocabularioDiario(); // <--- CHAMADA DA IA PARA O VOCABULÁRIO
+    
     if (localStorage.getItem('theme') === 'light') document.body.classList.remove('dark-mode');
 
     document.getElementById('btn-open-clear').addEventListener('click', () => document.getElementById('clear-modal').classList.add('active'));
@@ -342,12 +344,10 @@ function renderHeatmap() {
     }
 }
 
-// ----------------- INTEGRAÇÃO DIRETA COM O GOOGLE CALENDAR (AGENDAMENTO EM CASCATA) ----------------- //
 function createGoogleCalendarLink(rev) {
     const nextDateStr = rev.nextReview.replace(/-/g, ''); 
     const text = encodeURIComponent(`Revisão: ${rev.name}`);
     const details = encodeURIComponent(`Matéria: ${rev.subject}\nObservações: ${rev.notes || 'Nenhuma'}\n\nLembrete gerado pelo MeusEstudos.com`);
-    // Agenda o evento das 08:00h às 09:00h (Horário local do Brasil / UTC-3 = 11h UTC)
     return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${text}&dates=${nextDateStr}T110000Z/${nextDateStr}T120000Z&details=${details}`;
 }
 
@@ -379,7 +379,6 @@ function initManualReviews() {
     
     elements.btnCancelManualRev.addEventListener('click', () => elements.modalManualRev.classList.remove('active'));
     
-    // CRIAR NOVA REVISÃO E ABRIR O CALENDÁRIO
     elements.btnSaveManualRev.addEventListener('click', () => {
         const contentName = elements.inputManualRevName.value.trim();
         const subject = elements.selectManualRevSubject.value;
@@ -401,7 +400,6 @@ function initManualReviews() {
             saveData(); renderPendingReviews(); renderAllReviews();
             elements.modalManualRev.classList.remove('active');
 
-            // Magia em cascata: Abre o calendário para agendar a 1ª revisão
             const gCalLink = createGoogleCalendarLink(newRev);
             window.open(gCalLink, '_blank');
 
@@ -430,7 +428,6 @@ function initManualReviews() {
     });
 }
 
-// CONCLUIR REVISÃO E AGENDAR A PRÓXIMA (Tela Principal)
 function renderPendingReviews() {
     const badge = document.getElementById('review-count-badge');
     const list = document.getElementById('pending-reviews-list');
@@ -489,7 +486,6 @@ function renderPendingReviews() {
                             const nextDay = String(d.getDate()).padStart(2, '0');
                             rev.nextReview = `${nextYear}-${nextMonth}-${nextDay}`;
                             
-                            // Magia em cascata: Abre o calendário para agendar a próxima etapa!
                             const gCalLink = createGoogleCalendarLink(rev);
                             window.open(gCalLink, '_blank');
                         }
@@ -505,7 +501,6 @@ function renderPendingReviews() {
     }
 }
 
-// CONCLUIR REVISÃO E AGENDAR A PRÓXIMA (Gerenciador de Agenda)
 function renderAllReviews() {
     const list = elements.allReviewsList;
     if(!list) return;
@@ -593,7 +588,6 @@ function renderAllReviews() {
                     const nextDay = String(d.getDate()).padStart(2, '0');
                     rev.nextReview = `${nextYear}-${nextMonth}-${nextDay}`;
 
-                    // Magia em cascata: Abre o calendário para agendar a próxima etapa!
                     const gCalLink = createGoogleCalendarLink(rev);
                     window.open(gCalLink, '_blank');
                 }
@@ -624,7 +618,6 @@ function renderAllReviews() {
         });
     });
 }
-// ------------------------------------------------------- //
 
 function updateUI() {
     updateTodaysSubjects();
@@ -939,3 +932,70 @@ const btnPrintSchedule = document.getElementById('btn-print-schedule');
 if (btnPrintSchedule) btnPrintSchedule.addEventListener('click', () => window.print());
 
 init();
+
+// --- INTEGRAÇÃO IA: ARSENAL LEXICAL DIÁRIO ---
+async function carregarVocabularioDiario() {
+    const API_KEY = "AIzaSyCLq9b-fjz7xah_6TyY0zJJuX9GptwlGdE"; 
+    
+    const hoje = getTodayDate();
+    const palavraSalva = localStorage.getItem('palavra_concurso');
+    const dataSalva = localStorage.getItem('data_palavra');
+
+    const vocabContent = document.getElementById('vocab-content');
+    const vocabLoading = document.getElementById('vocab-loading');
+    
+    const renderizarPalavra = (dados) => {
+        document.getElementById('vocab-word').textContent = dados.palavra;
+        document.getElementById('vocab-meaning').textContent = dados.significado;
+        
+        const synContainer = document.getElementById('vocab-synonyms');
+        synContainer.innerHTML = '';
+        dados.sinonimos.forEach(syn => {
+            const span = document.createElement('span');
+            span.style.cssText = "font-size: 0.7rem; background: var(--border-color); color: var(--text-main); padding: 2px 8px; border-radius: 12px; font-weight: 500;";
+            span.textContent = syn;
+            synContainer.appendChild(span);
+        });
+        
+        document.getElementById('vocab-example').textContent = `"${dados.aplicacao}"`;
+        
+        vocabLoading.style.display = 'none';
+        vocabContent.style.display = 'flex';
+    };
+
+    if (palavraSalva && dataSalva === hoje) {
+        renderizarPalavra(JSON.parse(palavraSalva));
+        return;
+    }
+
+    try {
+        const promptText = "Atue como um avaliador rigoroso de redação de concursos (foco em tribunais e carreiras policiais). Forneça UMA palavra de vocabulário avançado e formal útil para uma dissertação. O retorno deve ser EXATAMENTE E APENAS um objeto JSON neste formato, sem formatação markdown ou texto extra: {\"palavra\": \"Exemplo\", \"significado\": \"Significado da palavra.\", \"sinonimos\": [\"Sinônimo1\", \"Sinônimo2\"], \"aplicacao\": \"Uma frase argumentativa de exemplo com a palavra no contexto de segurança pública ou justiça.\"}";
+
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                contents: [{ parts: [{ text: promptText }] }]
+            })
+        });
+
+        const data = await response.json();
+        const respostaTexto = data.candidates[0].content.parts[0].text;
+        
+        const jsonLimpo = respostaTexto.replace(/```json/g, '').replace(/```/g, '').trim();
+        const palavraObj = JSON.parse(jsonLimpo);
+
+        localStorage.setItem('palavra_concurso', JSON.stringify(palavraObj));
+        localStorage.setItem('data_palavra', hoje);
+
+        renderizarPalavra(palavraObj);
+    } catch (error) {
+        console.error("Erro ao buscar palavra no Gemini:", error);
+        renderizarPalavra({
+            palavra: "Desídia",
+            significado: "Disposição para evitar qualquer esforço físico ou moral; indolência, negligência.",
+            sinonimos: ["Omissão", "Negligência", "Inércia"],
+            aplicacao: "A crescente impunidade é corolário da desídia estatal na estruturação das forças de segurança."
+        });
+    }
+}
