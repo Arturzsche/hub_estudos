@@ -364,6 +364,7 @@ function renderHeatmap() {
     }
 }
 
+// ----------------- INTEGRAÇÃO DIRETA COM O GOOGLE CALENDAR (AGENDAMENTO EM CASCATA) ----------------- //
 function createGoogleCalendarLink(rev) {
     const nextDateStr = rev.nextReview.replace(/-/g, ''); 
     const text = encodeURIComponent(`Revisão: ${rev.name}`);
@@ -638,6 +639,7 @@ function renderAllReviews() {
         });
     });
 }
+// ------------------------------------------------------- //
 
 function updateUI() {
     try {
@@ -650,7 +652,6 @@ function updateUI() {
         const m = String(Math.floor((todayData.time % 3600) / 60)).padStart(2, '0');
         const s = String(todayData.time % 60).padStart(2, '0');
         
-        // Travas de segurança: Só atualiza se o elemento existir no HTML
         if(elements.totalTimeDisplay) elements.totalTimeDisplay.textContent = `${h}:${m}:${s}`;
         if(elements.sessionsDisplay) elements.sessionsDisplay.textContent = `${todayData.sessions} sessões hoje`;
         if(elements.streakDisplay) elements.streakDisplay.textContent = appData.streak;
@@ -967,7 +968,7 @@ if (btnPrintSchedule) btnPrintSchedule.addEventListener('click', () => window.pr
 
 init();
 
-// --- INTEGRAÇÃO IA BLINDADA ---
+// --- INTEGRAÇÃO IA BLINDADA (VIA FETCH DIRETO) ---
 async function carregarVocabularioDiario() {
     const API_KEY = "AIzaSyCLq9b-fjz7xah_6TyY0zJJuX9GptwlGdE"; 
     const hoje = getTodayDate();
@@ -1014,7 +1015,8 @@ async function carregarVocabularioDiario() {
     try {
         const promptText = "Atue como um avaliador rigoroso de redação de concursos (foco em tribunais e carreiras policiais). Forneça UMA palavra de vocabulário avançado e formal útil para uma dissertação. O retorno deve ser EXATAMENTE E APENAS um objeto JSON neste formato, sem formatação markdown ou texto extra: {\"palavra\": \"Exemplo\", \"significado\": \"Significado da palavra.\", \"sinonimos\": [\"Sinônimo1\", \"Sinônimo2\"], \"aplicacao\": \"Uma frase argumentativa de exemplo com a palavra no contexto de segurança pública ou justiça.\"}";
 
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${API_KEY}`, {
+        // MUDANÇA CRUCIAL: Utilizando o gemini-1.5-flash que é a rota web mais estável e garantida
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -1023,7 +1025,8 @@ async function carregarVocabularioDiario() {
         });
 
         if (!response.ok) {
-            throw new Error(`Erro na API: ${response.status}`);
+            const errText = await response.text();
+            throw new Error(`Erro na API (${response.status}): ${errText}`);
         }
 
         const data = await response.json();
