@@ -968,9 +968,11 @@ if (btnPrintSchedule) btnPrintSchedule.addEventListener('click', () => window.pr
 
 init();
 
-// --- INTEGRAÇÃO IA BLINDADA (VIA FETCH DIRETO) ---
+// --- INTEGRAÇÃO IA BLINDADA E SEGURA ---
 async function carregarVocabularioDiario() {
-    const API_KEY = "AIzaSyCLq9b-fjz7xah_6TyY0zJJuX9GptwlGdE"; 
+    // 1. Busca a chave salva de forma segura apenas no seu navegador local
+    let API_KEY = localStorage.getItem('gemini_api_key');
+    
     const hoje = getTodayDate();
     const palavraSalva = localStorage.getItem('palavra_concurso');
     const dataSalva = localStorage.getItem('data_palavra');
@@ -980,13 +982,10 @@ async function carregarVocabularioDiario() {
     
     const renderizarPalavra = (dados) => {
         if(!vocabContent || !vocabLoading) return;
-        
         const wordEl = document.getElementById('vocab-word');
         if(wordEl) wordEl.textContent = dados.palavra;
-        
         const meaningEl = document.getElementById('vocab-meaning');
         if(meaningEl) meaningEl.textContent = dados.significado;
-        
         const synContainer = document.getElementById('vocab-synonyms');
         if(synContainer && Array.isArray(dados.sinonimos)) {
             synContainer.innerHTML = '';
@@ -997,10 +996,8 @@ async function carregarVocabularioDiario() {
                 synContainer.appendChild(span);
             });
         }
-        
         const exampleEl = document.getElementById('vocab-example');
         if(exampleEl) exampleEl.textContent = `"${dados.aplicacao}"`;
-        
         vocabLoading.style.display = 'none';
         vocabContent.style.display = 'flex';
     };
@@ -1012,10 +1009,26 @@ async function carregarVocabularioDiario() {
         } catch(e) {} 
     }
 
+    // 2. Se não tem chave salva, pede para você digitar via pop-up
+    if (!API_KEY) {
+        API_KEY = prompt("Segurança ativada! 🛡️\n\nCole sua NOVA chave de API do Gemini aqui.\nEla ficará salva apenas no seu navegador e não vazará no GitHub.");
+        if (API_KEY && API_KEY.trim() !== "") {
+            localStorage.setItem('gemini_api_key', API_KEY.trim());
+        } else {
+            console.warn("Chave não fornecida. Usando modo offline.");
+            renderizarPalavra({
+                palavra: "Desídia",
+                significado: "Disposição para evitar qualquer esforço físico ou moral; indolência, negligência.",
+                sinonimos: ["Omissão", "Negligência", "Inércia"],
+                aplicacao: "A crescente impunidade é corolário da desídia estatal na estruturação das forças de segurança."
+            });
+            return;
+        }
+    }
+
     try {
         const promptText = "Atue como um avaliador rigoroso de redação de concursos (foco em tribunais e carreiras policiais). Forneça UMA palavra de vocabulário avançado e formal útil para uma dissertação. O retorno deve ser EXATAMENTE E APENAS um objeto JSON neste formato, sem formatação markdown ou texto extra: {\"palavra\": \"Exemplo\", \"significado\": \"Significado da palavra.\", \"sinonimos\": [\"Sinônimo1\", \"Sinônimo2\"], \"aplicacao\": \"Uma frase argumentativa de exemplo com a palavra no contexto de segurança pública ou justiça.\"}";
 
-        // MUDANÇA AQUI: Alterado de 1.5-flash para gemini-2.5-flash
         const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${API_KEY}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -1025,16 +1038,15 @@ async function carregarVocabularioDiario() {
         });
 
         if (!response.ok) {
+            // Se a chave for inválida ou vazar, ele apaga a chave do cache para pedir de novo na próxima vez
+            if(response.status === 403 || response.status === 400) {
+                localStorage.removeItem('gemini_api_key');
+            }
             const errText = await response.text();
             throw new Error(`Erro na API (${response.status}): ${errText}`);
         }
 
         const data = await response.json();
-        
-        if (!data.candidates || !data.candidates[0].content) {
-            throw new Error("Estrutura da resposta da IA está vazia ou incorreta.");
-        }
-
         const respostaTexto = data.candidates[0].content.parts[0].text;
         const jsonLimpo = respostaTexto.replace(/```json/g, '').replace(/```/g, '').trim();
         const palavraObj = JSON.parse(jsonLimpo);
