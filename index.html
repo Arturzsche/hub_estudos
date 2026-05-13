@@ -25,6 +25,7 @@
             <button class="nav-btn" data-target="tasks">Cronograma</button>
             <button class="nav-btn" data-target="reviews">Revisões</button>
             <button class="nav-btn" data-target="flashcards">Flashcards</button>
+            <button class="nav-btn" id="btn-nav-conectivos" style="color: var(--text-main); font-weight: bold;">Conectivos</button>
         </nav>
 
         <div class="header-right">
@@ -104,28 +105,34 @@
                         <div id="no-reviews-msg" style="text-align: center; color: var(--text-muted); font-size: 0.85rem; padding: 1rem 0;">Tudo em dia! Nenhuma revisão para hoje.</div>
                     </div>
 
-                    <div class="stat-card outline" style="flex-direction: column; align-items: stretch; padding: 1.5rem; background: var(--surface-color);">
-                        <div id="vocab-loading" style="text-align: center; color: var(--text-muted); font-size: 0.85rem; padding: 1rem 0;">
-                            <svg viewBox="0 0 24 24" width="24" height="24" style="animation: spin 1s linear infinite; margin-bottom: 8px; color: var(--text-muted);"><path fill="currentColor" d="M12 2v4c5.52 0 10 4.48 10 10s-4.48 10-10 10S2 21.52 2 16H0c0 6.63 5.37 12 12 12s12-5.37 12-12S18.63 2 12 2z"/></svg>
-                            <br>Buscando palavra do dia...
+                    <div class="stat-card outline" style="flex-direction: column; align-items: stretch; padding: 1.5rem; background: var(--surface-color); position: relative; min-height: 200px;">
+                        
+                        <div style="position: absolute; top: 1.2rem; right: 1.2rem; display: flex; gap: 6px; z-index: 10;">
+                            <button id="btn-refresh-word" class="icon-btn-small" title="Gerar Nova Palavra" style="padding: 6px; background: var(--bg-color); border: 1px solid var(--border-color);">
+                                <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
+                            </button>
+                            <button id="btn-save-flashcard" class="icon-btn-small" title="Adicionar ao Baralho de Flashcards" style="padding: 6px; background: var(--text-main); color: var(--bg-color); border: 1px solid var(--text-main);">
+                                <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M17 3H7c-1.1 0-1.99.9-1.99 2L5 21l7-3 7 3V5c0-1.1-.9-2-2-2zm-1 9h-2.5v2.5h-2V12H9V10h2.5V7.5h2V10H16v2z"/></svg>
+                            </button>
                         </div>
 
-                        <div id="vocab-content" style="display: none; flex-direction: column; gap: 0.5rem;">
-                            <h4 id="vocab-word" style="font-size: 1.8rem; color: var(--text-main); margin: 0; font-weight: 700;">Carregando...</h4>
-                            <p id="vocab-meaning" style="font-size: 0.85rem; color: var(--text-muted); font-style: italic; margin: 0 0 4px 0; line-height: 1.4;"></p>
-                            
-                            <div id="vocab-synonyms" style="display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px;"></div>
-                            
-                            <div style="padding: 12px; background: var(--bg-color); border-left: 3px solid var(--text-main); border-radius: 4px; margin-bottom: 0.5rem;">
-                                <p id="vocab-example" style="font-size: 0.9rem; font-family: serif; color: var(--text-main); margin: 0; line-height: 1.5;"></p>
-                            </div>
+                        <div id="vocab-loading" style="text-align: center; color: var(--text-muted); font-size: 0.85rem; padding: 2.5rem 0;">
+                            <svg viewBox="0 0 24 24" width="24" height="24" style="animation: spin 1s linear infinite; margin-bottom: 8px; color: var(--text-muted);"><path fill="currentColor" d="M12 2v4c5.52 0 10 4.48 10 10s-4.48 10-10 10S2 21.52 2 16H0c0 6.63 5.37 12 12 12s12-5.37 12-12S18.63 2 12 2z"/></svg>
+                            <br>Conectando IA...
+                        </div>
 
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 4px;">
-                                <button id="btn-open-conectivos" style="background: transparent; color: var(--text-muted); border: 1px solid var(--border-color); padding: 6px 10px; border-radius: 4px; font-size: 0.7rem; font-weight: bold; cursor: pointer; transition: all 0.2s;">CONECTIVOS</button>
-                                <button id="btn-save-flashcard" style="background: var(--text-main); color: var(--bg-color); border: none; padding: 6px 10px; border-radius: 4px; font-size: 0.7rem; font-weight: bold; cursor: pointer; transition: all 0.2s;">+ SALVAR FLASHCARD</button>
+                        <div id="vocab-content" style="display: none; flex-direction: column; gap: 0.5rem; padding-right: 65px;">
+                            <h4 id="vocab-word" style="font-size: 2rem; color: var(--text-main); margin: 0; font-weight: 700;">Carregando...</h4>
+                            <p id="vocab-meaning" style="font-size: 0.95rem; color: var(--text-muted); font-style: italic; margin: 0 0 8px 0; line-height: 1.4;"></p>
+                            
+                            <div id="vocab-synonyms" style="display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px;"></div>
+                            
+                            <div style="padding: 12px; background: var(--bg-color); border-left: 3px solid var(--text-main); border-radius: 4px;">
+                                <p id="vocab-example" style="font-size: 0.95rem; font-family: serif; color: var(--text-main); margin: 0; line-height: 1.5;"></p>
                             </div>
                         </div>
                     </div>
+
                 </div>
             </div>
         </section>
@@ -198,17 +205,47 @@
         </section>
 
         <section id="flashcards" class="view">
-            <div class="container">
-                <div style="margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: center;">
-                    <h2 style="font-size: 1.5rem; color: var(--text-main); margin-bottom: 0;">Meus Flashcards</h2>
+            <div class="container" style="display: flex; flex-direction: column; align-items: center; min-height: 70vh;">
+                <div style="width: 100%; display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+                    <h2 style="font-size: 1.5rem; color: var(--text-main); margin: 0; text-transform: none; letter-spacing: normal;">Sessão de Estudos Lexical</h2>
+                    <button id="btn-manage-flashcards" class="btn secondary">Gerenciar Baralho</button>
                 </div>
-                
-                <div id="flashcards-grid" class="flashcards-grid">
+
+                <div id="anki-study-session" style="display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; flex: 1; padding-bottom: 2rem;">
+                    <div id="anki-status" style="margin-bottom: 1.5rem; color: var(--text-muted); font-weight: 600; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.05em;"></div>
+                    
+                    <div class="flashcard-container" id="anki-card-container" style="width: 100%; max-width: 650px; height: 380px;">
+                        <div class="flashcard" id="anki-card">
+                            <div class="flashcard-face flashcard-front" style="display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer;">
+                                <h2 id="anki-word" style="font-size: 3.5rem; color: var(--text-main); margin: 0; font-weight: 700;">Palavra</h2>
+                                <span style="font-size: 0.85rem; color: var(--text-muted); margin-top: 2rem; opacity: 0.6; text-transform: uppercase; letter-spacing: 1px;">(Clique para revelar a resposta)</span>
+                            </div>
+                            <div class="flashcard-face flashcard-back" style="align-items: flex-start; text-align: left; padding: 2.5rem; overflow-y: auto;">
+                                <h3 id="anki-word-back" style="font-size: 2rem; color: var(--text-main); margin-bottom: 1rem; font-weight: 700;">Palavra</h3>
+                                <p id="anki-meaning" style="font-size: 1.1rem; color: var(--text-main); font-weight: 500; margin-bottom: 1.5rem; line-height: 1.5;"></p>
+                                <div id="anki-synonyms" style="display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 2rem;"></div>
+                                <div style="padding: 1rem 1.5rem; background: var(--bg-color); border-left: 4px solid var(--text-main); border-radius: 4px; width: 100%;">
+                                    <p id="anki-example" style="font-size: 1rem; font-family: serif; color: var(--text-muted); line-height: 1.6; margin: 0;"></p>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                
-                <div id="no-flashcards-msg" style="text-align: center; color: var(--text-muted); padding: 4rem 1rem; border: 1px dashed var(--border-color); border-radius: var(--radius); display: none;">
-                    <svg viewBox="0 0 24 24" width="48" height="48" style="opacity: 0.3; margin-bottom: 1rem;"><path fill="currentColor" d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V5h14v14zM7 10h2v7H7zm4-3h2v10h-2zm4 6h2v4h-2z"/></svg>
-                    <p style="font-size: 0.95rem;">Você ainda não salvou nenhum flashcard do dia.</p>
+                    
+                    <div style="margin-top: 2.5rem; width: 100%; max-width: 650px;">
+                        <button id="btn-anki-show" class="btn primary" style="width: 100%; padding: 1.2rem; font-size: 1.1rem; font-weight: 600; display: none;">Mostrar Resposta</button>
+                        <div id="anki-controls" style="display: none; justify-content: center; gap: 0.8rem; width: 100%;">
+                            <button class="btn btn-anki-rate" data-rate="1" style="flex: 1; border-color: var(--danger-color); color: var(--danger-color); padding: 1rem 0;">Errei<br><small style="font-weight: normal; font-size: 0.75rem; opacity: 0.8;">&lt; 10m</small></button>
+                            <button class="btn btn-anki-rate" data-rate="2" style="flex: 1; border-color: #ffbd2e; color: #d99a00; padding: 1rem 0;">Difícil<br><small id="anki-time-2" style="font-weight: normal; font-size: 0.75rem; opacity: 0.8;">...</small></button>
+                            <button class="btn btn-anki-rate" data-rate="3" style="flex: 1; border-color: var(--success-color); color: var(--success-color); padding: 1rem 0;">Bom<br><small id="anki-time-3" style="font-weight: normal; font-size: 0.75rem; opacity: 0.8;">...</small></button>
+                            <button class="btn btn-anki-rate" data-rate="4" style="flex: 1; border-color: #007bff; color: #007bff; padding: 1rem 0;">Fácil<br><small id="anki-time-4" style="font-weight: normal; font-size: 0.75rem; opacity: 0.8;">...</small></button>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="anki-done-msg" style="text-align: center; padding: 4rem 1rem; display: none;">
+                    <svg viewBox="0 0 24 24" width="80" height="80" style="color: var(--success-color); margin-bottom: 1.5rem;"><path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+                    <h3 style="font-size: 1.8rem; color: var(--text-main); margin-bottom: 1rem;">Parabéns! 🎉</h3>
+                    <p style="color: var(--text-muted); font-size: 1.1rem;">Você já revisou todo o seu baralho agendado para hoje.</p>
                 </div>
             </div>
         </section>
@@ -269,6 +306,16 @@
                 <button id="btn-edit-rev-cancel" class="btn secondary">Cancelar</button>
                 <button id="btn-edit-rev-save" class="btn primary">Salvar Alterações</button>
             </div>
+        </div>
+    </div>
+
+    <div id="manage-flashcards-modal" class="modal-overlay">
+        <div class="modal-content" style="max-width: 900px; width: 95%; max-height: 90vh; overflow-y: auto; text-align: left; padding: 2rem; background: var(--bg-color);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; border-bottom: 1px solid var(--border-color); padding-bottom: 1rem;">
+                <h2 style="font-size: 1.3rem; color: var(--text-main); margin: 0;">Baralho Lexical (<span id="fc-stat-total">0</span> cartas)</h2>
+                <button id="btn-close-manage-fc" class="icon-btn-small" style="font-size: 1.5rem; font-weight: bold;">&times;</button>
+            </div>
+            <div id="all-flashcards-list" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem;"></div>
         </div>
     </div>
 

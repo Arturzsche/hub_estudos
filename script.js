@@ -18,6 +18,9 @@ let lastTickTime = 0;
 let chartInstance = null;
 let currentPalavraObj = null;
 
+let ankiStudyQueue = [];
+let currentAnkiCard = null;
+
 const CYCLE_PHASES = [
     { name: "Teoria (50min)", ms: 50 * 60 * 1000, isStudy: true },
     { name: "Pausa (10min)", ms: 10 * 60 * 1000, isStudy: false },
@@ -65,13 +68,16 @@ const elements = {
     editRevName: document.getElementById('edit-rev-name'), editRevNotes: document.getElementById('edit-rev-notes'),
     btnCancelEditRev: document.getElementById('btn-edit-rev-cancel'), btnSaveEditRev: document.getElementById('btn-edit-rev-save'),
     
-    // Elementos novos
+    // Novos elementos IA & Flashcards
+    btnRefreshWord: document.getElementById('btn-refresh-word'),
     btnSaveFlashcard: document.getElementById('btn-save-flashcard'),
-    btnOpenConectivos: document.getElementById('btn-open-conectivos'),
+    btnNavConectivos: document.getElementById('btn-nav-conectivos'),
     btnCloseConectivos: document.getElementById('btn-close-conectivos'),
     modalConectivos: document.getElementById('conectivos-modal'),
-    flashcardsGrid: document.getElementById('flashcards-grid'),
-    noFlashcardsMsg: document.getElementById('no-flashcards-msg')
+    btnManageFlashcards: document.getElementById('btn-manage-flashcards'),
+    modalManageFlashcards: document.getElementById('manage-flashcards-modal'),
+    btnCloseManageFc: document.getElementById('btn-close-manage-fc'),
+    allFlashcardsList: document.getElementById('all-flashcards-list')
 };
 
 async function init() {
@@ -84,9 +90,9 @@ async function init() {
     initChart();
     initManualReviews(); 
     
-    carregarVocabularioDiario(); 
-    setupBotoesExtras(); 
-    renderFlashcards();
+    carregarVocabularioDiario(false); 
+    setupFlashcardsEConectivos(); 
+    initAnkiSession();
     
     if (localStorage.getItem('theme') === 'light') document.body.classList.remove('dark-mode');
 
@@ -116,10 +122,7 @@ async function init() {
 
 function getTodayDate() {
     const d = new Date();
-    const year = d.getFullYear();
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
 function formatDateBR(dateStr) {
@@ -132,35 +135,28 @@ function playBeep() {
     try {
         const AudioContext = window.AudioContext || window.webkitAudioContext;
         const ctx = new AudioContext();
-        const osc = ctx.createOscillator();
-        const gainNode = ctx.createGain();
-        osc.connect(gainNode);
-        gainNode.connect(ctx.destination);
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(600, ctx.currentTime); 
+        const osc = ctx.createOscillator(); const gainNode = ctx.createGain();
+        osc.connect(gainNode); gainNode.connect(ctx.destination);
+        osc.type = 'sine'; osc.frequency.setValueAtTime(600, ctx.currentTime); 
         gainNode.gain.setValueAtTime(0.1, ctx.currentTime);
-        osc.start();
-        osc.stop(ctx.currentTime + 0.8);
+        osc.start(); osc.stop(ctx.currentTime + 0.8);
     } catch(e) { }
 }
 
 function formatHoursText(totalSeconds) {
     const h = Math.floor(totalSeconds / 3600);
     const m = Math.floor((totalSeconds % 3600) / 60);
-    if (h === 0) return `${m}m`;
-    return `${h}h ${m}m`;
+    return h === 0 ? `${m}m` : `${h}h ${m}m`;
 }
 
 function updateTodaysSubjects() {
     const jsDay = new Date().getDay();
     const tableDayIndex = jsDay === 0 ? 6 : jsDay - 1;
-    
     todaysSubjects = [];
     appData.schedule.forEach(row => {
         const subject = row.days[tableDayIndex];
         if (subject && subject.trim() !== '') todaysSubjects.push(subject.trim());
     });
-
     const today = getTodayDate();
     if (appData.cycleState.date !== today) {
         appData.cycleState = { date: today, subjectIndex: 0, phaseIndex: 0, msRemaining: CYCLE_PHASES[0].ms };
@@ -232,7 +228,7 @@ function mergeData(parsedSaved) {
     appData.recordWeek = parsedSaved.recordWeek || 0;
     if (parsedSaved.cycleState) appData.cycleState = parsedSaved.cycleState;
     if (parsedSaved.reviews) appData.reviews = parsedSaved.reviews;
-    if (parsedSaved.flashcards) appData.flashcards = parsedSaved.flashcards; // Integração dos flashcards salvos
+    if (parsedSaved.flashcards) appData.flashcards = parsedSaved.flashcards; 
     if (parsedSaved.timerMode) appData.timerMode = parsedSaved.timerMode;
     if (parsedSaved.stopwatchMs !== undefined) appData.stopwatchMs = parsedSaved.stopwatchMs;
 }
@@ -240,13 +236,8 @@ function mergeData(parsedSaved) {
 async function loadData() {
     try {
         const snapshot = await database.ref('appData').once('value');
-        if (snapshot.val()) {
-            mergeData(snapshot.val());
-            localStorage.setItem('studyAppData', JSON.stringify(appData)); 
-        } else {
-            const localData = localStorage.getItem('studyAppData');
-            if (localData) { mergeData(JSON.parse(localData)); database.ref('appData').set(appData); }
-        }
+        if (snapshot.val()) { mergeData(snapshot.val()); localStorage.setItem('studyAppData', JSON.stringify(appData)); } 
+        else { const localData = localStorage.getItem('studyAppData'); if (localData) { mergeData(JSON.parse(localData)); database.ref('appData').set(appData); } }
     } catch (error) {
         const localData = localStorage.getItem('studyAppData');
         if (localData) { try { mergeData(JSON.parse(localData)); } catch(e) {} }
@@ -264,9 +255,7 @@ function saveData() {
 }
 
 function checkStreak() {
-    const today = getTodayDate();
-    const lastDateStr = appData.lastStudyDate;
-    if (!lastDateStr) return;
+    const today = getTodayDate(); const lastDateStr = appData.lastStudyDate; if (!lastDateStr) return;
     const diffDays = Math.round(Math.abs(new Date(today) - new Date(lastDateStr)) / (1000 * 60 * 60 * 24));
     if (diffDays > 1) { appData.streak = 0; saveData(); }
 }
@@ -274,21 +263,16 @@ function checkStreak() {
 function calculateRecords() {
     let maxDay = 0; let totalAcumulado = 0;
     for (const date in appData.history) {
-        const time = appData.history[date].time;
-        totalAcumulado += time;
-        if (time > maxDay) maxDay = time;
+        const time = appData.history[date].time; totalAcumulado += time; if (time > maxDay) maxDay = time;
     }
     appData.recordDay = maxDay;
     
-    let maxWeek = 0;
-    const dates = Object.keys(appData.history).sort();
+    let maxWeek = 0; const dates = Object.keys(appData.history).sort();
     for (let i = 0; i < dates.length; i++) {
         let cw = 0; let start = new Date(dates[i]);
         for (let j = 0; j < 7; j++) {
             let checkDate = new Date(start); checkDate.setDate(checkDate.getDate() + j);
-            const y = checkDate.getFullYear();
-            const m = String(checkDate.getMonth() + 1).padStart(2, '0');
-            const d = String(checkDate.getDate()).padStart(2, '0');
+            const y = checkDate.getFullYear(); const m = String(checkDate.getMonth() + 1).padStart(2, '0'); const d = String(checkDate.getDate()).padStart(2, '0');
             const checkDateStr = `${y}-${m}-${d}`;
             if (appData.history[checkDateStr]) cw += appData.history[checkDateStr].time;
         }
@@ -299,25 +283,20 @@ function calculateRecords() {
 
 function renderHeatmap() {
     if(!elements.heatmapGrid) return;
-    elements.heatmapGrid.innerHTML = '';
-    const today = new Date();
+    elements.heatmapGrid.innerHTML = ''; const today = new Date();
     for(let i = 29; i >= 0; i--) {
         let d = new Date(today); d.setDate(today.getDate() - i);
-        const y = d.getFullYear();
-        const m = String(d.getMonth() + 1).padStart(2, '0');
-        const day = String(d.getDate()).padStart(2, '0');
+        const y = d.getFullYear(); const m = String(d.getMonth() + 1).padStart(2, '0'); const day = String(d.getDate()).padStart(2, '0');
         let dateStr = `${y}-${m}-${day}`;
         let time = appData.history[dateStr] ? appData.history[dateStr].time : 0;
         let cell = document.createElement('div'); cell.className = 'heatmap-cell';
-        if (time === 0) cell.classList.add('level-0');
-        else if (time < 3600) cell.classList.add('level-1');
-        else if (time < 10800) cell.classList.add('level-2');
-        else cell.classList.add('level-3');
+        if (time === 0) cell.classList.add('level-0'); else if (time < 3600) cell.classList.add('level-1'); else if (time < 10800) cell.classList.add('level-2'); else cell.classList.add('level-3');
         cell.setAttribute('title', `${d.toLocaleDateString('pt-BR')}: ${formatHoursText(time)}`);
         elements.heatmapGrid.appendChild(cell);
     }
 }
 
+// ----------------- INTEGRAÇÃO GOOGLE CALENDAR ----------------- //
 function createGoogleCalendarLink(rev) {
     const nextDateStr = rev.nextReview.replace(/-/g, ''); 
     const text = encodeURIComponent(`Revisão: ${rev.name}`);
@@ -326,20 +305,9 @@ function createGoogleCalendarLink(rev) {
 }
 
 function updateReviewSubjects() {
-    if(elements.selectManualRevSubject) {
-        elements.selectManualRevSubject.innerHTML = '<option value="">Selecione a matéria...</option>';
-        appData.savedSubjects.forEach(subj => elements.selectManualRevSubject.appendChild(new Option(subj, subj)));
-    }
-    if(elements.filterReviewSubject) {
-        const currentFilter = elements.filterReviewSubject.value;
-        elements.filterReviewSubject.innerHTML = '<option value="all">Todas as Matérias</option>';
-        appData.savedSubjects.forEach(subj => elements.filterReviewSubject.appendChild(new Option(subj, subj)));
-        elements.filterReviewSubject.value = currentFilter || 'all';
-    }
-    if(elements.editRevSubject) {
-        elements.editRevSubject.innerHTML = '';
-        appData.savedSubjects.forEach(subj => elements.editRevSubject.appendChild(new Option(subj, subj)));
-    }
+    if(elements.selectManualRevSubject) { elements.selectManualRevSubject.innerHTML = '<option value="">Selecione a matéria...</option>'; appData.savedSubjects.forEach(subj => elements.selectManualRevSubject.appendChild(new Option(subj, subj))); }
+    if(elements.filterReviewSubject) { const currentFilter = elements.filterReviewSubject.value; elements.filterReviewSubject.innerHTML = '<option value="all">Todas as Matérias</option>'; appData.savedSubjects.forEach(subj => elements.filterReviewSubject.appendChild(new Option(subj, subj))); elements.filterReviewSubject.value = currentFilter || 'all'; }
+    if(elements.editRevSubject) { elements.editRevSubject.innerHTML = ''; appData.savedSubjects.forEach(subj => elements.editRevSubject.appendChild(new Option(subj, subj))); }
 }
 
 function initManualReviews() {
@@ -350,58 +318,33 @@ function initManualReviews() {
         elements.inputManualRevName.value = ''; elements.selectManualRevSubject.value = ''; elements.inputManualRevNotes.value = '';
         elements.modalManualRev.classList.add('active');
     });
-    
     if(elements.btnCancelManualRev) elements.btnCancelManualRev.addEventListener('click', () => elements.modalManualRev.classList.remove('active'));
-    
     if(elements.btnSaveManualRev) elements.btnSaveManualRev.addEventListener('click', () => {
-        const contentName = elements.inputManualRevName.value.trim();
-        const subject = elements.selectManualRevSubject.value;
-        const notes = elements.inputManualRevNotes.value.trim();
-        
+        const contentName = elements.inputManualRevName.value.trim(); const subject = elements.selectManualRevSubject.value; const notes = elements.inputManualRevNotes.value.trim();
         if (contentName && subject) {
             const d = new Date(); d.setDate(d.getDate() + REVIEW_INTERVALS[0]); 
-            const nextYear = d.getFullYear();
-            const nextMonth = String(d.getMonth() + 1).padStart(2, '0');
-            const nextDay = String(d.getDate()).padStart(2, '0');
-            const formattedNext = `${nextYear}-${nextMonth}-${nextDay}`;
-            
+            const formattedNext = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
             const newRev = { id: 'rev_' + Date.now(), subject: subject, name: contentName, notes: notes, step: 0, nextReview: formattedNext };
-            appData.reviews.push(newRev);
-            saveData(); renderPendingReviews(); renderAllReviews();
-            elements.modalManualRev.classList.remove('active');
-            window.open(createGoogleCalendarLink(newRev), '_blank');
+            appData.reviews.push(newRev); saveData(); renderPendingReviews(); renderAllReviews();
+            elements.modalManualRev.classList.remove('active'); window.open(createGoogleCalendarLink(newRev), '_blank');
         } else alert("Por favor, selecione a matéria e digite o nome!");
     });
-
-    if(elements.btnManageReviews) elements.btnManageReviews.addEventListener('click', () => {
-        elements.filterReviewSubject.value = 'all'; renderAllReviews(); 
-        setTimeout(() => elements.modalManageRev.classList.add('active'), 10);
-    });
-    
+    if(elements.btnManageReviews) elements.btnManageReviews.addEventListener('click', () => { elements.filterReviewSubject.value = 'all'; renderAllReviews(); setTimeout(() => elements.modalManageRev.classList.add('active'), 10); });
     if(elements.btnCloseManage) elements.btnCloseManage.addEventListener('click', () => elements.modalManageRev.classList.remove('active'));
     if(elements.filterReviewSubject) elements.filterReviewSubject.addEventListener('change', renderAllReviews);
-
     if(elements.btnCancelEditRev) elements.btnCancelEditRev.addEventListener('click', () => elements.modalEditRev.classList.remove('active'));
     if(elements.btnSaveEditRev) elements.btnSaveEditRev.addEventListener('click', () => {
         const revIndex = appData.reviews.findIndex(r => r.id === currentEditingRevId);
         if (revIndex !== -1) {
-            appData.reviews[revIndex].subject = elements.editRevSubject.value;
-            appData.reviews[revIndex].name = elements.editRevName.value.trim();
-            appData.reviews[revIndex].notes = elements.editRevNotes.value.trim();
-            saveData(); renderPendingReviews(); renderAllReviews();
-            elements.modalEditRev.classList.remove('active');
+            appData.reviews[revIndex].subject = elements.editRevSubject.value; appData.reviews[revIndex].name = elements.editRevName.value.trim(); appData.reviews[revIndex].notes = elements.editRevNotes.value.trim();
+            saveData(); renderPendingReviews(); renderAllReviews(); elements.modalEditRev.classList.remove('active');
         }
     });
 }
 
 function renderPendingReviews() {
-    const badge = document.getElementById('review-count-badge');
-    const list = document.getElementById('pending-reviews-list');
-    const msg = document.getElementById('no-reviews-msg');
-    
-    if(list) list.innerHTML = '';
-    const today = getTodayDate();
-    let pending = [];
+    const badge = document.getElementById('review-count-badge'); const list = document.getElementById('pending-reviews-list'); const msg = document.getElementById('no-reviews-msg');
+    if(list) list.innerHTML = ''; const today = getTodayDate(); let pending = [];
     appData.reviews.forEach(rev => { if (rev.nextReview <= today) pending.push(rev); });
     
     if(pending.length > 0) {
@@ -409,19 +352,15 @@ function renderPendingReviews() {
         if(msg) msg.style.display = 'none';
         
         pending.forEach(rev => {
-            const days = REVIEW_INTERVALS[rev.step];
-            const isOverdue = rev.nextReview < today;
+            const days = REVIEW_INTERVALS[rev.step]; const isOverdue = rev.nextReview < today;
             const overdueBadge = isOverdue ? `<span style="background: var(--danger-color); color: white; font-size: 0.6rem; padding: 2px 6px; border-radius: 4px; margin-left: 6px;">Atrasada</span>` : '';
-            
             const html = `
                 <div class="rev-info" style="flex: 1;">
                     <span class="err-subj-badge" style="font-size: 0.65rem; color: var(--text-muted);">${rev.subject || 'Geral'}</span>
                     <span class="rev-name" title="${rev.name}" style="font-weight: 600; display: block; margin: 2px 0;">${rev.name} ${overdueBadge}</span>
                     <span class="rev-step" style="font-size: 0.75rem; color: var(--text-muted);">Revisão de ${days} dia(s)</span>
                 </div>
-                <button class="icon-btn-small btn-complete-rev-side" data-id="${rev.id}" title="Marcar como revisada" style="color: var(--success-color); border: 2px solid var(--success-color); padding: 8px; flex-shrink: 0;">
-                    <svg viewBox="0 0 24 24" width="14" height="14"><path fill="currentColor" d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
-                </button>
+                <button class="icon-btn-small btn-complete-rev-side" data-id="${rev.id}" title="Marcar como revisada" style="color: var(--success-color); border: 2px solid var(--success-color); padding: 8px; flex-shrink: 0;"><svg viewBox="0 0 24 24" width="14" height="14"><path fill="currentColor" d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg></button>
             `;
             const divSmall = document.createElement('div'); divSmall.className = 'review-item due-today'; divSmall.innerHTML = html;
             if(list) list.appendChild(divSmall);
@@ -430,11 +369,10 @@ function renderPendingReviews() {
         if(list) {
             list.querySelectorAll('.btn-complete-rev-side').forEach(btn => {
                 btn.addEventListener('click', (e) => {
-                    const id = e.currentTarget.getAttribute('data-id');
-                    const revIndex = appData.reviews.findIndex(r => r.id === id);
+                    const id = e.currentTarget.getAttribute('data-id'); const revIndex = appData.reviews.findIndex(r => r.id === id);
                     if(revIndex !== -1) {
                         const rev = appData.reviews[revIndex]; rev.step++;
-                        if(rev.step >= REVIEW_INTERVALS.length) { appData.reviews.splice(revIndex, 1); alert(`🎉 Parabéns! Você concluiu todo o ciclo de revisões de "${rev.name}"!`); } 
+                        if(rev.step >= REVIEW_INTERVALS.length) { appData.reviews.splice(revIndex, 1); alert(`🎉 Parabéns! Você concluiu todo o ciclo de revisões de "${rev.name}"! O assunto está consolidado.`); } 
                         else {
                             const d = new Date(); d.setDate(d.getDate() + REVIEW_INTERVALS[rev.step]);
                             rev.nextReview = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -446,34 +384,24 @@ function renderPendingReviews() {
             });
         }
     } else {
-        if(badge) badge.style.display = 'none';
-        if(msg) msg.style.display = 'block';
+        if(badge) badge.style.display = 'none'; if(msg) msg.style.display = 'block';
     }
 }
 
 function renderAllReviews() {
-    const list = elements.allReviewsList;
-    if(!list) return;
-    list.innerHTML = '';
+    const list = elements.allReviewsList; if(!list) return; list.innerHTML = '';
     const filter = elements.filterReviewSubject ? elements.filterReviewSubject.value : 'all';
-    let filtered = appData.reviews;
-    if(filter && filter !== 'all') filtered = filtered.filter(r => r.subject === filter);
+    let filtered = appData.reviews; if(filter && filter !== 'all') filtered = filtered.filter(r => r.subject === filter);
     filtered.sort((a, b) => new Date(a.nextReview) - new Date(b.nextReview));
-    
     if(document.getElementById('rev-stat-total')) document.getElementById('rev-stat-total').textContent = filtered.length;
 
-    if(filtered.length === 0) {
-        list.innerHTML = `<div class="empty-msg" style="grid-column: 1 / -1; padding: 3rem 2rem; text-align: center; color: var(--text-muted); border: 1px dashed var(--border-color); border-radius: var(--radius); font-size: 0.9rem;">Nenhuma revisão encontrada.</div>`;
-        return;
-    }
+    if(filtered.length === 0) { list.innerHTML = `<div class="empty-msg" style="grid-column: 1 / -1; padding: 3rem 2rem; text-align: center; color: var(--text-muted); border: 1px dashed var(--border-color); border-radius: var(--radius); font-size: 0.9rem;">Nenhuma revisão encontrada.</div>`; return; }
 
     const today = getTodayDate();
     filtered.forEach(rev => {
         const stepText = rev.step < REVIEW_INTERVALS.length ? `${REVIEW_INTERVALS[rev.step]} dias` : 'Concluído';
         const notesHtml = rev.notes ? `<p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.3rem; border-left: 2px solid var(--border-color); padding-left: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${rev.notes}</p>` : '';
-        const isOverdue = rev.nextReview <= today;
-        const dateColor = isOverdue ? 'var(--danger-color)' : 'var(--text-main)';
-        
+        const isOverdue = rev.nextReview <= today; const dateColor = isOverdue ? 'var(--danger-color)' : 'var(--text-main)';
         let completeBtnHtml = isOverdue ? `<button class="icon-btn-small btn-complete-rev" data-id="${rev.id}" title="Marcar etapa como Concluída" style="color: var(--success-color); border: 1px solid var(--success-color); padding: 4px; border-radius: 4px; margin-left: 8px;"><svg viewBox="0 0 24 24" width="14" height="14"><path fill="currentColor" d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg></button>` : '';
         
         const card = document.createElement('div'); card.className = 'error-card'; card.style.padding = '0.8rem 1rem'; card.style.gap = '0.5rem';
@@ -499,8 +427,7 @@ function renderAllReviews() {
 
     list.querySelectorAll('.btn-complete-rev').forEach(btn => {
         btn.addEventListener('click', (e) => {
-            const id = e.currentTarget.getAttribute('data-id');
-            const revIndex = appData.reviews.findIndex(r => r.id === id);
+            const id = e.currentTarget.getAttribute('data-id'); const revIndex = appData.reviews.findIndex(r => r.id === id);
             if(revIndex !== -1) {
                 const rev = appData.reviews[revIndex]; rev.step++;
                 if(rev.step >= REVIEW_INTERVALS.length) { appData.reviews.splice(revIndex, 1); alert(`🎉 Parabéns! Você concluiu todo o ciclo de revisões de "${rev.name}"!`); } 
@@ -517,16 +444,14 @@ function renderAllReviews() {
     list.querySelectorAll('.del-rev-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
             if(confirm('Tem certeza que deseja apagar esta revisão da sua agenda para sempre?')) {
-                appData.reviews = appData.reviews.filter(r => r.id !== e.currentTarget.getAttribute('data-id'));
-                saveData(); renderAllReviews(); renderPendingReviews();
+                appData.reviews = appData.reviews.filter(r => r.id !== e.currentTarget.getAttribute('data-id')); saveData(); renderAllReviews(); renderPendingReviews();
             }
         });
     });
 
     list.querySelectorAll('.edit-rev-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
-            currentEditingRevId = e.currentTarget.getAttribute('data-id');
-            const rev = appData.reviews.find(r => r.id === currentEditingRevId);
+            currentEditingRevId = e.currentTarget.getAttribute('data-id'); const rev = appData.reviews.find(r => r.id === currentEditingRevId);
             if(rev) {
                 if(elements.editRevSubject) elements.editRevSubject.value = rev.subject;
                 if(elements.editRevName) elements.editRevName.value = rev.name;
@@ -539,12 +464,8 @@ function renderAllReviews() {
 
 function updateUI() {
     try {
-        updateTodaysSubjects();
-        const today = getTodayDate();
-        const todayData = appData.history[today] || { time: 0, sessions: 0 };
-        const h = String(Math.floor(todayData.time / 3600)).padStart(2, '0');
-        const m = String(Math.floor((todayData.time % 3600) / 60)).padStart(2, '0');
-        const s = String(todayData.time % 60).padStart(2, '0');
+        updateTodaysSubjects(); const today = getTodayDate(); const todayData = appData.history[today] || { time: 0, sessions: 0 };
+        const h = String(Math.floor(todayData.time / 3600)).padStart(2, '0'); const m = String(Math.floor((todayData.time % 3600) / 60)).padStart(2, '0'); const s = String(todayData.time % 60).padStart(2, '0');
         
         if(elements.totalTimeDisplay) elements.totalTimeDisplay.textContent = `${h}:${m}:${s}`;
         if(elements.sessionsDisplay) elements.sessionsDisplay.textContent = `${todayData.sessions} sessões hoje`;
@@ -555,34 +476,25 @@ function updateUI() {
         let totalAccumulatedSeconds = Object.values(appData.history).reduce((acc, curr) => acc + curr.time, 0);
         if(elements.totalAccumulated) elements.totalAccumulated.textContent = formatHoursText(totalAccumulatedSeconds);
         
-        let percentage = (todayData.time / appData.dailyGoalSeconds) * 100;
-        if (percentage > 100) percentage = 100;
+        let percentage = (todayData.time / appData.dailyGoalSeconds) * 100; if (percentage > 100) percentage = 100;
         if(elements.dailyProgressFill) elements.dailyProgressFill.style.width = `${percentage}%`;
         if(elements.dailyPercentage) elements.dailyPercentage.textContent = `${Math.floor(percentage)}%`;
 
-        if (chartInstance) updateChartData();
-        renderHeatmap(); renderPendingReviews(); renderAllReviews();
+        if (chartInstance) updateChartData(); renderHeatmap(); renderPendingReviews(); renderAllReviews();
     } catch(e) { console.error("Erro no updateUI:", e); }
 }
 
 function loadTimerState() {
     updateTodaysSubjects();
-    const wasRunning = localStorage.getItem('isTimerRunning') === 'true';
-    const lastTick = parseInt(localStorage.getItem('lastTick')) || Date.now();
-
+    const wasRunning = localStorage.getItem('isTimerRunning') === 'true'; const lastTick = parseInt(localStorage.getItem('lastTick')) || Date.now();
     if (wasRunning) {
         const missedMs = Date.now() - lastTick;
         if (missedMs > 0 && missedMs < 43200000) { 
-            if (appData.timerMode === 'stopwatch') {
-                appData.stopwatchMs += missedMs;
-                appData.history[getTodayDate()].time += Math.floor(missedMs / 1000);
-            } else {
+            if (appData.timerMode === 'stopwatch') { appData.stopwatchMs += missedMs; appData.history[getTodayDate()].time += Math.floor(missedMs / 1000); } 
+            else {
                 appData.cycleState.msRemaining -= missedMs;
                 if (appData.cycleState.msRemaining < 0) appData.cycleState.msRemaining = 0;
-                else {
-                    const currentPhase = CYCLE_PHASES[appData.cycleState.phaseIndex];
-                    if (currentPhase && currentPhase.isStudy) appData.history[getTodayDate()].time += Math.floor(missedMs / 1000);
-                }
+                else { const currentPhase = CYCLE_PHASES[appData.cycleState.phaseIndex]; if (currentPhase && currentPhase.isStudy) appData.history[getTodayDate()].time += Math.floor(missedMs / 1000); }
             }
             saveData();
         }
@@ -595,16 +507,13 @@ function startTimer() {
     if (isRunning) return;
     if (appData.timerMode === 'pomodoro' && todaysSubjects.length > 0 && appData.cycleState.subjectIndex >= todaysSubjects.length) return; 
 
-    isRunning = true; updateToggleBtn();
-    const today = getTodayDate();
+    isRunning = true; updateToggleBtn(); const today = getTodayDate();
     
     if (localStorage.getItem('isTimerRunning') !== 'true') {
         appData.history[today].sessions++;
         if (appData.lastStudyDate !== today) {
-            if (appData.lastStudyDate) {
-                const diff = Math.round((new Date(today) - new Date(appData.lastStudyDate)) / (1000 * 60 * 60 * 24));
-                if (diff <= 1) appData.streak++; else appData.streak = 1;
-            } else appData.streak = 1;
+            if (appData.lastStudyDate) { const diff = Math.round((new Date(today) - new Date(appData.lastStudyDate)) / (1000 * 60 * 60 * 24)); if (diff <= 1) appData.streak++; else appData.streak = 1; } 
+            else appData.streak = 1;
             appData.lastStudyDate = today; saveData(); 
         }
     }
@@ -687,8 +596,7 @@ function getChartData() {
 }
 
 function initChart() {
-    const canvas = document.getElementById('weeklyChart'); if(!canvas) return;
-    const ctx = canvas.getContext('2d');
+    const canvas = document.getElementById('weeklyChart'); if(!canvas) return; const ctx = canvas.getContext('2d');
     const textColor = getComputedStyle(document.body).getPropertyValue('--text-muted').trim() || '#999999';
     const barColor = getComputedStyle(document.body).getPropertyValue('--text-main').trim() || '#ffffff';
     const { labels, data } = getChartData();
@@ -717,6 +625,7 @@ function setupNavigation() {
     const navButtons = document.querySelectorAll('.nav-btn'); const views = document.querySelectorAll('.view');
     navButtons.forEach(btn => {
         btn.addEventListener('click', () => {
+            if(btn.id === 'btn-nav-conectivos') return; 
             navButtons.forEach(b => b.classList.remove('active')); views.forEach(v => v.classList.remove('active'));
             btn.classList.add('active'); const targetId = btn.getAttribute('data-target');
             const targetEl = document.getElementById(targetId); if(targetEl) targetEl.classList.add('active'); 
@@ -737,8 +646,7 @@ if(elements.macFullscreenBtn) elements.macFullscreenBtn.addEventListener('click'
 if(elements.focusToggle) elements.focusToggle.addEventListener('click', () => document.body.classList.toggle('focus-active'));
 
 function renderSubjectBank() {
-    if(!elements.subjectBank) return;
-    elements.subjectBank.innerHTML = '';
+    if(!elements.subjectBank) return; elements.subjectBank.innerHTML = '';
     appData.savedSubjects.forEach((subject, index) => {
         const pill = document.createElement('div'); pill.className = 'subject-pill'; pill.draggable = true;
         pill.innerHTML = `<span>${subject}</span><span class="delete-subject" title="Remover matéria">&times;</span>`;
@@ -750,15 +658,13 @@ function renderSubjectBank() {
 }
 
 if(elements.btnAddSubject) elements.btnAddSubject.addEventListener('click', () => {
-    if(!elements.newSubjectInput) return;
-    const val = elements.newSubjectInput.value.trim();
+    if(!elements.newSubjectInput) return; const val = elements.newSubjectInput.value.trim();
     if (val && !appData.savedSubjects.includes(val)) { appData.savedSubjects.push(val); elements.newSubjectInput.value = ''; saveData(); renderSubjectBank(); updateReviewSubjects(); }
 });
 if(elements.newSubjectInput) elements.newSubjectInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') elements.btnAddSubject.click(); });
 
 function renderSchedule() {
-    if(!elements.scheduleTableBody) return;
-    elements.scheduleTableBody.innerHTML = '';
+    if(!elements.scheduleTableBody) return; elements.scheduleTableBody.innerHTML = '';
     appData.schedule.forEach((row, rowIndex) => {
         const tr = document.createElement('tr'); const tdTime = document.createElement('td'); tdTime.className = 'time-cell';
         const btnDeleteRow = document.createElement('button'); btnDeleteRow.className = 'btn-remove-row';
@@ -805,7 +711,7 @@ if (btnPrintSchedule) btnPrintSchedule.addEventListener('click', () => window.pr
 init();
 
 // --- 🧠 INTEGRAÇÃO IA: PALAVRA DO DIA ---
-async function carregarVocabularioDiario() {
+async function carregarVocabularioDiario(forceRefresh = false) {
     let API_KEY = localStorage.getItem('gemini_api_key');
     const hoje = getTodayDate();
     const palavraSalva = localStorage.getItem('palavra_concurso');
@@ -842,7 +748,7 @@ async function carregarVocabularioDiario() {
         vocabContent.style.display = 'flex';
     };
 
-    if (palavraSalva && dataSalva === hoje) {
+    if (!forceRefresh && palavraSalva && dataSalva === hoje) {
         try {
             renderizarPalavra(JSON.parse(palavraSalva));
             return;
@@ -855,13 +761,19 @@ async function carregarVocabularioDiario() {
             localStorage.setItem('gemini_api_key', API_KEY.trim());
         } else {
             console.warn("Chave ausente. Carregando palavra offline.");
-            renderizarPalavra({ palavra: "Desídia", significado: "Disposição para evitar esforço físico ou moral; indolência, negligência.", sinonimos: ["Omissão", "Inércia"], aplicacao: "A impunidade é corolário da desídia estatal." });
+            renderizarPalavra({ palavra: "Desídia", significado: "Disposição para evitar esforço físico ou moral; indolência, negligência.", sinonimos: ["Omissão", "Inércia"], aplicacao: "A impunidade é corolário da desídia estatal na estruturação de forças de segurança." });
             return;
         }
     }
 
+    // Reset interface para loading se for refresh forçado
+    if(vocabContent && vocabLoading) {
+        vocabContent.style.display = 'none';
+        vocabLoading.style.display = 'block';
+    }
+
     try {
-        const promptText = `Atue como um avaliador rigoroso de redação de concursos (foco em tribunais e carreiras policiais). Forneça UMA palavra de vocabulário avançado e formal útil para uma dissertação. O retorno deve ser EXATAMENTE E APENAS um objeto JSON neste formato, sem marcações markdown ou texto extra: {"palavra": "Exemplo", "significado": "Significado", "sinonimos": ["SinônimoA", "SinônimoB"], "aplicacao": "Frase de exemplo"}`;
+        const promptText = `Atue como um avaliador rigoroso de redação de concursos (foco em tribunais e carreiras policiais). Forneça UMA palavra de vocabulário avançado e formal útil para uma dissertação. Escolha uma palavra INÉDITA, diferente da última gerada. O retorno deve ser EXATAMENTE E APENAS um objeto JSON neste formato, sem marcações markdown ou texto extra: {"palavra": "Exemplo", "significado": "Significado", "sinonimos": ["SinônimoA", "SinônimoB"], "aplicacao": "Frase de exemplo"}`;
 
         const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`, {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -884,14 +796,15 @@ async function carregarVocabularioDiario() {
         renderizarPalavra(palavraObj);
     } catch (error) {
         console.error("Erro ao buscar palavra via IA:", error);
-        renderizarPalavra({ palavra: "Desídia", significado: "Disposição para evitar esforço físico ou moral; indolência, negligência.", sinonimos: ["Omissão", "Inércia"], aplicacao: "A impunidade é corolário da desídia estatal." });
+        renderizarPalavra({ palavra: "Mitigar", significado: "Tornar mais brando, suave; atenuar.", sinonimos: ["Abrandar", "Reduzir"], aplicacao: "É dever do Estado mitigar as desigualdades sociais." });
     }
 }
 
-// --- CONTROLE DE FLASHCARDS SALVOS E CONECTIVOS ---
-function setupBotoesExtras() {
-    if(elements.btnOpenConectivos) {
-        elements.btnOpenConectivos.addEventListener('click', () => {
+// --- CONTROLE DE CONECTIVOS E FLASHCARDS (ANKI) ---
+function setupFlashcardsEConectivos() {
+    // 1. Modal Conectivos (Agora aberto pela Nav Bar)
+    if(elements.btnNavConectivos) {
+        elements.btnNavConectivos.addEventListener('click', () => {
             if(elements.modalConectivos) elements.modalConectivos.classList.add('active');
         });
     }
@@ -901,78 +814,210 @@ function setupBotoesExtras() {
         });
     }
 
+    // 2. Atualizar Palavra 
+    if(elements.btnRefreshWord) {
+        elements.btnRefreshWord.addEventListener('click', () => {
+            carregarVocabularioDiario(true);
+        });
+    }
+
+    // 3. Salvar Flashcard para o Baralho
     if(elements.btnSaveFlashcard) {
         elements.btnSaveFlashcard.addEventListener('click', () => {
             if(currentPalavraObj) {
                 const jaExiste = appData.flashcards.some(f => f.palavra === currentPalavraObj.palavra);
                 if(jaExiste) {
-                    alert('Esta palavra já está nos seus Flashcards!');
+                    alert(`A palavra "${currentPalavraObj.palavra}" já está no seu baralho!`);
                 } else {
-                    appData.flashcards.push(currentPalavraObj);
+                    // Inicialização padrão algoritmo Anki
+                    const newCard = {
+                        id: 'fc_' + Date.now(),
+                        palavra: currentPalavraObj.palavra,
+                        significado: currentPalavraObj.significado,
+                        sinonimos: currentPalavraObj.sinonimos,
+                        aplicacao: currentPalavraObj.aplicacao,
+                        interval: 0,
+                        ease: 2.5,
+                        nextReview: getTodayDate()
+                    };
+                    appData.flashcards.push(newCard);
                     saveData();
-                    renderFlashcards();
-                    alert('Palavra adicionada aos seus Flashcards com sucesso!');
+                    initAnkiSession(); // Atualiza a fila se estiver na aba
+                    renderGerenciadorFlashcards();
+                    alert(`"${currentPalavraObj.palavra}" adicionada ao baralho de Flashcards!`);
                 }
             }
         });
     }
+    
+    // 4. Modal de Gerenciar Baralho
+    if(elements.btnManageFlashcards) {
+        elements.btnManageFlashcards.addEventListener('click', () => {
+            renderGerenciadorFlashcards();
+            elements.modalManageFlashcards.classList.add('active');
+        });
+    }
+    if(elements.btnCloseManageFc) {
+        elements.btnCloseManageFc.addEventListener('click', () => {
+            elements.modalManageFlashcards.classList.remove('active');
+        });
+    }
 }
 
-function renderFlashcards() {
-    if(!elements.flashcardsGrid || !elements.noFlashcardsMsg) return;
-    elements.flashcardsGrid.innerHTML = '';
+// --- LÓGICA DO ALGORITMO ANKI (REPETIÇÃO ESPAÇADA) ---
+function initAnkiSession() {
+    const today = getTodayDate();
+    // Filtra os cards que estão agendados para hoje ou dias anteriores
+    ankiStudyQueue = appData.flashcards.filter(f => f.nextReview <= today);
     
-    if(!appData.flashcards || appData.flashcards.length === 0) {
-        elements.flashcardsGrid.style.display = 'none';
-        elements.noFlashcardsMsg.style.display = 'block';
+    if (ankiStudyQueue.length > 0) {
+        document.getElementById('anki-study-session').style.display = 'flex';
+        document.getElementById('anki-done-msg').style.display = 'none';
+        loadNextAnkiCard();
+    } else {
+        document.getElementById('anki-study-session').style.display = 'none';
+        document.getElementById('anki-done-msg').style.display = 'block';
+    }
+}
+
+function loadNextAnkiCard() {
+    if (ankiStudyQueue.length === 0) {
+        initAnkiSession(); // Recarrega para exibir a tela de sucesso
         return;
     }
     
-    elements.flashcardsGrid.style.display = 'grid';
-    elements.noFlashcardsMsg.style.display = 'none';
+    currentAnkiCard = ankiStudyQueue[0];
+    
+    // Reset da Interface
+    document.getElementById('anki-card').classList.remove('is-flipped');
+    document.getElementById('btn-anki-show').style.display = 'block';
+    document.getElementById('anki-controls').style.display = 'none';
+    
+    document.getElementById('anki-status').textContent = `REVISÕES PENDENTES: ${ankiStudyQueue.length}`;
+    
+    // Front do Card
+    document.getElementById('anki-word').textContent = currentAnkiCard.palavra;
+    
+    // Back do Card
+    document.getElementById('anki-word-back').textContent = currentAnkiCard.palavra;
+    document.getElementById('anki-meaning').textContent = currentAnkiCard.significado;
+    document.getElementById('anki-example').textContent = `"${currentAnkiCard.aplicacao}"`;
+    
+    const synContainer = document.getElementById('anki-synonyms');
+    synContainer.innerHTML = '';
+    currentAnkiCard.sinonimos.forEach(syn => {
+        const span = document.createElement('span');
+        span.style.cssText = "font-size: 0.8rem; background: var(--border-color); color: var(--text-main); padding: 4px 10px; border-radius: 12px; font-weight: 500;";
+        span.textContent = syn;
+        synContainer.appendChild(span);
+    });
+    
+    // Calcula as previsões de dias para os botões do Anki
+    const ival = currentAnkiCard.interval || 0;
+    const e = currentAnkiCard.ease || 2.5;
+    
+    const iHard = ival === 0 ? 1 : Math.ceil(ival * 1.2);
+    const iGood = ival === 0 ? 1 : Math.ceil(ival * 2.5);
+    const iEasy = ival === 0 ? 4 : Math.ceil(ival * e * 1.3);
+    
+    document.getElementById('anki-time-2').textContent = `${iHard} d`;
+    document.getElementById('anki-time-3').textContent = `${iGood} d`;
+    document.getElementById('anki-time-4').textContent = `${iEasy} d`;
+}
 
-    appData.flashcards.forEach((cardObj, index) => {
-        const container = document.createElement('div');
-        container.className = 'flashcard-container';
+// Lógica de Giro e Botões do Anki
+document.getElementById('anki-card-container').addEventListener('click', () => {
+    if (!currentAnkiCard) return;
+    document.getElementById('anki-card').classList.add('is-flipped');
+    document.getElementById('btn-anki-show').style.display = 'none';
+    document.getElementById('anki-controls').style.display = 'flex';
+});
+
+document.getElementById('btn-anki-show').addEventListener('click', (e) => {
+    e.stopPropagation();
+    document.getElementById('anki-card-container').click();
+});
+
+document.querySelectorAll('.btn-anki-rate').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const rating = parseInt(btn.getAttribute('data-rate'));
         
-        let sinHtml = '';
-        if(Array.isArray(cardObj.sinonimos)) {
-            sinHtml = cardObj.sinonimos.map(s => `<span style="font-size: 0.65rem; background: var(--border-color); color: var(--text-main); padding: 2px 8px; border-radius: 12px; font-weight: 500;">${s}</span>`).join('');
+        let ival = currentAnkiCard.interval || 0;
+        let ease = currentAnkiCard.ease || 2.5;
+        
+        if (rating === 1) { // Errei
+            ival = 0;
+            ease = Math.max(1.3, ease - 0.2);
+        } else if (rating === 2) { // Difícil
+            ival = ival === 0 ? 1 : Math.ceil(ival * 1.2);
+            ease = Math.max(1.3, ease - 0.15);
+        } else if (rating === 3) { // Bom
+            ival = ival === 0 ? 1 : Math.ceil(ival * 2.5);
+        } else if (rating === 4) { // Fácil
+            ival = ival === 0 ? 4 : Math.ceil(ival * ease * 1.3);
+            ease += 0.15;
         }
+        
+        currentAnkiCard.interval = ival;
+        currentAnkiCard.ease = ease;
+        
+        // Define a próxima data
+        const nextDate = new Date();
+        if (rating === 1) {
+            // Se errou, revisa hoje de novo no final da fila
+            currentAnkiCard.nextReview = getTodayDate();
+            ankiStudyQueue.push(ankiStudyQueue.shift()); 
+        } else {
+            nextDate.setDate(nextDate.getDate() + ival);
+            currentAnkiCard.nextReview = `${nextDate.getFullYear()}-${String(nextDate.getMonth() + 1).padStart(2, '0')}-${String(nextDate.getDate()).padStart(2, '0')}`;
+            ankiStudyQueue.shift(); // Remove da fila de hoje
+        }
+        
+        // Salva na base de dados
+        const idx = appData.flashcards.findIndex(f => f.id === currentAnkiCard.id);
+        if (idx !== -1) appData.flashcards[idx] = currentAnkiCard;
+        saveData();
+        
+        // Vai para a próxima carta
+        loadNextAnkiCard();
+    });
+});
 
-        container.innerHTML = `
-            <div class="flashcard">
-                <div class="flashcard-face flashcard-front">
-                    <button class="btn-delete-flashcard" data-index="${index}" title="Remover Flashcard" style="position: absolute; top: 10px; right: 10px; background: transparent; border: none; color: var(--danger-color); cursor: pointer; font-size: 1.2rem;">&times;</button>
-                    <h4 style="font-size: 1.8rem; color: var(--text-main); margin: 0; font-weight: 700;">${cardObj.palavra}</h4>
-                    <span style="font-size: 0.75rem; color: var(--text-muted); margin-top: auto; opacity: 0.6;">(Clique para virar)</span>
+// Gerenciador de Flashcards (Para ver, editar ou deletar cartas antigas)
+function renderGerenciadorFlashcards() {
+    if(!elements.allFlashcardsList) return;
+    elements.allFlashcardsList.innerHTML = '';
+    
+    const fcList = appData.flashcards || [];
+    document.getElementById('fc-stat-total').textContent = fcList.length;
+
+    if(fcList.length === 0) {
+        elements.allFlashcardsList.innerHTML = `<div style="grid-column: 1 / -1; padding: 3rem; text-align: center; color: var(--text-muted);">Você ainda não possui flashcards salvos no baralho.</div>`;
+        return;
+    }
+
+    fcList.forEach((card, index) => {
+        const div = document.createElement('div');
+        div.className = 'error-card';
+        div.style.padding = '1rem';
+        div.innerHTML = `
+            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                <div>
+                    <h4 style="margin: 0 0 0.5rem 0; font-size: 1.1rem; color: var(--text-main);">${card.palavra}</h4>
+                    <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0;">Próxima revisão: <strong>${formatDateBR(card.nextReview)}</strong></p>
                 </div>
-                <div class="flashcard-face flashcard-back">
-                    <p style="font-size: 0.85rem; color: var(--text-main); font-style: italic; margin: 0 0 10px 0; line-height: 1.4; font-weight: 500;">${cardObj.significado}</p>
-                    <div style="display: flex; gap: 4px; flex-wrap: wrap; justify-content: center; margin-bottom: 10px;">${sinHtml}</div>
-                    <div style="padding: 8px; background: var(--bg-color); border-left: 3px solid var(--text-main); border-radius: 4px; width: 100%; text-align: left;">
-                        <p style="font-size: 0.8rem; font-family: serif; color: var(--text-muted); margin: 0; line-height: 1.4;">"${cardObj.aplicacao}"</p>
-                    </div>
-                </div>
+                <button class="icon-btn-small btn-del-fc" data-id="${card.id}" title="Apagar carta" style="color: var(--danger-color);"><svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M16 9v10H8V9h8m-1.5-6h-5l-1 1H5v2h14V4h-3.5l-1-1zM18 7H6v12c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7z"/></svg></button>
             </div>
         `;
-        
-        // Evento para girar o card
-        container.addEventListener('click', (e) => {
-            if(e.target.classList.contains('btn-delete-flashcard')) return; 
-            container.querySelector('.flashcard').classList.toggle('is-flipped');
-        });
-        
-        // Evento para deletar o card
-        container.querySelector('.btn-delete-flashcard').addEventListener('click', (e) => {
-            e.stopPropagation();
-            if(confirm(`Tem certeza que deseja apagar o flashcard "${cardObj.palavra}"?`)) {
-                appData.flashcards.splice(index, 1);
+        div.querySelector('.btn-del-fc').addEventListener('click', () => {
+            if(confirm(`Tem certeza que deseja apagar a carta "${card.palavra}"?`)) {
+                appData.flashcards = appData.flashcards.filter(f => f.id !== card.id);
                 saveData();
-                renderFlashcards();
+                renderGerenciadorFlashcards();
+                initAnkiSession();
             }
         });
-
-        elements.flashcardsGrid.appendChild(container);
+        elements.allFlashcardsList.appendChild(div);
     });
 }
