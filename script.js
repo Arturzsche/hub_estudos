@@ -1,17 +1,3 @@
-// --- FIREBASE CONFIGURATION ---
-const firebaseConfig = {
-    apiKey: "AIzaSyDKkVRT_2El3mT-9SjZPow9c0vtVMDjgPM",
-    authDomain: "hubestudos-1ce06.firebaseapp.com",
-    databaseURL: "https://hubestudos-1ce06-default-rtdb.firebaseio.com",
-    projectId: "hubestudos-1ce06",
-    storageBucket: "hubestudos-1ce06.firebasestorage.app",
-    messagingSenderId: "951170319139",
-    appId: "1:951170319139:web:5088d18ff383eebb934296"
-};
-
-firebase.initializeApp(firebaseConfig);
-const database = firebase.database();
-
 let timerInterval;
 let isRunning = false;
 let lastTickTime = 0; 
@@ -234,14 +220,11 @@ function mergeData(parsedSaved) {
 }
 
 async function loadData() {
-    try {
-        const snapshot = await database.ref('appData').once('value');
-        if (snapshot.val()) { mergeData(snapshot.val()); localStorage.setItem('studyAppData', JSON.stringify(appData)); } 
-        else { const localData = localStorage.getItem('studyAppData'); if (localData) { mergeData(JSON.parse(localData)); database.ref('appData').set(appData); } }
-    } catch (error) {
-        const localData = localStorage.getItem('studyAppData');
-        if (localData) { try { mergeData(JSON.parse(localData)); } catch(e) {} }
+    const localData = localStorage.getItem('studyAppData');
+    if (localData) {
+        try { mergeData(JSON.parse(localData)); } catch(e) {}
     }
+    
     if (!appData.reviews) appData.reviews = [];
     if (!appData.flashcards) appData.flashcards = [];
     if (!appData.timerMode) appData.timerMode = 'pomodoro';
@@ -251,7 +234,6 @@ async function loadData() {
 
 function saveData() {
     localStorage.setItem('studyAppData', JSON.stringify(appData));
-    try { database.ref('appData').set(appData).catch(e => console.error(e)); } catch(e){}
 }
 
 function checkStreak() {
@@ -770,33 +752,31 @@ async function carregarVocabularioDiario(forceRefresh = false) {
     if (forceRefresh && vocabContent && vocabLoading) {
         vocabContent.style.display = 'none';
         vocabLoading.style.display = 'block';
+        vocabLoading.innerHTML = `<svg viewBox="0 0 24 24" width="24" height="24" style="animation: spin 1s linear infinite; margin-bottom: 8px; color: var(--text-muted);"><path fill="currentColor" d="M12 2v4c5.52 0 10 4.48 10 10s-4.48 10-10 10S2 21.52 2 16H0c0 6.63 5.37 12 12 12s12-5.37 12-12S18.63 2 12 2z"/></svg><br>Gerando nova palavra...`;
     }
 
-    // LÓGICA ANTI-REPETIÇÃO
-    let palavraExcluida = "";
-    if (palavraSalva) {
-        try { palavraExcluida = JSON.parse(palavraSalva).palavra; } catch(e) {}
+    // Memória de curto prazo para impedir o Gemini de repetir palavras
+    let historicoPalavras = JSON.parse(localStorage.getItem('historico_palavras') || '[]');
+    if (currentPalavraObj && !historicoPalavras.includes(currentPalavraObj.palavra)) {
+        historicoPalavras.push(currentPalavraObj.palavra);
     }
-    if (currentPalavraObj) {
-        palavraExcluida = currentPalavraObj.palavra;
-    }
+    // Mantém só as últimas 10 na memória para não sobrecarregar
+    if (historicoPalavras.length > 10) historicoPalavras.shift();
+    localStorage.setItem('historico_palavras', JSON.stringify(historicoPalavras));
 
     try {
         const promptText = `Atue como um avaliador rigoroso de redação de concursos (foco em tribunais e carreiras policiais). 
+        Semente de aleatoriedade para garantir ineditismo: ${Math.random()}.
         Forneça UMA palavra de vocabulário avançado e formal útil para uma dissertação. 
         REGRAS CRUCIAIS:
-        1. A palavra deve ser INÉDITA e ALEATÓRIA (Código de variação: ${Date.now()}).
-        2. É EXPRESSAMENTE PROIBIDO retornar a palavra "${palavraExcluida}". Pense em outro termo!
+        1. A palavra DEVE ser inédita.
+        2. É EXPRESSAMENTE PROIBIDO retornar qualquer uma destas palavras que já estudei: ${historicoPalavras.join(', ')}. Escolha um termo totalmente novo!
         O retorno deve ser EXATAMENTE E APENAS um objeto JSON neste formato, sem marcações markdown ou texto extra: {"palavra": "Exemplo", "significado": "Significado", "sinonimos": ["SinônimoA", "SinônimoB"], "aplicacao": "Frase de exemplo"}`;
 
         const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`, {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
-                contents: [{ parts: [{ text: promptText }] }],
-                generationConfig: {
-                    temperature: 1.1, // Aumenta a criatividade da IA para não repetir
-                    topP: 0.95
-                }
+                contents: [{ parts: [{ text: promptText }] }]
             })
         });
 
@@ -812,6 +792,13 @@ async function carregarVocabularioDiario(forceRefresh = false) {
         const palavraObj = JSON.parse(jsonLimpo);
         localStorage.setItem('palavra_concurso', JSON.stringify(palavraObj));
         localStorage.setItem('data_palavra', hoje);
+
+        // Salva a nova palavra gerada no histórico para ela não se repetir em breve
+        if (!historicoPalavras.includes(palavraObj.palavra)) {
+            historicoPalavras.push(palavraObj.palavra);
+            if (historicoPalavras.length > 10) historicoPalavras.shift();
+            localStorage.setItem('historico_palavras', JSON.stringify(historicoPalavras));
+        }
 
         renderizarPalavra(palavraObj);
     } catch (error) {
