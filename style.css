@@ -221,7 +221,7 @@ body.focus-active .controls { transform: translateY(20px); opacity: 0; pointer-e
 .sort-select { padding: 0.8rem 1rem; border: 1px solid var(--border-color); border-radius: var(--radius); background: var(--bg-color); color: var(--text-main); font-size: 0.9rem; outline: none; cursor: pointer; }
 .sort-select:focus { border-color: var(--text-main); }
 
-/* --- CARDS DE REVISÃO E ESTILOS COMPARTILHADOS --- */
+/* --- CARDS DE REVISÃO --- */
 .error-card { background: var(--surface-color); border: 1px solid var(--border-color); border-radius: var(--radius); padding: 1.5rem; display: flex; flex-direction: column; gap: 1rem; transition: var(--transition); box-shadow: 0 4px 12px rgba(0,0,0,0.03); }
 .error-card:hover { border-color: var(--text-muted); box-shadow: 0 6px 16px rgba(0,0,0,0.06); }
 body.dark-mode .error-card { box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
@@ -234,6 +234,21 @@ body.dark-mode .error-card { box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
 .btn-complete-rev:hover { background: rgba(39, 201, 63, 0.1); transform: scale(1.05); }
 .due-today { border-left: 3px solid var(--danger-color); }
 
+/* --- WIDGET DE FLASHCARDS 3D --- */
+.flashcard-container { perspective: 1000px; width: 100%; height: 210px; position: relative; cursor: pointer; }
+.flashcard { width: 100%; height: 100%; transition: transform 0.6s cubic-bezier(0.4, 0.2, 0.2, 1); transform-style: preserve-3d; position: absolute; }
+.flashcard.is-flipped { transform: rotateY(180deg); }
+.flashcard-face { width: 100%; height: 100%; backface-visibility: hidden; position: absolute; top:0; left:0; border-radius: var(--radius); padding: 1.5rem 1rem; border: 1px solid var(--border-color); display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; box-shadow: 0 4px 6px rgba(0,0,0,0.02); }
+.flashcard-front { background: var(--bg-color); }
+.flashcard-back { transform: rotateY(180deg); background: var(--surface-color); justify-content: flex-start; overflow-y: auto; }
+
+/* --- TABELA DE CONECTIVOS --- */
+.conectivos-table { width: 100%; border-collapse: collapse; margin-top: 1rem; text-align: left; }
+.conectivos-table th, .conectivos-table td { padding: 12px; border: 1px solid var(--border-color); font-size: 0.85rem; }
+.conectivos-table th { background: var(--bg-color); font-weight: 600; color: var(--text-muted); text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.05em; }
+.conectivos-table td:first-child { font-weight: 600; color: var(--text-main); white-space: nowrap; }
+.conectivos-table td:last-child { color: var(--text-muted); line-height: 1.5; }
+
 @media (max-width: 800px) {
     header { grid-template-columns: 1fr; display: flex; flex-direction: column; gap: 1rem; }
     .dashboard-grid { grid-template-columns: 1fr; }
@@ -244,105 +259,25 @@ body.dark-mode .error-card { box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
     body.focus-active .stopwatch { transform: scale(1.1) translateZ(0); }
     .schedule-table th, .schedule-table td { padding: 0.8rem 0.3rem; font-size: 0.8rem; }
     .btn-remove-row { left: 0; }
+    .conectivos-table td:first-child { white-space: normal; }
 }
 
-/* --- ESTILOS EXTRAS PARA AS NOVAS TELAS FLUTUANTES --- */
-#manage-rev-modal .modal-content {
-    background: var(--bg-color); /* Fundo um pouco mais escuro para contrastar os cards */
-}
-
-#manage-rev-modal .error-card {
-    background: var(--surface-color); /* Mantém os cards em destaque */
-}
-
-#manage-rev-modal::-webkit-scrollbar {
-    width: 8px;
-}
-#manage-rev-modal::-webkit-scrollbar-thumb {
-    background: var(--border-color);
-    border-radius: 4px;
-}
+#manage-rev-modal .modal-content { background: var(--bg-color); }
+#manage-rev-modal .error-card { background: var(--surface-color); }
+#manage-rev-modal::-webkit-scrollbar, #conectivos-modal .modal-content::-webkit-scrollbar { width: 8px; }
+#manage-rev-modal::-webkit-scrollbar-thumb, #conectivos-modal .modal-content::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 4px; }
 
 @media print {
-    @page { 
-        size: A4 landscape; /* Mudei para paisagem (deitado) para caber melhor os 7 dias, mas se quiser em pé, volte para 'portrait' */
-        margin: 1.5cm; 
-    }
-    
-    body { 
-        background: #fff !important; 
-        color: #000 !important; 
-        -webkit-print-color-adjust: exact !important; 
-        print-color-adjust: exact !important; 
-    }
-    
-    body * { 
-        visibility: hidden; 
-        background: transparent !important; 
-    }
-    
-    #tasks, #tasks * { 
-        visibility: visible; 
-    }
-    
-    #tasks { 
-        position: absolute; 
-        left: 0; 
-        top: 0; 
-        width: 100%; 
-        padding: 0 !important; 
-        margin: 0 !important; 
-    }
-    
-    /* Oculta botões, adicionar matéria e o título */
-    #btn-print-schedule, 
-    .add-subject-wrapper, 
-    .subject-bank-panel, 
-    #btn-add-cycle, 
-    .btn-remove-row,
-    #tasks h2 { 
-        display: none !important; 
-    }
-
-    .table-responsive { 
-        overflow: visible !important; 
-    }
-
-    /* Esconde a coluna de horários */
-    #schedule-table th:first-child,
-    #schedule-table td:first-child {
-        display: none !important;
-    }
-    
-    /* Forçando a tabela a juntar as bordas com borda externa MUITO grossa */
-    #schedule-table { 
-        width: 100% !important; 
-        border-collapse: collapse !important; 
-        font-family: 'Inter', Arial, sans-serif !important; 
-        border: 3px solid #000 !important; 
-        margin-top: 1cm !important;
-    }
-    
-    /* Bordas internas mais grossas (2px) para o navegador não ignorar */
-    #schedule-table th, 
-    #schedule-table td { 
-        border: 2px solid #000 !important; 
-        padding: 1.5rem 0.5rem !important; 
-        text-align: center !important; 
-        vertical-align: middle !important; 
-        font-size: 11pt !important; 
-        color: #000 !important; 
-        background-color: #fff !important; 
-    }
-    
-    /* Linha de baixo do cabeçalho bem destacada (3px) */
-    #schedule-table th { 
-        font-weight: bold !important; 
-        text-transform: uppercase !important; 
-        letter-spacing: 0.05em !important; 
-        font-size: 10pt !important; 
-        border-bottom: 3px solid #000 !important; 
-    }
+    @page { size: A4 landscape; margin: 1.5cm; }
+    body { background: #fff !important; color: #000 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+    body * { visibility: hidden; background: transparent !important; }
+    #tasks, #tasks * { visibility: visible; }
+    #tasks { position: absolute; left: 0; top: 0; width: 100%; padding: 0 !important; margin: 0 !important; }
+    #btn-print-schedule, .add-subject-wrapper, .subject-bank-panel, #btn-add-cycle, .btn-remove-row, #tasks h2 { display: none !important; }
+    .table-responsive { overflow: visible !important; }
+    #schedule-table th:first-child, #schedule-table td:first-child { display: none !important; }
+    #schedule-table { width: 100% !important; border-collapse: collapse !important; border: 3px solid #000 !important; margin-top: 1cm !important; }
+    #schedule-table th, #schedule-table td { border: 2px solid #000 !important; padding: 1.5rem 0.5rem !important; text-align: center !important; vertical-align: middle !important; font-size: 11pt !important; color: #000 !important; background-color: #fff !important; }
+    #schedule-table th { font-weight: bold !important; text-transform: uppercase !important; font-size: 10pt !important; border-bottom: 3px solid #000 !important; }
 }
-
 @keyframes spin { 100% { transform: rotate(360deg); } }

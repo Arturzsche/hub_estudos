@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MeusEstudos.com</title>
     <link rel="stylesheet" href="style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body class="dark-mode">
@@ -99,32 +99,46 @@
                             <h3 style="font-size: 0.85rem; text-transform: uppercase; color: var(--text-muted); letter-spacing: 0.05em; margin: 0;">Revisões Pendentes</h3>
                             <span id="review-count-badge" style="background: var(--danger-color); color: white; font-size: 0.7rem; padding: 2px 6px; border-radius: 10px; font-weight: bold; display: none;">0</span>
                         </div>
-                        <div id="pending-reviews-list" style="display: flex; flex-direction: column; gap: 0.8rem; max-height: 250px; overflow-y: auto; padding-right: 4px;">
-                        </div>
-                        <div id="no-reviews-msg" style="text-align: center; color: var(--text-muted); font-size: 0.85rem; padding: 1rem 0;">
-                            Tudo em dia! Nenhuma revisão para hoje.
-                        </div>
+                        <div id="pending-reviews-list" style="display: flex; flex-direction: column; gap: 0.8rem; max-height: 250px; overflow-y: auto; padding-right: 4px;"></div>
+                        <div id="no-reviews-msg" style="text-align: center; color: var(--text-muted); font-size: 0.85rem; padding: 1rem 0;">Tudo em dia! Nenhuma revisão para hoje.</div>
                     </div>
 
                     <div class="stat-card outline" style="flex-direction: column; align-items: stretch; padding: 1.5rem; background: var(--surface-color);">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
                             <h3 style="font-size: 0.85rem; text-transform: uppercase; color: var(--text-muted); letter-spacing: 0.05em; margin: 0;">Arsenal Lexical</h3>
-                            <span title="Atualizado diariamente via IA" style="font-size: 1.2rem; cursor: help;">🤖</span>
+                            <div style="display: flex; gap: 8px; align-items: center;">
+                                <button id="btn-open-conectivos" style="background: var(--border-color); color: var(--text-main); border: none; padding: 4px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: bold; cursor: pointer; transition: all 0.2s;">CONECTIVOS</button>
+                                <span title="Atualizado diariamente via IA" style="font-size: 1.2rem; cursor: help;">🤖</span>
+                            </div>
                         </div>
                         
                         <div id="vocab-loading" style="text-align: center; color: var(--text-muted); font-size: 0.85rem; padding: 1rem 0;">
                             <svg viewBox="0 0 24 24" width="24" height="24" style="animation: spin 1s linear infinite; margin-bottom: 8px; color: var(--text-muted);"><path fill="currentColor" d="M12 2v4c5.52 0 10 4.48 10 10s-4.48 10-10 10S2 21.52 2 16H0c0 6.63 5.37 12 12 12s12-5.37 12-12S18.63 2 12 2z"/></svg>
-                            <br>Buscando palavra do dia...
+                            <br>Gerando Flashcards do dia...
                         </div>
 
                         <div id="vocab-content" style="display: none; flex-direction: column; gap: 0.5rem;">
-                            <h4 id="vocab-word" style="font-size: 1.8rem; color: var(--text-main); margin: 0; font-weight: 600;">Carregando...</h4>
-                            <p id="vocab-meaning" style="font-size: 0.85rem; color: var(--text-muted); font-style: italic; margin: 0; line-height: 1.4;"></p>
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                                <button id="btn-vocab-prev" class="icon-btn-small" style="padding: 4px 10px; font-weight: bold;">&larr;</button>
+                                <span id="vocab-counter" style="font-size: 0.8rem; color: var(--text-muted); font-weight: bold;">1 / 3</span>
+                                <button id="btn-vocab-next" class="icon-btn-small" style="padding: 4px 10px; font-weight: bold;">&rarr;</button>
+                            </div>
                             
-                            <div id="vocab-synonyms" style="display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; margin-bottom: 8px;"></div>
-                            
-                            <div style="padding: 12px; background: var(--bg-color); border-left: 3px solid var(--text-main); border-radius: 4px;">
-                                <p id="vocab-example" style="font-size: 0.9rem; font-family: serif; color: var(--text-main); margin: 0; line-height: 1.5;"></p>
+                            <div class="flashcard-container" onclick="this.querySelector('.flashcard').classList.toggle('is-flipped')">
+                                <div class="flashcard">
+                                    <div class="flashcard-face flashcard-front">
+                                        <span style="font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 2px; margin-bottom: 8px;">Palavra do Dia</span>
+                                        <h4 id="vocab-word" style="font-size: 1.8rem; color: var(--text-main); margin: 0; font-weight: 700;">Carregando...</h4>
+                                        <span style="font-size: 0.75rem; color: var(--text-muted); margin-top: auto; opacity: 0.6;">(Clique para virar)</span>
+                                    </div>
+                                    <div class="flashcard-face flashcard-back">
+                                        <p id="vocab-meaning" style="font-size: 0.85rem; color: var(--text-main); font-style: italic; margin: 0 0 10px 0; line-height: 1.4; font-weight: 500;"></p>
+                                        <div id="vocab-synonyms" style="display: flex; gap: 4px; flex-wrap: wrap; justify-content: center; margin-bottom: 10px;"></div>
+                                        <div style="padding: 8px; background: var(--bg-color); border-left: 3px solid var(--text-main); border-radius: 4px; width: 100%; text-align: left;">
+                                            <p id="vocab-example" style="font-size: 0.8rem; font-family: serif; color: var(--text-muted); margin: 0; line-height: 1.4;"></p>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -134,42 +148,22 @@
 
         <section id="timer" class="view">
             <div class="container timer-container">
-                
                 <div id="cycle-info" class="cycle-info">
                     <h2 id="cycle-subject">Carregando matéria...</h2>
                     <div id="cycle-phase-badge" class="badge">Aguardando</div>
                 </div>
-
                 <div class="stopwatch">
                     <h1 id="time-display">
                         <span id="time-main">00:00:00</span><span id="time-ms">.00</span>
                     </h1>
                 </div>
-                
                 <div class="controls">
-                    <button id="btn-timer-mode" class="icon-btn" title="Modo Livre / Ciclo">
-                        <svg viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M12 20a8 8 0 1 0 0-16 8 8 0 0 0 0 16zm1-13h-2v4.25l2.85 2.85 1.42-1.42-2.27-2.27V7z"/></svg>
-                    </button>
-
-                    <button id="btn-toggle" class="icon-btn" title="Iniciar/Pausar (Espaço)">
-                        <svg id="icon-play" viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M8 5v14l11-7z"/></svg>
-                        <svg id="icon-pause" viewBox="0 0 24 24" width="24" height="24" style="display: none;"><path fill="currentColor" d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
-                    </button>
-
-                    <button id="btn-skip-phase" class="icon-btn" title="Avançar Fase Atual (Shift + Espaço)">
-                        <svg viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>
-                    </button>
-
-                    <button id="btn-skip-block" class="icon-btn" title="Pular para Próxima Matéria (Ctrl + Shift + Espaço)">
-                        <svg viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M4 18l8.5-6L4 6v12zm9-12v12l8.5-6L13 6z"/></svg>
-                    </button>
-
-                    <button id="btn-reset" class="icon-btn" title="Zerar / Reiniciar (Delete)">
-                        <svg viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"/></svg>
-                    </button>
-                    <button id="focus-toggle" class="icon-btn" title="Modo Foco (Enter)">
-                        <svg viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg>
-                    </button>
+                    <button id="btn-timer-mode" class="icon-btn" title="Modo Livre / Ciclo"><svg viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M12 20a8 8 0 1 0 0-16 8 8 0 0 0 0 16zm1-13h-2v4.25l2.85 2.85 1.42-1.42-2.27-2.27V7z"/></svg></button>
+                    <button id="btn-toggle" class="icon-btn" title="Iniciar/Pausar (Espaço)"><svg id="icon-play" viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M8 5v14l11-7z"/></svg><svg id="icon-pause" viewBox="0 0 24 24" width="24" height="24" style="display: none;"><path fill="currentColor" d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg></button>
+                    <button id="btn-skip-phase" class="icon-btn" title="Avançar Fase Atual (Shift + Espaço)"><svg viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg></button>
+                    <button id="btn-skip-block" class="icon-btn" title="Pular para Próxima Matéria (Ctrl + Shift + Espaço)"><svg viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M4 18l8.5-6L4 6v12zm9-12v12l8.5-6L13 6z"/></svg></button>
+                    <button id="btn-reset" class="icon-btn" title="Zerar / Reiniciar (Delete)"><svg viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"/></svg></button>
+                    <button id="focus-toggle" class="icon-btn" title="Modo Foco (Enter)"><svg viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg></button>
                 </div>
             </div>
         </section>
@@ -179,11 +173,9 @@
                 <div style="margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: center;">
                     <h2 style="font-size: 1.5rem; color: var(--text-main); margin-bottom: 0;">Cronograma da Semana</h2>
                     <button id="btn-print-schedule" class="btn secondary" style="padding: 0.5rem 1rem; display: flex; align-items: center; gap: 8px;">
-                        <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M19 8h-1V3H6v5H5c-1.66 0-3 1.34-3 3v6h4v4h12v-4h4v-6c0-1.66-1.34-3-3-3zM8 5h8v3H8V5zm8 14H8v-4h8v4zm4-4h-2v-2H6v2H4v-4c0-.55.45-1 1-1h14c.55 0 1 .45 1 1v4z"/></svg>
-                        Imprimir
+                        <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M19 8h-1V3H6v5H5c-1.66 0-3 1.34-3 3v6h4v4h12v-4h4v-6c0-1.66-1.34-3-3-3zM8 5h8v3H8V5zm8 14H8v-4h8v4zm4-4h-2v-2H6v2H4v-4c0-.55.45-1 1-1h14c.55 0 1 .45 1 1v4z"/></svg> Imprimir
                     </button>
                 </div>
-
                 <div class="subject-bank-panel">
                     <div class="add-subject-wrapper">
                         <input type="text" id="new-subject-input" placeholder="Digite uma nova matéria...">
@@ -191,24 +183,11 @@
                     </div>
                     <div id="subject-bank" class="subject-bank"></div>
                 </div>
-                
                 <div class="table-responsive">
                     <table class="schedule-table" id="schedule-table">
-                        <thead>
-                            <tr>
-                                <th style="width: 140px;">Horário</th>
-                                <th>Segunda</th>
-                                <th>Terça</th>
-                                <th>Quarta</th>
-                                <th>Quinta</th>
-                                <th>Sexta</th>
-                                <th>Sábado</th>
-                                <th>Domingo</th>
-                            </tr>
-                        </thead>
+                        <thead><tr><th style="width: 140px;">Horário</th><th>Segunda</th><th>Terça</th><th>Quarta</th><th>Quinta</th><th>Sexta</th><th>Sábado</th><th>Domingo</th></tr></thead>
                         <tbody></tbody>
                     </table>
-                    
                     <div style="text-align: center; margin-top: 1rem;">
                         <button id="btn-add-cycle" class="icon-btn-small" style="margin: 0 auto; opacity: 0.4; transition: opacity 0.2s;" title="Adicionar Novo Horário">
                             <svg viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
@@ -223,7 +202,6 @@
                 <svg viewBox="0 0 24 24" width="64" height="64" style="color: var(--text-muted); opacity: 0.3; margin-bottom: 1.5rem;"><path fill="currentColor" d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19a2 2 0 0 0 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7v-5z"/></svg>
                 <h2 style="font-size: 2rem; color: var(--text-main); margin-bottom: 1rem; text-transform: none; letter-spacing: normal;">Sistema de Revisões</h2>
                 <p style="color: var(--text-muted); font-size: 1rem; margin-bottom: 2.5rem; max-width: 500px; line-height: 1.5;">Suas revisões agendadas ficam armazenadas aqui. Acesse o gerenciador para visualizar, concluir ou editar os conteúdos.</p>
-                
                 <div style="display: flex; gap: 1.5rem; flex-wrap: wrap; justify-content: center;">
                     <button id="btn-manage-reviews" class="btn secondary" style="padding: 1rem 2rem; font-size: 1rem; display: flex; align-items: center; gap: 10px;">
                         <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M3 13h2v-2H3v2zm0 4h2v-2H3v2zm0-8h2V7H3v2zm4 4h14v-2H7v2zm0 4h14v-2H7v2zM7 7v2h14V7H7z"/></svg> Gerenciar Agenda
@@ -234,7 +212,6 @@
                 </div>
             </div>
         </section>
-
     </main>
 
     <div id="clear-modal" class="modal-overlay">
@@ -253,24 +230,11 @@
         <div class="modal-content" style="max-width: 500px; text-align: left;">
             <h2 style="margin-bottom: 1rem; font-size: 1.3rem; color: var(--text-main);">Registrar Novo Conteúdo</h2>
             <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1.5rem; line-height: 1.4;">O site criará revisões automáticas na sua agenda para os próximos 1, 7, 15, 30 e 60 dias.</p>
-            
             <div style="display: grid; grid-template-columns: 1fr; gap: 1rem; margin-bottom: 1rem;">
-                <div>
-                    <label style="display: block; margin-bottom: 0.5rem; font-size: 0.85rem; color: var(--text-muted); font-weight: 600;">Matéria da Revisão</label>
-                    <select id="manual-rev-subject" class="sort-select" style="width: 100%; border-radius: 6px; padding: 0.8rem; border-color: var(--border-color);">
-                        <option value="">Selecione a matéria...</option>
-                    </select>
-                </div>
-                <div>
-                    <label style="display: block; margin-bottom: 0.5rem; font-size: 0.85rem; color: var(--text-muted); font-weight: 600;">Nome do Conteúdo / Assunto</label>
-                    <input type="text" id="manual-rev-name" style="width: 100%; border-radius: 6px; padding: 0.8rem; border: 1px solid var(--border-color); background: var(--bg-color); color: var(--text-main); font-family: 'Inter', sans-serif;" placeholder="Ex: Aula 01 - Atos Administrativos">
-                </div>
-                <div>
-                    <label style="display: block; margin-bottom: 0.5rem; font-size: 0.85rem; color: var(--text-muted); font-weight: 600;">Observações (Opcional)</label>
-                    <textarea id="manual-rev-notes" rows="2" style="width: 100%; padding: 0.8rem; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-color); color: var(--text-main); font-family: 'Inter', sans-serif; resize: vertical;" placeholder="Ex: Focar na tabela de prazos decadenciais da página 14."></textarea>
-                </div>
+                <div><label style="display: block; margin-bottom: 0.5rem; font-size: 0.85rem; color: var(--text-muted); font-weight: 600;">Matéria da Revisão</label><select id="manual-rev-subject" class="sort-select" style="width: 100%; border-radius: 6px; padding: 0.8rem; border-color: var(--border-color);"><option value="">Selecione a matéria...</option></select></div>
+                <div><label style="display: block; margin-bottom: 0.5rem; font-size: 0.85rem; color: var(--text-muted); font-weight: 600;">Nome do Conteúdo / Assunto</label><input type="text" id="manual-rev-name" style="width: 100%; border-radius: 6px; padding: 0.8rem; border: 1px solid var(--border-color); background: var(--bg-color); color: var(--text-main); font-family: 'Inter', sans-serif;" placeholder="Ex: Aula 01 - Atos Administrativos"></div>
+                <div><label style="display: block; margin-bottom: 0.5rem; font-size: 0.85rem; color: var(--text-muted); font-weight: 600;">Observações (Opcional)</label><textarea id="manual-rev-notes" rows="2" style="width: 100%; padding: 0.8rem; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-color); color: var(--text-main); font-family: 'Inter', sans-serif; resize: vertical;" placeholder="Ex: Focar na tabela de prazos decadenciais da página 14."></textarea></div>
             </div>
-
             <div style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: 1.5rem;">
                 <button id="btn-manual-rev-cancel" class="btn secondary">Cancelar</button>
                 <button id="btn-manual-rev-save" class="btn primary">Salvar na Agenda</button>
@@ -284,37 +248,22 @@
                 <h2 style="font-size: 1.3rem; color: var(--text-main); margin: 0;">Gerenciador de Agenda (<span id="rev-stat-total">0</span>)</h2>
                 <div style="display: flex; align-items: center; gap: 1rem;">
                     <span style="font-size: 0.85rem; color: var(--text-muted);">Filtrar por matéria:</span>
-                    <select id="filter-review-subject" class="sort-select" style="min-width: 200px; padding: 0.5rem;">
-                        <option value="all">Todas as Matérias</option>
-                    </select>
+                    <select id="filter-review-subject" class="sort-select" style="min-width: 200px; padding: 0.5rem;"><option value="all">Todas as Matérias</option></select>
                     <button id="btn-close-manage" class="icon-btn-small" style="font-size: 1.5rem; font-weight: bold; margin-left: 1rem;">&times;</button>
                 </div>
             </div>
-            
-            <div id="all-reviews-list" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 1rem;">
-            </div>
+            <div id="all-reviews-list" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 1rem;"></div>
         </div>
     </div>
 
     <div id="edit-rev-modal" class="modal-overlay">
         <div class="modal-content" style="max-width: 500px; text-align: left;">
             <h2 style="margin-bottom: 1.5rem; font-size: 1.3rem; color: var(--text-main);">Editar Revisão</h2>
-            
             <div style="display: grid; grid-template-columns: 1fr; gap: 1rem; margin-bottom: 1rem;">
-                <div>
-                    <label style="display: block; margin-bottom: 0.5rem; font-size: 0.85rem; color: var(--text-muted); font-weight: 600;">Matéria da Revisão</label>
-                    <select id="edit-rev-subject" class="sort-select" style="width: 100%; border-radius: 6px; padding: 0.8rem; border-color: var(--border-color);"></select>
-                </div>
-                <div>
-                    <label style="display: block; margin-bottom: 0.5rem; font-size: 0.85rem; color: var(--text-muted); font-weight: 600;">Nome do Conteúdo</label>
-                    <input type="text" id="edit-rev-name" style="width: 100%; border-radius: 6px; padding: 0.8rem; border: 1px solid var(--border-color); background: var(--bg-color); color: var(--text-main);">
-                </div>
-                <div>
-                    <label style="display: block; margin-bottom: 0.5rem; font-size: 0.85rem; color: var(--text-muted); font-weight: 600;">Observações</label>
-                    <textarea id="edit-rev-notes" rows="2" style="width: 100%; padding: 0.8rem; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-color); color: var(--text-main); resize: vertical;"></textarea>
-                </div>
+                <div><label style="display: block; margin-bottom: 0.5rem; font-size: 0.85rem; color: var(--text-muted); font-weight: 600;">Matéria da Revisão</label><select id="edit-rev-subject" class="sort-select" style="width: 100%; border-radius: 6px; padding: 0.8rem; border-color: var(--border-color);"></select></div>
+                <div><label style="display: block; margin-bottom: 0.5rem; font-size: 0.85rem; color: var(--text-muted); font-weight: 600;">Nome do Conteúdo</label><input type="text" id="edit-rev-name" style="width: 100%; border-radius: 6px; padding: 0.8rem; border: 1px solid var(--border-color); background: var(--bg-color); color: var(--text-main);"></div>
+                <div><label style="display: block; margin-bottom: 0.5rem; font-size: 0.85rem; color: var(--text-muted); font-weight: 600;">Observações</label><textarea id="edit-rev-notes" rows="2" style="width: 100%; padding: 0.8rem; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-color); color: var(--text-main); resize: vertical;"></textarea></div>
             </div>
-
             <div style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: 1.5rem;">
                 <button id="btn-edit-rev-cancel" class="btn secondary">Cancelar</button>
                 <button id="btn-edit-rev-save" class="btn primary">Salvar Alterações</button>
@@ -322,9 +271,31 @@
         </div>
     </div>
 
+    <div id="conectivos-modal" class="modal-overlay">
+        <div class="modal-content" style="max-width: 800px; width: 95%; max-height: 90vh; overflow-y: auto; text-align: left; padding: 2rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; border-bottom: 1px solid var(--border-color); padding-bottom: 1rem;">
+                <h2 style="font-size: 1.3rem; color: var(--text-main); margin: 0;">Arsenal de Coesão (Conectivos)</h2>
+                <button id="btn-close-conectivos" class="icon-btn-small" style="font-size: 1.5rem; font-weight: bold;">&times;</button>
+            </div>
+            <table class="conectivos-table">
+                <thead>
+                    <tr><th>Função / Momento</th><th>Conectivos Estratégicos</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td>Introdução / D1</td><td>Sob um primeiro prisma, Nesse viés, É imperioso notar que, Em primeira análise</td></tr>
+                    <tr><td>Adição / D2</td><td>Ademais, Outrossim, Soma-se a isso, Por conseguinte, Paralelo a isso</td></tr>
+                    <tr><td>Oposição / Ressalva</td><td>Conquanto, Não obstante, Em que pese, A despeito de, Embora</td></tr>
+                    <tr><td>Causa e Consequência</td><td>Haja vista que, Posto que, Por conseguinte, De tal modo que, Corolário disso</td></tr>
+                    <tr><td>Conclusão</td><td>Infere-se, portanto, Fica evidente, logo, Dessarte, Destarte, Em suma</td></tr>
+                    <tr><td>Citação de Lei/Autoridade</td><td>À luz de, Segundo preconiza, Sob a ótica de, Consoante o artigo</td></tr>
+                </tbody>
+            </table>
+            <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 1rem; font-style: italic;">Dica de Ouro: Use-os com precisão e moderação. O excesso de conectivos rebuscados sem base de conteúdo retira a fluidez e a naturalidade do seu texto.</p>
+        </div>
+    </div>
+
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-    
     <script src="script.js"></script>
 </body>
 </html>

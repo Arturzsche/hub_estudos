@@ -16,6 +16,8 @@ let timerInterval;
 let isRunning = false;
 let lastTickTime = 0; 
 let chartInstance = null;
+let currentFlashcards = [];
+let currentCardIndex = 0;
 
 const CYCLE_PHASES = [
     { name: "Teoria (50min)", ms: 50 * 60 * 1000, isStudy: true },
@@ -26,102 +28,69 @@ const CYCLE_PHASES = [
 const REVIEW_INTERVALS = [1, 7, 15, 30, 60];
 
 let appData = {
-    history: {}, 
-    streak: 0,
-    lastStudyDate: null,
-    recordDay: 0,
-    recordWeek: 0,
-    dailyGoalSeconds: 14400, 
+    history: {}, streak: 0, lastStudyDate: null, recordDay: 0, recordWeek: 0, dailyGoalSeconds: 14400, 
     savedSubjects: ["Direito Administrativo", "Controle Externo", "AFO", "Lei Orgânica", "Regimento Interno", "Português", "Prova Discursiva"],
     schedule: [
         { time: "14:00 - 15:30", days: ["", "", "", "", "", "", ""] },
         { time: "15:30 - 17:00", days: ["", "", "", "", "", "", ""] }
     ],
-    cycleState: {
-        date: "",
-        subjectIndex: 0,
-        phaseIndex: 0,
-        msRemaining: CYCLE_PHASES[0].ms
-    },
-    reviews: [],
-    timerMode: 'pomodoro', 
-    stopwatchMs: 0 
+    cycleState: { date: "", subjectIndex: 0, phaseIndex: 0, msRemaining: CYCLE_PHASES[0].ms },
+    reviews: [], timerMode: 'pomodoro', stopwatchMs: 0 
 };
 
 let todaysSubjects = [];
 let currentEditingRevId = null;
 
 const elements = {
-    timeMain: document.getElementById('time-main'),
-    timeMs: document.getElementById('time-ms'),
-    btnToggle: document.getElementById('btn-toggle'),
-    btnSkipPhase: document.getElementById('btn-skip-phase'),
-    btnSkipBlock: document.getElementById('btn-skip-block'),
-    btnTimerMode: document.getElementById('btn-timer-mode'), 
-    iconPlay: document.getElementById('icon-play'),
-    iconPause: document.getElementById('icon-pause'),
-    btnReset: document.getElementById('btn-reset'),
-    totalTimeDisplay: document.getElementById('total-time-display'),
-    sessionsDisplay: document.getElementById('sessions-display'),
-    streakDisplay: document.getElementById('streak-display'),
-    recordDayDisplay: document.getElementById('record-day-display'),
-    recordWeekDisplay: document.getElementById('record-week-display'),
-    totalAccumulated: document.getElementById('total-accumulated'),
-    themeToggle: document.getElementById('theme-toggle'),
-    focusToggle: document.getElementById('focus-toggle'), 
-    dailyProgressFill: document.getElementById('daily-progress-fill'),
-    dailyPercentage: document.getElementById('daily-percentage'),
-    heatmapGrid: document.getElementById('heatmap-grid'),
-    macFullscreenBtn: document.getElementById('mac-fullscreen-btn'),
+    timeMain: document.getElementById('time-main'), timeMs: document.getElementById('time-ms'),
+    btnToggle: document.getElementById('btn-toggle'), btnSkipPhase: document.getElementById('btn-skip-phase'),
+    btnSkipBlock: document.getElementById('btn-skip-block'), btnTimerMode: document.getElementById('btn-timer-mode'), 
+    iconPlay: document.getElementById('icon-play'), iconPause: document.getElementById('icon-pause'),
+    btnReset: document.getElementById('btn-reset'), totalTimeDisplay: document.getElementById('total-time-display'),
+    sessionsDisplay: document.getElementById('sessions-display'), streakDisplay: document.getElementById('streak-display'),
+    recordDayDisplay: document.getElementById('record-day-display'), recordWeekDisplay: document.getElementById('record-week-display'),
+    totalAccumulated: document.getElementById('total-accumulated'), themeToggle: document.getElementById('theme-toggle'),
+    focusToggle: document.getElementById('focus-toggle'), dailyProgressFill: document.getElementById('daily-progress-fill'),
+    dailyPercentage: document.getElementById('daily-percentage'), heatmapGrid: document.getElementById('heatmap-grid'),
+    macFullscreenBtn: document.getElementById('mac-fullscreen-btn'), scheduleTableBody: document.querySelector('#schedule-table tbody'),
+    subjectBank: document.getElementById('subject-bank'), newSubjectInput: document.getElementById('new-subject-input'),
+    btnAddSubject: document.getElementById('btn-add-subject'), btnAddCycle: document.getElementById('btn-add-cycle'),
+    cycleSubject: document.getElementById('cycle-subject'), cyclePhaseBadge: document.getElementById('cycle-phase-badge'),
+    btnOpenManualRev: document.getElementById('btn-add-manual-review'), modalManualRev: document.getElementById('manual-rev-modal'),
+    inputManualRevName: document.getElementById('manual-rev-name'), selectManualRevSubject: document.getElementById('manual-rev-subject'),
+    inputManualRevNotes: document.getElementById('manual-rev-notes'), btnCancelManualRev: document.getElementById('btn-manual-rev-cancel'),
+    btnSaveManualRev: document.getElementById('btn-manual-rev-save'), btnManageReviews: document.getElementById('btn-manage-reviews'),
+    modalManageRev: document.getElementById('manage-rev-modal'), btnCloseManage: document.getElementById('btn-close-manage'),
+    allReviewsList: document.getElementById('all-reviews-list'), filterReviewSubject: document.getElementById('filter-review-subject'),
+    modalEditRev: document.getElementById('edit-rev-modal'), editRevSubject: document.getElementById('edit-rev-subject'),
+    editRevName: document.getElementById('edit-rev-name'), editRevNotes: document.getElementById('edit-rev-notes'),
+    btnCancelEditRev: document.getElementById('btn-edit-rev-cancel'), btnSaveEditRev: document.getElementById('btn-edit-rev-save'),
     
-    scheduleTableBody: document.querySelector('#schedule-table tbody'),
-    subjectBank: document.getElementById('subject-bank'),
-    newSubjectInput: document.getElementById('new-subject-input'),
-    btnAddSubject: document.getElementById('btn-add-subject'),
-    btnAddCycle: document.getElementById('btn-add-cycle'),
-    cycleSubject: document.getElementById('cycle-subject'),
-    cyclePhaseBadge: document.getElementById('cycle-phase-badge'),
-    
-    btnOpenManualRev: document.getElementById('btn-add-manual-review'),
-    modalManualRev: document.getElementById('manual-rev-modal'),
-    inputManualRevName: document.getElementById('manual-rev-name'),
-    selectManualRevSubject: document.getElementById('manual-rev-subject'),
-    inputManualRevNotes: document.getElementById('manual-rev-notes'),
-    btnCancelManualRev: document.getElementById('btn-manual-rev-cancel'),
-    btnSaveManualRev: document.getElementById('btn-manual-rev-save'),
-    
-    btnManageReviews: document.getElementById('btn-manage-reviews'),
-    modalManageRev: document.getElementById('manage-rev-modal'),
-    btnCloseManage: document.getElementById('btn-close-manage'),
-    allReviewsList: document.getElementById('all-reviews-list'),
-    filterReviewSubject: document.getElementById('filter-review-subject'),
-    
-    modalEditRev: document.getElementById('edit-rev-modal'),
-    editRevSubject: document.getElementById('edit-rev-subject'),
-    editRevName: document.getElementById('edit-rev-name'),
-    editRevNotes: document.getElementById('edit-rev-notes'),
-    btnCancelEditRev: document.getElementById('btn-edit-rev-cancel'),
-    btnSaveEditRev: document.getElementById('btn-edit-rev-save'),
+    // Novos elementos do Flashcard e Modal de Conectivos
+    btnVocabPrev: document.getElementById('btn-vocab-prev'),
+    btnVocabNext: document.getElementById('btn-vocab-next'),
+    btnOpenConectivos: document.getElementById('btn-open-conectivos'),
+    btnCloseConectivos: document.getElementById('btn-close-conectivos'),
+    modalConectivos: document.getElementById('conectivos-modal')
 };
 
 async function init() {
     await loadData(); 
     checkStreak();
     calculateRecords();
-    
     renderSubjectBank(); 
     renderSchedule();    
     setupNavigation();
     initChart();
     initManualReviews(); 
     
-    carregarVocabularioDiario(); // <--- CHAMADA DA IA
+    carregarVocabularioDiario(); // Chamada da IA para os Flashcards
+    setupFlashcardsEConectivos(); // Eventos dos botões novos
     
     if (localStorage.getItem('theme') === 'light') document.body.classList.remove('dark-mode');
 
     const btnOpenClear = document.getElementById('btn-open-clear');
     if(btnOpenClear) btnOpenClear.addEventListener('click', () => document.getElementById('clear-modal').classList.add('active'));
-    
     const btnCancelClear = document.getElementById('btn-cancel-clear');
     if(btnCancelClear) btnCancelClear.addEventListener('click', () => document.getElementById('clear-modal').classList.remove('active'));
     
@@ -203,10 +172,7 @@ function updateTimerDisplay() {
 
     if (appData.timerMode === 'stopwatch') {
         if(elements.cycleSubject) elements.cycleSubject.textContent = "Estudo Livre";
-        if(elements.cyclePhaseBadge) {
-            elements.cyclePhaseBadge.textContent = "Cronômetro Progressivo";
-            elements.cyclePhaseBadge.className = "badge";
-        }
+        if(elements.cyclePhaseBadge) { elements.cyclePhaseBadge.textContent = "Cronômetro Progressivo"; elements.cyclePhaseBadge.className = "badge"; }
         if(elements.btnSkipPhase) elements.btnSkipPhase.style.opacity = '0.3'; 
         if(elements.btnSkipBlock) elements.btnSkipBlock.style.opacity = '0.3'; 
 
@@ -238,23 +204,14 @@ function updateTimerDisplay() {
 
         if (todaysSubjects.length === 0) {
             if(elements.cycleSubject) elements.cycleSubject.textContent = "Modo Livre (Agendado)";
-            if(elements.cyclePhaseBadge) {
-                elements.cyclePhaseBadge.textContent = "Sem matérias cadastradas hoje";
-                elements.cyclePhaseBadge.className = "badge break";
-            }
+            if(elements.cyclePhaseBadge) { elements.cyclePhaseBadge.textContent = "Sem matérias cadastradas hoje"; elements.cyclePhaseBadge.className = "badge break"; }
         } else if (appData.cycleState.subjectIndex >= todaysSubjects.length) {
             if(elements.cycleSubject) elements.cycleSubject.textContent = "Ciclo Concluído!";
-            if(elements.cyclePhaseBadge) {
-                elements.cyclePhaseBadge.textContent = "Excelente Trabalho";
-                elements.cyclePhaseBadge.className = "badge break";
-            }
+            if(elements.cyclePhaseBadge) { elements.cyclePhaseBadge.textContent = "Excelente Trabalho"; elements.cyclePhaseBadge.className = "badge break"; }
         } else {
             if(elements.cycleSubject) elements.cycleSubject.textContent = todaysSubjects[appData.cycleState.subjectIndex];
             const phase = CYCLE_PHASES[appData.cycleState.phaseIndex];
-            if(elements.cyclePhaseBadge) {
-                elements.cyclePhaseBadge.textContent = `Fase: ${phase.name}`;
-                elements.cyclePhaseBadge.className = phase.isStudy ? "badge" : "badge break";
-            }
+            if(elements.cyclePhaseBadge) { elements.cyclePhaseBadge.textContent = `Fase: ${phase.name}`; elements.cyclePhaseBadge.className = phase.isStudy ? "badge" : "badge break"; }
         }
     }
 }
@@ -290,9 +247,7 @@ async function loadData() {
         }
     } catch (error) {
         const localData = localStorage.getItem('studyAppData');
-        if (localData) {
-            try { mergeData(JSON.parse(localData)); } catch(e) {}
-        }
+        if (localData) { try { mergeData(JSON.parse(localData)); } catch(e) {} }
     }
     if (!appData.reviews) appData.reviews = [];
     if (!appData.timerMode) appData.timerMode = 'pomodoro';
@@ -328,12 +283,10 @@ function calculateRecords() {
         let cw = 0; let start = new Date(dates[i]);
         for (let j = 0; j < 7; j++) {
             let checkDate = new Date(start); checkDate.setDate(checkDate.getDate() + j);
-            
             const y = checkDate.getFullYear();
             const m = String(checkDate.getMonth() + 1).padStart(2, '0');
             const d = String(checkDate.getDate()).padStart(2, '0');
             const checkDateStr = `${y}-${m}-${d}`;
-            
             if (appData.history[checkDateStr]) cw += appData.history[checkDateStr].time;
         }
         if (cw > maxWeek) maxWeek = cw;
@@ -347,12 +300,10 @@ function renderHeatmap() {
     const today = new Date();
     for(let i = 29; i >= 0; i--) {
         let d = new Date(today); d.setDate(today.getDate() - i);
-        
         const y = d.getFullYear();
         const m = String(d.getMonth() + 1).padStart(2, '0');
         const day = String(d.getDate()).padStart(2, '0');
         let dateStr = `${y}-${m}-${day}`;
-        
         let time = appData.history[dateStr] ? appData.history[dateStr].time : 0;
         let cell = document.createElement('div'); cell.className = 'heatmap-cell';
         if (time === 0) cell.classList.add('level-0');
@@ -364,7 +315,6 @@ function renderHeatmap() {
     }
 }
 
-// ----------------- INTEGRAÇÃO DIRETA COM O GOOGLE CALENDAR (AGENDAMENTO EM CASCATA) ----------------- //
 function createGoogleCalendarLink(rev) {
     const nextDateStr = rev.nextReview.replace(/-/g, ''); 
     const text = encodeURIComponent(`Revisão: ${rev.name}`);
@@ -407,29 +357,21 @@ function initManualReviews() {
         
         if (contentName && subject) {
             const d = new Date(); d.setDate(d.getDate() + REVIEW_INTERVALS[0]); 
-            
             const nextYear = d.getFullYear();
             const nextMonth = String(d.getMonth() + 1).padStart(2, '0');
             const nextDay = String(d.getDate()).padStart(2, '0');
             const formattedNext = `${nextYear}-${nextMonth}-${nextDay}`;
             
-            const newRev = {
-                id: 'rev_' + Date.now(), subject: subject, name: contentName, notes: notes, step: 0, nextReview: formattedNext
-            };
+            const newRev = { id: 'rev_' + Date.now(), subject: subject, name: contentName, notes: notes, step: 0, nextReview: formattedNext };
             appData.reviews.push(newRev);
-            
             saveData(); renderPendingReviews(); renderAllReviews();
             elements.modalManualRev.classList.remove('active');
-
-            const gCalLink = createGoogleCalendarLink(newRev);
-            window.open(gCalLink, '_blank');
-
+            window.open(createGoogleCalendarLink(newRev), '_blank');
         } else alert("Por favor, selecione a matéria e digite o nome!");
     });
 
     if(elements.btnManageReviews) elements.btnManageReviews.addEventListener('click', () => {
-        elements.filterReviewSubject.value = 'all'; 
-        renderAllReviews(); 
+        elements.filterReviewSubject.value = 'all'; renderAllReviews(); 
         setTimeout(() => elements.modalManageRev.classList.add('active'), 10);
     });
     
@@ -455,7 +397,6 @@ function renderPendingReviews() {
     const msg = document.getElementById('no-reviews-msg');
     
     if(list) list.innerHTML = '';
-    
     const today = getTodayDate();
     let pending = [];
     appData.reviews.forEach(rev => { if (rev.nextReview <= today) pending.push(rev); });
@@ -479,10 +420,7 @@ function renderPendingReviews() {
                     <svg viewBox="0 0 24 24" width="14" height="14"><path fill="currentColor" d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
                 </button>
             `;
-            
-            const divSmall = document.createElement('div');
-            divSmall.className = 'review-item due-today';
-            divSmall.innerHTML = html;
+            const divSmall = document.createElement('div'); divSmall.className = 'review-item due-today'; divSmall.innerHTML = html;
             if(list) list.appendChild(divSmall);
         });
         
@@ -492,30 +430,18 @@ function renderPendingReviews() {
                     const id = e.currentTarget.getAttribute('data-id');
                     const revIndex = appData.reviews.findIndex(r => r.id === id);
                     if(revIndex !== -1) {
-                        const rev = appData.reviews[revIndex];
-                        rev.step++;
-                        
-                        if(rev.step >= REVIEW_INTERVALS.length) {
-                            appData.reviews.splice(revIndex, 1);
-                            alert(`🎉 Parabéns! Você concluiu todo o ciclo de revisões de "${rev.name}"! O assunto está consolidado.`);
-                        } else {
-                            const nextInterval = REVIEW_INTERVALS[rev.step];
-                            const d = new Date(); d.setDate(d.getDate() + nextInterval);
-                            
-                            const nextYear = d.getFullYear();
-                            const nextMonth = String(d.getMonth() + 1).padStart(2, '0');
-                            const nextDay = String(d.getDate()).padStart(2, '0');
-                            rev.nextReview = `${nextYear}-${nextMonth}-${nextDay}`;
-                            
-                            const gCalLink = createGoogleCalendarLink(rev);
-                            window.open(gCalLink, '_blank');
+                        const rev = appData.reviews[revIndex]; rev.step++;
+                        if(rev.step >= REVIEW_INTERVALS.length) { appData.reviews.splice(revIndex, 1); alert(`🎉 Parabéns! Você concluiu todo o ciclo de revisões de "${rev.name}"!`); } 
+                        else {
+                            const d = new Date(); d.setDate(d.getDate() + REVIEW_INTERVALS[rev.step]);
+                            rev.nextReview = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                            window.open(createGoogleCalendarLink(rev), '_blank');
                         }
                         saveData(); renderPendingReviews(); renderAllReviews();
                     }
                 });
             });
         }
-
     } else {
         if(badge) badge.style.display = 'none';
         if(msg) msg.style.display = 'block';
@@ -526,15 +452,12 @@ function renderAllReviews() {
     const list = elements.allReviewsList;
     if(!list) return;
     list.innerHTML = '';
-    
     const filter = elements.filterReviewSubject ? elements.filterReviewSubject.value : 'all';
     let filtered = appData.reviews;
     if(filter && filter !== 'all') filtered = filtered.filter(r => r.subject === filter);
-
     filtered.sort((a, b) => new Date(a.nextReview) - new Date(b.nextReview));
     
-    const statTotal = document.getElementById('rev-stat-total');
-    if(statTotal) statTotal.textContent = filtered.length;
+    if(document.getElementById('rev-stat-total')) document.getElementById('rev-stat-total').textContent = filtered.length;
 
     if(filtered.length === 0) {
         list.innerHTML = `<div class="empty-msg" style="grid-column: 1 / -1; padding: 3rem 2rem; text-align: center; color: var(--text-muted); border: 1px dashed var(--border-color); border-radius: var(--radius); font-size: 0.9rem;">Nenhuma revisão encontrada.</div>`;
@@ -542,26 +465,15 @@ function renderAllReviews() {
     }
 
     const today = getTodayDate();
-
     filtered.forEach(rev => {
         const stepText = rev.step < REVIEW_INTERVALS.length ? `${REVIEW_INTERVALS[rev.step]} dias` : 'Concluído';
         const notesHtml = rev.notes ? `<p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.3rem; border-left: 2px solid var(--border-color); padding-left: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${rev.notes}</p>` : '';
         const isOverdue = rev.nextReview <= today;
         const dateColor = isOverdue ? 'var(--danger-color)' : 'var(--text-main)';
         
-        let completeBtnHtml = '';
-        if (isOverdue) {
-            completeBtnHtml = `
-                <button class="icon-btn-small btn-complete-rev" data-id="${rev.id}" title="Marcar etapa como Concluída" style="color: var(--success-color); border: 1px solid var(--success-color); padding: 4px; border-radius: 4px; margin-left: 8px;">
-                    <svg viewBox="0 0 24 24" width="14" height="14"><path fill="currentColor" d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
-                </button>
-            `;
-        }
+        let completeBtnHtml = isOverdue ? `<button class="icon-btn-small btn-complete-rev" data-id="${rev.id}" title="Marcar etapa como Concluída" style="color: var(--success-color); border: 1px solid var(--success-color); padding: 4px; border-radius: 4px; margin-left: 8px;"><svg viewBox="0 0 24 24" width="14" height="14"><path fill="currentColor" d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg></button>` : '';
         
-        const card = document.createElement('div');
-        card.className = 'error-card'; 
-        card.style.padding = '0.8rem 1rem'; 
-        card.style.gap = '0.5rem';
+        const card = document.createElement('div'); card.className = 'error-card'; card.style.padding = '0.8rem 1rem'; card.style.gap = '0.5rem';
         card.innerHTML = `
             <div class="error-header" style="margin-bottom: 0; align-items: center;">
                 <div style="flex: 1; min-width: 0;">
@@ -570,19 +482,12 @@ function renderAllReviews() {
                     ${notesHtml}
                 </div>
                 <div style="display: flex; gap: 4px; flex-shrink: 0; align-self: flex-start;">
-                    <button class="icon-btn-small edit-rev-btn" data-id="${rev.id}" title="Editar Revisão" style="padding: 4px;">
-                        <svg viewBox="0 0 24 24" width="14" height="14"><path fill="currentColor" d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
-                    </button>
-                    <button class="icon-btn-small del-rev-btn" data-id="${rev.id}" title="Excluir Definitivamente" style="color: var(--danger-color); padding: 4px;">
-                        <svg viewBox="0 0 24 24" width="14" height="14"><path fill="currentColor" d="M16 9v10H8V9h8m-1.5-6h-5l-1 1H5v2h14V4h-3.5l-1-1zM18 7H6v12c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7z"/></svg>
-                    </button>
+                    <button class="icon-btn-small edit-rev-btn" data-id="${rev.id}" title="Editar Revisão" style="padding: 4px;"><svg viewBox="0 0 24 24" width="14" height="14"><path fill="currentColor" d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg></button>
+                    <button class="icon-btn-small del-rev-btn" data-id="${rev.id}" title="Excluir Definitivamente" style="color: var(--danger-color); padding: 4px;"><svg viewBox="0 0 24 24" width="14" height="14"><path fill="currentColor" d="M16 9v10H8V9h8m-1.5-6h-5l-1 1H5v2h14V4h-3.5l-1-1zM18 7H6v12c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7z"/></svg></button>
                 </div>
             </div>
             <div class="error-footer" style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.5rem; border-top: 1px dashed var(--border-color); padding-top: 0.6rem;">
-                <div style="display: flex; align-items: center; gap: 6px;">
-                    <span style="font-size: 0.75rem; color: var(--text-muted);">Próxima: <strong style="color: ${dateColor};">${formatDateBR(rev.nextReview)}</strong></span>
-                    ${completeBtnHtml}
-                </div>
+                <div style="display: flex; align-items: center; gap: 6px;"><span style="font-size: 0.75rem; color: var(--text-muted);">Próxima: <strong style="color: ${dateColor};">${formatDateBR(rev.nextReview)}</strong></span>${completeBtnHtml}</div>
                 <span style="font-size: 0.65rem; background: var(--bg-color); padding: 2px 6px; border-radius: 4px; border: 1px solid var(--border-color); font-weight: 600;">Etapa: ${stepText}</span>
             </div>
         `;
@@ -594,23 +499,12 @@ function renderAllReviews() {
             const id = e.currentTarget.getAttribute('data-id');
             const revIndex = appData.reviews.findIndex(r => r.id === id);
             if(revIndex !== -1) {
-                const rev = appData.reviews[revIndex];
-                rev.step++;
-                
-                if(rev.step >= REVIEW_INTERVALS.length) {
-                    appData.reviews.splice(revIndex, 1);
-                    alert(`🎉 Parabéns! Você concluiu todo o ciclo de revisões de "${rev.name}"!`);
-                } else {
-                    const nextInterval = REVIEW_INTERVALS[rev.step];
-                    const d = new Date(); d.setDate(d.getDate() + nextInterval);
-                    
-                    const nextYear = d.getFullYear();
-                    const nextMonth = String(d.getMonth() + 1).padStart(2, '0');
-                    const nextDay = String(d.getDate()).padStart(2, '0');
-                    rev.nextReview = `${nextYear}-${nextMonth}-${nextDay}`;
-
-                    const gCalLink = createGoogleCalendarLink(rev);
-                    window.open(gCalLink, '_blank');
+                const rev = appData.reviews[revIndex]; rev.step++;
+                if(rev.step >= REVIEW_INTERVALS.length) { appData.reviews.splice(revIndex, 1); alert(`🎉 Parabéns! Você concluiu todo o ciclo de revisões de "${rev.name}"!`); } 
+                else {
+                    const d = new Date(); d.setDate(d.getDate() + REVIEW_INTERVALS[rev.step]);
+                    rev.nextReview = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                    window.open(createGoogleCalendarLink(rev), '_blank');
                 }
                 saveData(); renderAllReviews(); renderPendingReviews();
             }
@@ -639,15 +533,12 @@ function renderAllReviews() {
         });
     });
 }
-// ------------------------------------------------------- //
 
 function updateUI() {
     try {
         updateTodaysSubjects();
-
         const today = getTodayDate();
         const todayData = appData.history[today] || { time: 0, sessions: 0 };
-
         const h = String(Math.floor(todayData.time / 3600)).padStart(2, '0');
         const m = String(Math.floor((todayData.time % 3600) / 60)).padStart(2, '0');
         const s = String(todayData.time % 60).padStart(2, '0');
@@ -667,12 +558,8 @@ function updateUI() {
         if(elements.dailyPercentage) elements.dailyPercentage.textContent = `${Math.floor(percentage)}%`;
 
         if (chartInstance) updateChartData();
-        renderHeatmap(); 
-        renderPendingReviews();
-        renderAllReviews();
-    } catch(e) {
-        console.error("Erro no updateUI:", e);
-    }
+        renderHeatmap(); renderPendingReviews(); renderAllReviews();
+    } catch(e) { console.error("Erro no updateUI:", e); }
 }
 
 function loadTimerState() {
@@ -685,23 +572,19 @@ function loadTimerState() {
         if (missedMs > 0 && missedMs < 43200000) { 
             if (appData.timerMode === 'stopwatch') {
                 appData.stopwatchMs += missedMs;
-                const missedSeconds = Math.floor(missedMs / 1000);
-                appData.history[getTodayDate()].time += missedSeconds;
+                appData.history[getTodayDate()].time += Math.floor(missedMs / 1000);
             } else {
                 appData.cycleState.msRemaining -= missedMs;
                 if (appData.cycleState.msRemaining < 0) appData.cycleState.msRemaining = 0;
                 else {
-                    const missedSeconds = Math.floor(missedMs / 1000);
                     const currentPhase = CYCLE_PHASES[appData.cycleState.phaseIndex];
-                    if (currentPhase && currentPhase.isStudy) appData.history[getTodayDate()].time += missedSeconds;
+                    if (currentPhase && currentPhase.isStudy) appData.history[getTodayDate()].time += Math.floor(missedMs / 1000);
                 }
             }
             saveData();
         }
         startTimer(); 
-    } else {
-        updateTimerDisplay();
-    }
+    } else updateTimerDisplay();
     updateToggleBtn();
 }
 
@@ -719,33 +602,20 @@ function startTimer() {
                 const diff = Math.round((new Date(today) - new Date(appData.lastStudyDate)) / (1000 * 60 * 60 * 24));
                 if (diff <= 1) appData.streak++; else appData.streak = 1;
             } else appData.streak = 1;
-            appData.lastStudyDate = today;
-            saveData(); 
+            appData.lastStudyDate = today; saveData(); 
         }
     }
 
-    localStorage.setItem('isTimerRunning', 'true');
-    lastTickTime = Date.now();
-    let accumulatedMsToSave = 0; 
+    localStorage.setItem('isTimerRunning', 'true'); lastTickTime = Date.now(); let accumulatedMsToSave = 0; 
 
     timerInterval = setInterval(() => {
-        const now = Date.now();
-        const delta = now - lastTickTime;
-        lastTickTime = now;
-        
-        accumulatedMsToSave += delta;
+        const now = Date.now(); const delta = now - lastTickTime; lastTickTime = now; accumulatedMsToSave += delta;
 
-        if (appData.timerMode === 'stopwatch') {
-            appData.stopwatchMs += delta;
-        } else {
-            appData.cycleState.msRemaining -= delta;
-            if (todaysSubjects.length === 0) appData.cycleState.msRemaining = 0;
-        }
+        if (appData.timerMode === 'stopwatch') appData.stopwatchMs += delta;
+        else { appData.cycleState.msRemaining -= delta; if (todaysSubjects.length === 0) appData.cycleState.msRemaining = 0; }
 
         if (accumulatedMsToSave >= 1000) {
-            const secondsPassed = Math.floor(accumulatedMsToSave / 1000);
-            accumulatedMsToSave -= (secondsPassed * 1000); 
-            
+            const secondsPassed = Math.floor(accumulatedMsToSave / 1000); accumulatedMsToSave -= (secondsPassed * 1000); 
             const currentPhase = CYCLE_PHASES[appData.cycleState.phaseIndex];
             if (appData.timerMode === 'stopwatch' || todaysSubjects.length === 0 || (currentPhase && currentPhase.isStudy)) {
                 appData.history[today].time += secondsPassed;
@@ -756,21 +626,13 @@ function startTimer() {
         }
 
         if (appData.timerMode === 'pomodoro' && appData.cycleState.msRemaining <= 0 && todaysSubjects.length > 0) {
-            playBeep(); 
-            appData.cycleState.phaseIndex++;
-            if (appData.cycleState.phaseIndex >= CYCLE_PHASES.length) {
-                appData.cycleState.phaseIndex = 0; appData.cycleState.subjectIndex++;
-            }
-            if (appData.cycleState.subjectIndex < todaysSubjects.length) {
-                appData.cycleState.msRemaining = CYCLE_PHASES[appData.cycleState.phaseIndex].ms;
-            } else {
-                appData.cycleState.msRemaining = 0; pauseTimer(); 
-            }
+            playBeep(); appData.cycleState.phaseIndex++;
+            if (appData.cycleState.phaseIndex >= CYCLE_PHASES.length) { appData.cycleState.phaseIndex = 0; appData.cycleState.subjectIndex++; }
+            if (appData.cycleState.subjectIndex < todaysSubjects.length) appData.cycleState.msRemaining = CYCLE_PHASES[appData.cycleState.phaseIndex].ms;
+            else { appData.cycleState.msRemaining = 0; pauseTimer(); }
             saveData();
         }
-
-        updateTimerDisplay(); 
-        localStorage.setItem('lastTick', now.toString());
+        updateTimerDisplay(); localStorage.setItem('lastTick', now.toString());
     }, 16); 
 }
 
@@ -783,11 +645,8 @@ function pauseTimer() {
 
 function resetTimer() {
     pauseTimer();
-    if (appData.timerMode === 'stopwatch') {
-        appData.stopwatchMs = 0;
-    } else {
-        appData.cycleState = { date: getTodayDate(), subjectIndex: 0, phaseIndex: 0, msRemaining: CYCLE_PHASES[0].ms };
-    }
+    if (appData.timerMode === 'stopwatch') appData.stopwatchMs = 0;
+    else appData.cycleState = { date: getTodayDate(), subjectIndex: 0, phaseIndex: 0, msRemaining: CYCLE_PHASES[0].ms };
     localStorage.setItem('isTimerRunning', 'false'); saveData(); updateTimerDisplay();
 }
 
@@ -812,46 +671,29 @@ if(elements.btnToggle) elements.btnToggle.addEventListener('click', () => { if (
 if(elements.btnReset) elements.btnReset.addEventListener('click', resetTimer);
 if(elements.btnSkipPhase) elements.btnSkipPhase.addEventListener('click', skipPhase);
 if(elements.btnSkipBlock) elements.btnSkipBlock.addEventListener('click', skipBlock);
-
-if (elements.btnTimerMode) {
-    elements.btnTimerMode.addEventListener('click', () => {
-        pauseTimer();
-        appData.timerMode = appData.timerMode === 'pomodoro' ? 'stopwatch' : 'pomodoro';
-        saveData();
-        updateTimerDisplay();
-    });
-}
+if(elements.btnTimerMode) elements.btnTimerMode.addEventListener('click', () => { pauseTimer(); appData.timerMode = appData.timerMode === 'pomodoro' ? 'stopwatch' : 'pomodoro'; saveData(); updateTimerDisplay(); });
 
 function getChartData() {
     const labels = []; const data = []; const today = new Date();
     for (let i = 6; i >= 0; i--) {
         const d = new Date(today); d.setDate(today.getDate() - i);
         labels.push(d.toLocaleDateString('pt-BR', { weekday: 'short' }).toUpperCase());
-        
-        const y = d.getFullYear();
-        const m = String(d.getMonth() + 1).padStart(2, '0');
-        const day = String(d.getDate()).padStart(2, '0');
-        const dateStr = `${y}-${m}-${day}`;
-        
-        const seconds = appData.history[dateStr] ? appData.history[dateStr].time : 0;
-        data.push(seconds / 3600);
+        data.push((appData.history[`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`]?.time || 0) / 3600);
     }
     return { labels, data };
 }
 
 function initChart() {
-    const canvas = document.getElementById('weeklyChart');
-    if(!canvas) return;
+    const canvas = document.getElementById('weeklyChart'); if(!canvas) return;
     const ctx = canvas.getContext('2d');
     const textColor = getComputedStyle(document.body).getPropertyValue('--text-muted').trim() || '#999999';
     const barColor = getComputedStyle(document.body).getPropertyValue('--text-main').trim() || '#ffffff';
     const { labels, data } = getChartData();
     chartInstance = new Chart(ctx, {
-        type: 'bar',
-        data: { labels: labels, datasets: [{ label: 'Horas', data: data, backgroundColor: barColor, borderRadius: 6, barThickness: 45 }] },
+        type: 'bar', data: { labels: labels, datasets: [{ label: 'Horas', data: data, backgroundColor: barColor, borderRadius: 6, barThickness: 45 }] },
         options: {
             responsive: true, maintainAspectRatio: false,
-            plugins: { legend: { display: false }, tooltip: { callbacks: { label: function(context) { const hours = Math.floor(context.raw); const minutes = Math.round((context.raw - hours) * 60); return `${hours}h ${minutes}m`; } } } },
+            plugins: { legend: { display: false }, tooltip: { callbacks: { label: function(c) { const h = Math.floor(c.raw); const m = Math.round((c.raw - h) * 60); return `${h}h ${m}m`; } } } },
             scales: {
                 y: { beginAtZero: true, grid: { color: 'rgba(150, 150, 150, 0.05)', borderColor: 'transparent' }, ticks: { color: textColor, stepSize: 1, font: { size: 12 } } },
                 x: { grid: { display: false }, ticks: { color: textColor, font: { family: 'Inter', weight: 600, size: 12 } } }
@@ -869,22 +711,17 @@ function updateChartData() {
 }
 
 function setupNavigation() {
-    const navButtons = document.querySelectorAll('.nav-btn');
-    const views = document.querySelectorAll('.view');
+    const navButtons = document.querySelectorAll('.nav-btn'); const views = document.querySelectorAll('.view');
     navButtons.forEach(btn => {
         btn.addEventListener('click', () => {
             navButtons.forEach(b => b.classList.remove('active')); views.forEach(v => v.classList.remove('active'));
             btn.classList.add('active'); const targetId = btn.getAttribute('data-target');
-            const targetEl = document.getElementById(targetId);
-            if(targetEl) targetEl.classList.add('active'); 
-            localStorage.setItem('activeView', targetId);
-            if (targetId === 'timer') updateTimerDisplay(); 
+            const targetEl = document.getElementById(targetId); if(targetEl) targetEl.classList.add('active'); 
+            localStorage.setItem('activeView', targetId); if (targetId === 'timer') updateTimerDisplay(); 
         });
     });
     let savedView = localStorage.getItem('activeView') || 'dashboard';
-    if (savedView === 'library' || savedView === 'errors') savedView = 'dashboard';
-    const btnToClick = document.querySelector(`.nav-btn[data-target="${savedView}"]`);
-    if (btnToClick) btnToClick.click();
+    const btnToClick = document.querySelector(`.nav-btn[data-target="${savedView}"]`); if (btnToClick) btnToClick.click();
 }
 
 if(elements.themeToggle) elements.themeToggle.addEventListener('click', () => {
@@ -920,8 +757,7 @@ function renderSchedule() {
     if(!elements.scheduleTableBody) return;
     elements.scheduleTableBody.innerHTML = '';
     appData.schedule.forEach((row, rowIndex) => {
-        const tr = document.createElement('tr');
-        const tdTime = document.createElement('td'); tdTime.className = 'time-cell';
+        const tr = document.createElement('tr'); const tdTime = document.createElement('td'); tdTime.className = 'time-cell';
         const btnDeleteRow = document.createElement('button'); btnDeleteRow.className = 'btn-remove-row';
         btnDeleteRow.innerHTML = '<svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M16 9v10H8V9h8m-1.5-6h-5l-1 1H5v2h14V4h-3.5l-1-1zM18 7H6v12c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7z"/></svg>';
         btnDeleteRow.addEventListener('click', (e) => { e.stopPropagation(); appData.schedule.splice(rowIndex, 1); saveData(); renderSchedule(); updateTodaysSubjects(); updateTimerDisplay(); });
@@ -934,8 +770,7 @@ function renderSchedule() {
             tdDay.addEventListener('dragover', (e) => { e.preventDefault(); tdDay.classList.add('drag-over'); });
             tdDay.addEventListener('dragleave', () => tdDay.classList.remove('drag-over'));
             tdDay.addEventListener('drop', (e) => {
-                e.preventDefault(); tdDay.classList.remove('drag-over');
-                const data = e.dataTransfer.getData('text/plain');
+                e.preventDefault(); tdDay.classList.remove('drag-over'); const data = e.dataTransfer.getData('text/plain');
                 if (data) { tdDay.textContent = data; appData.schedule[rowIndex].days[dayIndex] = data; saveData(); updateTodaysSubjects(); updateTimerDisplay(); }
             });
             tdDay.addEventListener('dblclick', () => { tdDay.textContent = ''; appData.schedule[rowIndex].days[dayIndex] = ''; saveData(); updateTodaysSubjects(); updateTimerDisplay(); });
@@ -949,9 +784,7 @@ if(elements.btnAddCycle) elements.btnAddCycle.addEventListener('click', () => { 
 
 document.addEventListener('keydown', (e) => {
     if (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA' || document.activeElement.tagName === 'SELECT' || document.activeElement.isContentEditable) return;
-    const timerEl = document.getElementById('timer');
-    if (!timerEl || !timerEl.classList.contains('active')) return;
-
+    const timerEl = document.getElementById('timer'); if (!timerEl || !timerEl.classList.contains('active')) return;
     if (e.code === 'Space' && e.shiftKey && e.ctrlKey) { e.preventDefault(); skipBlock(); return; } 
     else if (e.code === 'Space' && e.shiftKey) { e.preventDefault(); skipPhase(); return; } 
     else if (e.code === 'Space' && !e.ctrlKey) { e.preventDefault(); if (isRunning) pauseTimer(); else startTimer(); return; }
@@ -968,100 +801,148 @@ if (btnPrintSchedule) btnPrintSchedule.addEventListener('click', () => window.pr
 
 init();
 
-// --- INTEGRAÇÃO IA BLINDADA E SEGURA ---
+// --- 🧠 INTEGRAÇÃO IA: FLASHCARDS (TINDER DO VOCABULÁRIO) ---
 async function carregarVocabularioDiario() {
-    // 1. Busca a chave salva de forma segura apenas no seu navegador local
     let API_KEY = localStorage.getItem('gemini_api_key');
-    
     const hoje = getTodayDate();
-    const palavraSalva = localStorage.getItem('palavra_concurso');
+    const cardsSalvos = localStorage.getItem('flashcards_concurso');
     const dataSalva = localStorage.getItem('data_palavra');
 
     const vocabContent = document.getElementById('vocab-content');
     const vocabLoading = document.getElementById('vocab-loading');
-    
-    const renderizarPalavra = (dados) => {
-        if(!vocabContent || !vocabLoading) return;
-        const wordEl = document.getElementById('vocab-word');
-        if(wordEl) wordEl.textContent = dados.palavra;
-        const meaningEl = document.getElementById('vocab-meaning');
-        if(meaningEl) meaningEl.textContent = dados.significado;
-        const synContainer = document.getElementById('vocab-synonyms');
-        if(synContainer && Array.isArray(dados.sinonimos)) {
-            synContainer.innerHTML = '';
-            dados.sinonimos.forEach(syn => {
-                const span = document.createElement('span');
-                span.style.cssText = "font-size: 0.7rem; background: var(--border-color); color: var(--text-main); padding: 2px 8px; border-radius: 12px; font-weight: 500;";
-                span.textContent = syn;
-                synContainer.appendChild(span);
-            });
-        }
-        const exampleEl = document.getElementById('vocab-example');
-        if(exampleEl) exampleEl.textContent = `"${dados.aplicacao}"`;
-        vocabLoading.style.display = 'none';
-        vocabContent.style.display = 'flex';
-    };
 
-    if (palavraSalva && dataSalva === hoje) {
+    // Se já gerou hoje, puxa do cache
+    if (cardsSalvos && dataSalva === hoje) {
         try {
-            renderizarPalavra(JSON.parse(palavraSalva));
+            currentFlashcards = JSON.parse(cardsSalvos);
+            renderizarCardAtual();
+            vocabLoading.style.display = 'none';
+            vocabContent.style.display = 'flex';
             return;
         } catch(e) {} 
     }
 
-    // 2. Se não tem chave salva, pede para você digitar via pop-up
     if (!API_KEY) {
-        API_KEY = prompt("Segurança ativada! 🛡️\n\nCole sua NOVA chave de API do Gemini aqui.\nEla ficará salva apenas no seu navegador e não vazará no GitHub.");
+        API_KEY = prompt("Segurança ativada! 🛡️\n\nCole sua NOVA chave de API do Gemini aqui para habilitar os Flashcards.");
         if (API_KEY && API_KEY.trim() !== "") {
             localStorage.setItem('gemini_api_key', API_KEY.trim());
         } else {
-            console.warn("Chave não fornecida. Usando modo offline.");
-            renderizarPalavra({
-                palavra: "Desídia",
-                significado: "Disposição para evitar qualquer esforço físico ou moral; indolência, negligência.",
-                sinonimos: ["Omissão", "Negligência", "Inércia"],
-                aplicacao: "A crescente impunidade é corolário da desídia estatal na estruturação das forças de segurança."
-            });
+            console.warn("Chave ausente. Carregando pacote offline de emergência.");
+            currentFlashcards = [
+                { palavra: "Desídia", significado: "Disposição para evitar esforço físico ou moral; indolência, negligência.", sinonimos: ["Omissão", "Inércia"], aplicacao: "A impunidade é corolário da desídia estatal." },
+                { palavra: "Mitigar", significado: "Tornar mais brando, suave; atenuar o impacto.", sinonimos: ["Abrandar", "Reduzir"], aplicacao: "Políticas públicas são necessárias para mitigar as desigualdades." },
+                { palavra: "Dirimir", significado: "Extinguir por completo, resolver uma disputa.", sinonimos: ["Solucionar", "Suprimir"], aplicacao: "Cabe ao Judiciário dirimir os conflitos sociais com celeridade." }
+            ];
+            renderizarCardAtual();
+            vocabLoading.style.display = 'none';
+            vocabContent.style.display = 'flex';
             return;
         }
     }
 
     try {
-        const promptText = "Atue como um avaliador rigoroso de redação de concursos (foco em tribunais e carreiras policiais). Forneça UMA palavra de vocabulário avançado e formal útil para uma dissertação. O retorno deve ser EXATAMENTE E APENAS um objeto JSON neste formato, sem formatação markdown ou texto extra: {\"palavra\": \"Exemplo\", \"significado\": \"Significado da palavra.\", \"sinonimos\": [\"Sinônimo1\", \"Sinônimo2\"], \"aplicacao\": \"Uma frase argumentativa de exemplo com a palavra no contexto de segurança pública ou justiça.\"}";
+        const promptText = `Atue como um avaliador rigoroso de redação de concursos (foco em tribunais e carreiras policiais). Forneça exatas 3 (TRÊS) palavras de vocabulário avançado e formal úteis para uma dissertação. O retorno deve ser EXATAMENTE E APENAS uma ARRAY JSON neste formato, sem marcações markdown ou texto fora da array: [{"palavra": "Exemplo1", "significado": "Significado 1", "sinonimos": ["SinônimoA", "SinônimoB"], "aplicacao": "Frase exemplo 1"}, {"palavra": "Exemplo2", "significado": "Significado 2", "sinonimos": ["SinônimoC", "SinônimoD"], "aplicacao": "Frase exemplo 2"}, {"palavra": "Exemplo3", "significado": "Significado 3", "sinonimos": ["SinônimoE", "SinônimoF"], "aplicacao": "Frase exemplo 3"}]`;
 
         const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${API_KEY}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                contents: [{ parts: [{ text: promptText }] }]
-            })
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ contents: [{ parts: [{ text: promptText }] }] })
         });
 
         if (!response.ok) {
-            // Se a chave for inválida ou vazar, ele apaga a chave do cache para pedir de novo na próxima vez
-            if(response.status === 403 || response.status === 400) {
-                localStorage.removeItem('gemini_api_key');
-            }
-            const errText = await response.text();
-            throw new Error(`Erro na API (${response.status}): ${errText}`);
+            if(response.status === 403 || response.status === 400) localStorage.removeItem('gemini_api_key');
+            throw new Error(`Erro na API (${response.status})`);
         }
 
         const data = await response.json();
         const respostaTexto = data.candidates[0].content.parts[0].text;
         const jsonLimpo = respostaTexto.replace(/```json/g, '').replace(/```/g, '').trim();
-        const palavraObj = JSON.parse(jsonLimpo);
-
-        localStorage.setItem('palavra_concurso', JSON.stringify(palavraObj));
+        
+        currentFlashcards = JSON.parse(jsonLimpo);
+        localStorage.setItem('flashcards_concurso', JSON.stringify(currentFlashcards));
         localStorage.setItem('data_palavra', hoje);
 
-        renderizarPalavra(palavraObj);
+        renderizarCardAtual();
+        vocabLoading.style.display = 'none';
+        vocabContent.style.display = 'flex';
     } catch (error) {
-        console.error("Erro ao buscar palavra via IA:", error);
-        renderizarPalavra({
-            palavra: "Desídia",
-            significado: "Disposição para evitar qualquer esforço físico ou moral; indolência, negligência.",
-            sinonimos: ["Omissão", "Negligência", "Inércia"],
-            aplicacao: "A crescente impunidade é corolário da desídia estatal na estruturação das forças de segurança."
+        console.error("Erro ao buscar flashcards:", error);
+        currentFlashcards = [
+            { palavra: "Inevitável", significado: "Erro de conexão, usando fallback temporário.", sinonimos: ["Erro"], aplicacao: "Não foi possível conectar à IA." }
+        ];
+        renderizarCardAtual();
+        vocabLoading.style.display = 'none';
+        vocabContent.style.display = 'flex';
+    }
+}
+
+function renderizarCardAtual() {
+    if(!currentFlashcards || currentFlashcards.length === 0) return;
+    const dados = currentFlashcards[currentCardIndex];
+    
+    // Força o flashcard a voltar para a frente antes de mudar o texto
+    const flashcardElement = document.querySelector('.flashcard');
+    if(flashcardElement) flashcardElement.classList.remove('is-flipped');
+
+    // Um pequeno delay para dar tempo do card girar antes do texto trocar
+    setTimeout(() => {
+        const wordEl = document.getElementById('vocab-word');
+        if(wordEl) wordEl.textContent = dados.palavra;
+        
+        const meaningEl = document.getElementById('vocab-meaning');
+        if(meaningEl) meaningEl.textContent = dados.significado;
+        
+        const synContainer = document.getElementById('vocab-synonyms');
+        if(synContainer && Array.isArray(dados.sinonimos)) {
+            synContainer.innerHTML = '';
+            dados.sinonimos.forEach(syn => {
+                const span = document.createElement('span');
+                span.style.cssText = "font-size: 0.65rem; background: var(--border-color); color: var(--text-main); padding: 2px 8px; border-radius: 12px; font-weight: 500;";
+                span.textContent = syn;
+                synContainer.appendChild(span);
+            });
+        }
+        
+        const exampleEl = document.getElementById('vocab-example');
+        if(exampleEl) exampleEl.textContent = `"${dados.aplicacao}"`;
+        
+        const counterEl = document.getElementById('vocab-counter');
+        if(counterEl) counterEl.textContent = `${currentCardIndex + 1} / ${currentFlashcards.length}`;
+        
+        // Desativar botões se for o primeiro ou último card
+        if(elements.btnVocabPrev) {
+            elements.btnVocabPrev.style.opacity = currentCardIndex === 0 ? '0.3' : '1';
+            elements.btnVocabPrev.style.pointerEvents = currentCardIndex === 0 ? 'none' : 'auto';
+        }
+        if(elements.btnVocabNext) {
+            elements.btnVocabNext.style.opacity = currentCardIndex === currentFlashcards.length - 1 ? '0.3' : '1';
+            elements.btnVocabNext.style.pointerEvents = currentCardIndex === currentFlashcards.length - 1 ? 'none' : 'auto';
+        }
+    }, 150);
+}
+
+function setupFlashcardsEConectivos() {
+    if(elements.btnVocabPrev) {
+        elements.btnVocabPrev.addEventListener('click', (e) => {
+            e.stopPropagation(); // Evita que clique na seta gire o card
+            if(currentCardIndex > 0) { currentCardIndex--; renderizarCardAtual(); }
+        });
+    }
+    if(elements.btnVocabNext) {
+        elements.btnVocabNext.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if(currentCardIndex < currentFlashcards.length - 1) { currentCardIndex++; renderizarCardAtual(); }
+        });
+    }
+    
+    // Tabela de Conectivos
+    if(elements.btnOpenConectivos) {
+        elements.btnOpenConectivos.addEventListener('click', () => {
+            if(elements.modalConectivos) elements.modalConectivos.classList.add('active');
+        });
+    }
+    if(elements.btnCloseConectivos) {
+        elements.btnCloseConectivos.addEventListener('click', () => {
+            if(elements.modalConectivos) elements.modalConectivos.classList.remove('active');
         });
     }
 }
