@@ -105,7 +105,30 @@
                             Tudo em dia! Nenhuma revisão para hoje.
                         </div>
                     </div>
-                </div>
+
+                    <div class="stat-card outline" style="flex-direction: column; align-items: stretch; padding: 1.5rem; background: var(--surface-color);">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                            <h3 style="font-size: 0.85rem; text-transform: uppercase; color: var(--text-muted); letter-spacing: 0.05em; margin: 0;">Arsenal Lexical</h3>
+                            <span title="Atualizado diariamente via IA" style="font-size: 1.2rem; cursor: help;">🤖</span>
+                        </div>
+                        
+                        <div id="vocab-loading" style="text-align: center; color: var(--text-muted); font-size: 0.85rem; padding: 1rem 0;">
+                            <svg viewBox="0 0 24 24" width="24" height="24" style="animation: spin 1s linear infinite; margin-bottom: 8px; color: var(--text-muted);"><path fill="currentColor" d="M12 2v4c5.52 0 10 4.48 10 10s-4.48 10-10 10S2 21.52 2 16H0c0 6.63 5.37 12 12 12s12-5.37 12-12S18.63 2 12 2z"/></svg>
+                            <br>Buscando palavra do dia...
+                        </div>
+
+                        <div id="vocab-content" style="display: none; flex-direction: column; gap: 0.5rem;">
+                            <h4 id="vocab-word" style="font-size: 1.8rem; color: var(--text-main); margin: 0; font-weight: 600;">Carregando...</h4>
+                            <p id="vocab-meaning" style="font-size: 0.85rem; color: var(--text-muted); font-style: italic; margin: 0; line-height: 1.4;"></p>
+                            
+                            <div id="vocab-synonyms" style="display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; margin-bottom: 8px;"></div>
+                            
+                            <div style="padding: 12px; background: var(--bg-color); border-left: 3px solid var(--text-main); border-radius: 4px;">
+                                <p id="vocab-example" style="font-size: 0.9rem; font-family: serif; color: var(--text-main); margin: 0; line-height: 1.5;"></p>
+                            </div>
+                        </div>
+                    </div>
+                    </div>
             </div>
         </section>
 
