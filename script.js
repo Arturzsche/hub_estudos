@@ -115,18 +115,25 @@ async function init() {
     initChart();
     initManualReviews(); 
     
-    carregarVocabularioDiario(); // <--- CHAMADA DA IA PARA O VOCABULÁRIO
+    carregarVocabularioDiario(); // <--- CHAMADA DA IA
     
     if (localStorage.getItem('theme') === 'light') document.body.classList.remove('dark-mode');
 
-    document.getElementById('btn-open-clear').addEventListener('click', () => document.getElementById('clear-modal').classList.add('active'));
-    document.getElementById('btn-cancel-clear').addEventListener('click', () => document.getElementById('clear-modal').classList.remove('active'));
-    document.getElementById('btn-clear-today').addEventListener('click', () => {
+    const btnOpenClear = document.getElementById('btn-open-clear');
+    if(btnOpenClear) btnOpenClear.addEventListener('click', () => document.getElementById('clear-modal').classList.add('active'));
+    
+    const btnCancelClear = document.getElementById('btn-cancel-clear');
+    if(btnCancelClear) btnCancelClear.addEventListener('click', () => document.getElementById('clear-modal').classList.remove('active'));
+    
+    const btnClearToday = document.getElementById('btn-clear-today');
+    if(btnClearToday) btnClearToday.addEventListener('click', () => {
         const t = getTodayDate();
         if(appData.history[t]) { appData.history[t] = {time:0, sessions:0}; saveData(); calculateRecords(); updateUI(); resetTimer(); }
         document.getElementById('clear-modal').classList.remove('active');
     });
-    document.getElementById('btn-clear-all').addEventListener('click', () => {
+    
+    const btnClearAll = document.getElementById('btn-clear-all');
+    if(btnClearAll) btnClearAll.addEventListener('click', () => {
         appData.history={}; appData.streak=0; appData.lastStudyDate=null; appData.recordDay=0; appData.recordWeek=0;
         appData.history[getTodayDate()] = {time:0, sessions:0};
         saveData(); calculateRecords(); updateUI(); resetTimer();
@@ -192,12 +199,16 @@ function updateTodaysSubjects() {
 }
 
 function updateTimerDisplay() {
+    if(!elements.timeMain || !elements.timeMs) return;
+
     if (appData.timerMode === 'stopwatch') {
-        elements.cycleSubject.textContent = "Estudo Livre";
-        elements.cyclePhaseBadge.textContent = "Cronômetro Progressivo";
-        elements.cyclePhaseBadge.className = "badge";
-        elements.btnSkipPhase.style.opacity = '0.3'; 
-        elements.btnSkipBlock.style.opacity = '0.3'; 
+        if(elements.cycleSubject) elements.cycleSubject.textContent = "Estudo Livre";
+        if(elements.cyclePhaseBadge) {
+            elements.cyclePhaseBadge.textContent = "Cronômetro Progressivo";
+            elements.cyclePhaseBadge.className = "badge";
+        }
+        if(elements.btnSkipPhase) elements.btnSkipPhase.style.opacity = '0.3'; 
+        if(elements.btnSkipBlock) elements.btnSkipBlock.style.opacity = '0.3'; 
 
         let ms = appData.stopwatchMs || 0;
         const totalSeconds = Math.floor(ms / 1000);
@@ -210,8 +221,8 @@ function updateTimerDisplay() {
         elements.timeMs.textContent = `.${msStr}`;
 
     } else {
-        elements.btnSkipPhase.style.opacity = '1';
-        elements.btnSkipBlock.style.opacity = '1';
+        if(elements.btnSkipPhase) elements.btnSkipPhase.style.opacity = '1';
+        if(elements.btnSkipBlock) elements.btnSkipBlock.style.opacity = '1';
 
         let ms = appData.cycleState.msRemaining;
         if (ms < 0) ms = 0;
@@ -226,25 +237,31 @@ function updateTimerDisplay() {
         elements.timeMs.textContent = `.${msStr}`;
 
         if (todaysSubjects.length === 0) {
-            elements.cycleSubject.textContent = "Modo Livre (Agendado)";
-            elements.cyclePhaseBadge.textContent = "Sem matérias cadastradas hoje";
-            elements.cyclePhaseBadge.className = "badge break";
+            if(elements.cycleSubject) elements.cycleSubject.textContent = "Modo Livre (Agendado)";
+            if(elements.cyclePhaseBadge) {
+                elements.cyclePhaseBadge.textContent = "Sem matérias cadastradas hoje";
+                elements.cyclePhaseBadge.className = "badge break";
+            }
         } else if (appData.cycleState.subjectIndex >= todaysSubjects.length) {
-            elements.cycleSubject.textContent = "Ciclo Concluído!";
-            elements.cyclePhaseBadge.textContent = "Excelente Trabalho";
-            elements.cyclePhaseBadge.className = "badge break";
+            if(elements.cycleSubject) elements.cycleSubject.textContent = "Ciclo Concluído!";
+            if(elements.cyclePhaseBadge) {
+                elements.cyclePhaseBadge.textContent = "Excelente Trabalho";
+                elements.cyclePhaseBadge.className = "badge break";
+            }
         } else {
-            elements.cycleSubject.textContent = todaysSubjects[appData.cycleState.subjectIndex];
+            if(elements.cycleSubject) elements.cycleSubject.textContent = todaysSubjects[appData.cycleState.subjectIndex];
             const phase = CYCLE_PHASES[appData.cycleState.phaseIndex];
-            elements.cyclePhaseBadge.textContent = `Fase: ${phase.name}`;
-            elements.cyclePhaseBadge.className = phase.isStudy ? "badge" : "badge break";
+            if(elements.cyclePhaseBadge) {
+                elements.cyclePhaseBadge.textContent = `Fase: ${phase.name}`;
+                elements.cyclePhaseBadge.className = phase.isStudy ? "badge" : "badge break";
+            }
         }
     }
 }
 
 function updateToggleBtn() {
-    elements.iconPlay.style.display = isRunning ? 'none' : 'block';
-    elements.iconPause.style.display = isRunning ? 'block' : 'none';
+    if(elements.iconPlay) elements.iconPlay.style.display = isRunning ? 'none' : 'block';
+    if(elements.iconPause) elements.iconPause.style.display = isRunning ? 'block' : 'none';
 }
 
 function mergeData(parsedSaved) {
@@ -273,7 +290,9 @@ async function loadData() {
         }
     } catch (error) {
         const localData = localStorage.getItem('studyAppData');
-        if (localData) mergeData(JSON.parse(localData));
+        if (localData) {
+            try { mergeData(JSON.parse(localData)); } catch(e) {}
+        }
     }
     if (!appData.reviews) appData.reviews = [];
     if (!appData.timerMode) appData.timerMode = 'pomodoro';
@@ -283,7 +302,7 @@ async function loadData() {
 
 function saveData() {
     localStorage.setItem('studyAppData', JSON.stringify(appData));
-    database.ref('appData').set(appData).catch(e => console.error(e));
+    try { database.ref('appData').set(appData).catch(e => console.error(e)); } catch(e){}
 }
 
 function checkStreak() {
@@ -323,6 +342,7 @@ function calculateRecords() {
 }
 
 function renderHeatmap() {
+    if(!elements.heatmapGrid) return;
     elements.heatmapGrid.innerHTML = '';
     const today = new Date();
     for(let i = 29; i >= 0; i--) {
@@ -377,9 +397,9 @@ function initManualReviews() {
         elements.modalManualRev.classList.add('active');
     });
     
-    elements.btnCancelManualRev.addEventListener('click', () => elements.modalManualRev.classList.remove('active'));
+    if(elements.btnCancelManualRev) elements.btnCancelManualRev.addEventListener('click', () => elements.modalManualRev.classList.remove('active'));
     
-    elements.btnSaveManualRev.addEventListener('click', () => {
+    if(elements.btnSaveManualRev) elements.btnSaveManualRev.addEventListener('click', () => {
         const contentName = elements.inputManualRevName.value.trim();
         const subject = elements.selectManualRevSubject.value;
         const notes = elements.inputManualRevNotes.value.trim();
@@ -406,17 +426,17 @@ function initManualReviews() {
         } else alert("Por favor, selecione a matéria e digite o nome!");
     });
 
-    elements.btnManageReviews.addEventListener('click', () => {
+    if(elements.btnManageReviews) elements.btnManageReviews.addEventListener('click', () => {
         elements.filterReviewSubject.value = 'all'; 
         renderAllReviews(); 
         setTimeout(() => elements.modalManageRev.classList.add('active'), 10);
     });
     
-    elements.btnCloseManage.addEventListener('click', () => elements.modalManageRev.classList.remove('active'));
-    elements.filterReviewSubject.addEventListener('change', renderAllReviews);
+    if(elements.btnCloseManage) elements.btnCloseManage.addEventListener('click', () => elements.modalManageRev.classList.remove('active'));
+    if(elements.filterReviewSubject) elements.filterReviewSubject.addEventListener('change', renderAllReviews);
 
-    elements.btnCancelEditRev.addEventListener('click', () => elements.modalEditRev.classList.remove('active'));
-    elements.btnSaveEditRev.addEventListener('click', () => {
+    if(elements.btnCancelEditRev) elements.btnCancelEditRev.addEventListener('click', () => elements.modalEditRev.classList.remove('active'));
+    if(elements.btnSaveEditRev) elements.btnSaveEditRev.addEventListener('click', () => {
         const revIndex = appData.reviews.findIndex(r => r.id === currentEditingRevId);
         if (revIndex !== -1) {
             appData.reviews[revIndex].subject = elements.editRevSubject.value;
@@ -610,43 +630,48 @@ function renderAllReviews() {
             currentEditingRevId = e.currentTarget.getAttribute('data-id');
             const rev = appData.reviews.find(r => r.id === currentEditingRevId);
             if(rev) {
-                elements.editRevSubject.value = rev.subject;
-                elements.editRevName.value = rev.name;
-                elements.editRevNotes.value = rev.notes || '';
-                elements.modalEditRev.classList.add('active');
+                if(elements.editRevSubject) elements.editRevSubject.value = rev.subject;
+                if(elements.editRevName) elements.editRevName.value = rev.name;
+                if(elements.editRevNotes) elements.editRevNotes.value = rev.notes || '';
+                if(elements.modalEditRev) elements.modalEditRev.classList.add('active');
             }
         });
     });
 }
 
 function updateUI() {
-    updateTodaysSubjects();
+    try {
+        updateTodaysSubjects();
 
-    const today = getTodayDate();
-    const todayData = appData.history[today];
+        const today = getTodayDate();
+        const todayData = appData.history[today] || { time: 0, sessions: 0 };
 
-    const h = String(Math.floor(todayData.time / 3600)).padStart(2, '0');
-    const m = String(Math.floor((todayData.time % 3600) / 60)).padStart(2, '0');
-    const s = String(todayData.time % 60).padStart(2, '0');
-    elements.totalTimeDisplay.textContent = `${h}:${m}:${s}`;
-    
-    elements.sessionsDisplay.textContent = `${todayData.sessions} sessões hoje`;
-    elements.streakDisplay.textContent = appData.streak;
-    elements.recordDayDisplay.textContent = formatHoursText(appData.recordDay);
-    elements.recordWeekDisplay.textContent = formatHoursText(appData.recordWeek);
-    
-    let totalAccumulatedSeconds = Object.values(appData.history).reduce((acc, curr) => acc + curr.time, 0);
-    elements.totalAccumulated.textContent = formatHoursText(totalAccumulatedSeconds);
-    
-    let percentage = (todayData.time / appData.dailyGoalSeconds) * 100;
-    if (percentage > 100) percentage = 100;
-    elements.dailyProgressFill.style.width = `${percentage}%`;
-    elements.dailyPercentage.textContent = `${Math.floor(percentage)}%`;
+        const h = String(Math.floor(todayData.time / 3600)).padStart(2, '0');
+        const m = String(Math.floor((todayData.time % 3600) / 60)).padStart(2, '0');
+        const s = String(todayData.time % 60).padStart(2, '0');
+        
+        // Travas de segurança: Só atualiza se o elemento existir no HTML
+        if(elements.totalTimeDisplay) elements.totalTimeDisplay.textContent = `${h}:${m}:${s}`;
+        if(elements.sessionsDisplay) elements.sessionsDisplay.textContent = `${todayData.sessions} sessões hoje`;
+        if(elements.streakDisplay) elements.streakDisplay.textContent = appData.streak;
+        if(elements.recordDayDisplay) elements.recordDayDisplay.textContent = formatHoursText(appData.recordDay);
+        if(elements.recordWeekDisplay) elements.recordWeekDisplay.textContent = formatHoursText(appData.recordWeek);
+        
+        let totalAccumulatedSeconds = Object.values(appData.history).reduce((acc, curr) => acc + curr.time, 0);
+        if(elements.totalAccumulated) elements.totalAccumulated.textContent = formatHoursText(totalAccumulatedSeconds);
+        
+        let percentage = (todayData.time / appData.dailyGoalSeconds) * 100;
+        if (percentage > 100) percentage = 100;
+        if(elements.dailyProgressFill) elements.dailyProgressFill.style.width = `${percentage}%`;
+        if(elements.dailyPercentage) elements.dailyPercentage.textContent = `${Math.floor(percentage)}%`;
 
-    if (chartInstance) updateChartData();
-    renderHeatmap(); 
-    renderPendingReviews();
-    renderAllReviews();
+        if (chartInstance) updateChartData();
+        renderHeatmap(); 
+        renderPendingReviews();
+        renderAllReviews();
+    } catch(e) {
+        console.error("Erro no updateUI:", e);
+    }
 }
 
 function loadTimerState() {
@@ -782,10 +807,10 @@ function skipBlock() {
     saveData(); updateTimerDisplay();
 }
 
-elements.btnToggle.addEventListener('click', () => { if (isRunning) pauseTimer(); else startTimer(); });
-elements.btnReset.addEventListener('click', resetTimer);
-if (elements.btnSkipPhase) elements.btnSkipPhase.addEventListener('click', skipPhase);
-if (elements.btnSkipBlock) elements.btnSkipBlock.addEventListener('click', skipBlock);
+if(elements.btnToggle) elements.btnToggle.addEventListener('click', () => { if (isRunning) pauseTimer(); else startTimer(); });
+if(elements.btnReset) elements.btnReset.addEventListener('click', resetTimer);
+if(elements.btnSkipPhase) elements.btnSkipPhase.addEventListener('click', skipPhase);
+if(elements.btnSkipBlock) elements.btnSkipBlock.addEventListener('click', skipBlock);
 
 if (elements.btnTimerMode) {
     elements.btnTimerMode.addEventListener('click', () => {
@@ -814,7 +839,9 @@ function getChartData() {
 }
 
 function initChart() {
-    const ctx = document.getElementById('weeklyChart').getContext('2d');
+    const canvas = document.getElementById('weeklyChart');
+    if(!canvas) return;
+    const ctx = canvas.getContext('2d');
     const textColor = getComputedStyle(document.body).getPropertyValue('--text-muted').trim() || '#999999';
     const barColor = getComputedStyle(document.body).getPropertyValue('--text-main').trim() || '#ffffff';
     const { labels, data } = getChartData();
@@ -833,6 +860,7 @@ function initChart() {
 }
 
 function updateChartData() {
+    if(!chartInstance) return;
     const { labels, data } = getChartData();
     chartInstance.data.labels = labels; chartInstance.data.datasets[0].data = data;
     chartInstance.data.datasets[0].backgroundColor = getComputedStyle(document.body).getPropertyValue('--text-main').trim();
@@ -846,7 +874,9 @@ function setupNavigation() {
         btn.addEventListener('click', () => {
             navButtons.forEach(b => b.classList.remove('active')); views.forEach(v => v.classList.remove('active'));
             btn.classList.add('active'); const targetId = btn.getAttribute('data-target');
-            document.getElementById(targetId).classList.add('active'); localStorage.setItem('activeView', targetId);
+            const targetEl = document.getElementById(targetId);
+            if(targetEl) targetEl.classList.add('active'); 
+            localStorage.setItem('activeView', targetId);
             if (targetId === 'timer') updateTimerDisplay(); 
         });
     });
@@ -856,16 +886,17 @@ function setupNavigation() {
     if (btnToClick) btnToClick.click();
 }
 
-elements.themeToggle.addEventListener('click', () => {
+if(elements.themeToggle) elements.themeToggle.addEventListener('click', () => {
     document.body.classList.toggle('dark-mode'); localStorage.setItem('theme', document.body.classList.contains('dark-mode') ? 'dark' : 'light');
     if (chartInstance) updateChartData();
 });
-elements.macFullscreenBtn.addEventListener('click', () => {
+if(elements.macFullscreenBtn) elements.macFullscreenBtn.addEventListener('click', () => {
     if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(e => console.log(e)); else document.exitFullscreen();
 });
-elements.focusToggle.addEventListener('click', () => document.body.classList.toggle('focus-active'));
+if(elements.focusToggle) elements.focusToggle.addEventListener('click', () => document.body.classList.toggle('focus-active'));
 
 function renderSubjectBank() {
+    if(!elements.subjectBank) return;
     elements.subjectBank.innerHTML = '';
     appData.savedSubjects.forEach((subject, index) => {
         const pill = document.createElement('div'); pill.className = 'subject-pill'; pill.draggable = true;
@@ -877,13 +908,15 @@ function renderSubjectBank() {
     });
 }
 
-elements.btnAddSubject.addEventListener('click', () => {
+if(elements.btnAddSubject) elements.btnAddSubject.addEventListener('click', () => {
+    if(!elements.newSubjectInput) return;
     const val = elements.newSubjectInput.value.trim();
     if (val && !appData.savedSubjects.includes(val)) { appData.savedSubjects.push(val); elements.newSubjectInput.value = ''; saveData(); renderSubjectBank(); updateReviewSubjects(); }
 });
-elements.newSubjectInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') elements.btnAddSubject.click(); });
+if(elements.newSubjectInput) elements.newSubjectInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') elements.btnAddSubject.click(); });
 
 function renderSchedule() {
+    if(!elements.scheduleTableBody) return;
     elements.scheduleTableBody.innerHTML = '';
     appData.schedule.forEach((row, rowIndex) => {
         const tr = document.createElement('tr');
@@ -911,11 +944,12 @@ function renderSchedule() {
     });
 }
 
-elements.btnAddCycle.addEventListener('click', () => { appData.schedule.push({ time: "00:00 - 00:00", days: ["", "", "", "", "", "", ""] }); saveData(); renderSchedule(); });
+if(elements.btnAddCycle) elements.btnAddCycle.addEventListener('click', () => { appData.schedule.push({ time: "00:00 - 00:00", days: ["", "", "", "", "", "", ""] }); saveData(); renderSchedule(); });
 
 document.addEventListener('keydown', (e) => {
     if (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA' || document.activeElement.tagName === 'SELECT' || document.activeElement.isContentEditable) return;
-    if (!document.getElementById('timer').classList.contains('active')) return;
+    const timerEl = document.getElementById('timer');
+    if (!timerEl || !timerEl.classList.contains('active')) return;
 
     if (e.code === 'Space' && e.shiftKey && e.ctrlKey) { e.preventDefault(); skipBlock(); return; } 
     else if (e.code === 'Space' && e.shiftKey) { e.preventDefault(); skipPhase(); return; } 
@@ -933,10 +967,9 @@ if (btnPrintSchedule) btnPrintSchedule.addEventListener('click', () => window.pr
 
 init();
 
-// --- INTEGRAÇÃO IA: ARSENAL LEXICAL DIÁRIO ---
+// --- INTEGRAÇÃO IA BLINDADA ---
 async function carregarVocabularioDiario() {
     const API_KEY = "AIzaSyCLq9b-fjz7xah_6TyY0zJJuX9GptwlGdE"; 
-    
     const hoje = getTodayDate();
     const palavraSalva = localStorage.getItem('palavra_concurso');
     const dataSalva = localStorage.getItem('data_palavra');
@@ -945,33 +978,42 @@ async function carregarVocabularioDiario() {
     const vocabLoading = document.getElementById('vocab-loading');
     
     const renderizarPalavra = (dados) => {
-        document.getElementById('vocab-word').textContent = dados.palavra;
-        document.getElementById('vocab-meaning').textContent = dados.significado;
+        if(!vocabContent || !vocabLoading) return;
+        
+        const wordEl = document.getElementById('vocab-word');
+        if(wordEl) wordEl.textContent = dados.palavra;
+        
+        const meaningEl = document.getElementById('vocab-meaning');
+        if(meaningEl) meaningEl.textContent = dados.significado;
         
         const synContainer = document.getElementById('vocab-synonyms');
-        synContainer.innerHTML = '';
-        dados.sinonimos.forEach(syn => {
-            const span = document.createElement('span');
-            span.style.cssText = "font-size: 0.7rem; background: var(--border-color); color: var(--text-main); padding: 2px 8px; border-radius: 12px; font-weight: 500;";
-            span.textContent = syn;
-            synContainer.appendChild(span);
-        });
+        if(synContainer && Array.isArray(dados.sinonimos)) {
+            synContainer.innerHTML = '';
+            dados.sinonimos.forEach(syn => {
+                const span = document.createElement('span');
+                span.style.cssText = "font-size: 0.7rem; background: var(--border-color); color: var(--text-main); padding: 2px 8px; border-radius: 12px; font-weight: 500;";
+                span.textContent = syn;
+                synContainer.appendChild(span);
+            });
+        }
         
-        document.getElementById('vocab-example').textContent = `"${dados.aplicacao}"`;
+        const exampleEl = document.getElementById('vocab-example');
+        if(exampleEl) exampleEl.textContent = `"${dados.aplicacao}"`;
         
         vocabLoading.style.display = 'none';
         vocabContent.style.display = 'flex';
     };
 
     if (palavraSalva && dataSalva === hoje) {
-        renderizarPalavra(JSON.parse(palavraSalva));
-        return;
+        try {
+            renderizarPalavra(JSON.parse(palavraSalva));
+            return;
+        } catch(e) {} 
     }
 
     try {
         const promptText = "Atue como um avaliador rigoroso de redação de concursos (foco em tribunais e carreiras policiais). Forneça UMA palavra de vocabulário avançado e formal útil para uma dissertação. O retorno deve ser EXATAMENTE E APENAS um objeto JSON neste formato, sem formatação markdown ou texto extra: {\"palavra\": \"Exemplo\", \"significado\": \"Significado da palavra.\", \"sinonimos\": [\"Sinônimo1\", \"Sinônimo2\"], \"aplicacao\": \"Uma frase argumentativa de exemplo com a palavra no contexto de segurança pública ou justiça.\"}";
 
-        // MUDANÇA AQUI: Adicionado -latest no nome do modelo e tratamento de erro de rede
         const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${API_KEY}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -980,14 +1022,17 @@ async function carregarVocabularioDiario() {
             })
         });
 
-        // Se a API der qualquer erro (como o 404 de antes), ele avisa e joga pro catch
         if (!response.ok) {
-            throw new Error(`Erro na comunicação com o Google: Status ${response.status}`);
+            throw new Error(`Erro na API: ${response.status}`);
         }
 
         const data = await response.json();
-        const respostaTexto = data.candidates[0].content.parts[0].text;
         
+        if (!data.candidates || !data.candidates[0].content) {
+            throw new Error("Estrutura da resposta da IA está vazia ou incorreta.");
+        }
+
+        const respostaTexto = data.candidates[0].content.parts[0].text;
         const jsonLimpo = respostaTexto.replace(/```json/g, '').replace(/```/g, '').trim();
         const palavraObj = JSON.parse(jsonLimpo);
 
@@ -996,28 +1041,7 @@ async function carregarVocabularioDiario() {
 
         renderizarPalavra(palavraObj);
     } catch (error) {
-        console.error("Erro ao buscar palavra no Gemini:", error);
-        // Plano B: Se faltar internet ou a API falhar, carrega essa palavra de emergência
-        renderizarPalavra({
-            palavra: "Desídia",
-            significado: "Disposição para evitar qualquer esforço físico ou moral; indolência, negligência.",
-            sinonimos: ["Omissão", "Negligência", "Inércia"],
-            aplicacao: "A crescente impunidade é corolário da desídia estatal na estruturação das forças de segurança."
-        });
-    }
-}
-        const data = await response.json();
-        const respostaTexto = data.candidates[0].content.parts[0].text;
-        
-        const jsonLimpo = respostaTexto.replace(/```json/g, '').replace(/```/g, '').trim();
-        const palavraObj = JSON.parse(jsonLimpo);
-
-        localStorage.setItem('palavra_concurso', JSON.stringify(palavraObj));
-        localStorage.setItem('data_palavra', hoje);
-
-        renderizarPalavra(palavraObj);
-    } catch (error) {
-        console.error("Erro ao buscar palavra no Gemini:", error);
+        console.error("Erro ao buscar palavra via IA:", error);
         renderizarPalavra({
             palavra: "Desídia",
             significado: "Disposição para evitar qualquer esforço físico ou moral; indolência, negligência.",
