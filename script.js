@@ -1015,8 +1015,8 @@ async function carregarVocabularioDiario() {
     try {
         const promptText = "Atue como um avaliador rigoroso de redação de concursos (foco em tribunais e carreiras policiais). Forneça UMA palavra de vocabulário avançado e formal útil para uma dissertação. O retorno deve ser EXATAMENTE E APENAS um objeto JSON neste formato, sem formatação markdown ou texto extra: {\"palavra\": \"Exemplo\", \"significado\": \"Significado da palavra.\", \"sinonimos\": [\"Sinônimo1\", \"Sinônimo2\"], \"aplicacao\": \"Uma frase argumentativa de exemplo com a palavra no contexto de segurança pública ou justiça.\"}";
 
-        // MUDANÇA CRUCIAL: Utilizando o gemini-1.5-flash que é a rota web mais estável e garantida
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`, {
+        // MUDANÇA AQUI: Alterado de 1.5-flash para gemini-2.5-flash
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${API_KEY}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
