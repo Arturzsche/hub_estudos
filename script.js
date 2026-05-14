@@ -1,17 +1,3 @@
-// --- FIREBASE CONFIGURATION ---
-const firebaseConfig = {
-    apiKey: "AIzaSyDKkVRT_2El3mT-9SjZPow9c0vtVMDjgPM",
-    authDomain: "hubestudos-1ce06.firebaseapp.com",
-    databaseURL: "https://hubestudos-1ce06-default-rtdb.firebaseio.com",
-    projectId: "hubestudos-1ce06",
-    storageBucket: "hubestudos-1ce06.firebasestorage.app",
-    messagingSenderId: "951170319139",
-    appId: "1:951170319139:web:5088d18ff383eebb934296"
-};
-
-firebase.initializeApp(firebaseConfig);
-const database = firebase.database();
-
 let timerInterval;
 let isRunning = false;
 let lastTickTime = 0; 
@@ -706,12 +692,28 @@ if (btnPrintSchedule) btnPrintSchedule.addEventListener('click', () => window.pr
 
 init();
 
-// --- 🧠 INTEGRAÇÃO IA: PALAVRA DO DIA BLINDADA CONTRA REPETIÇÃO ---
+// --- 🧠 INTEGRAÇÃO IA: PALAVRA DO DIA BLINDADA CONTRA REPETIÇÃO E TRAVAMENTOS ---
 async function carregarVocabularioDiario(forceRefresh = false) {
     let API_KEY = localStorage.getItem('gemini_api_key');
     const hoje = getTodayDate();
-    const palavraSalva = localStorage.getItem('palavra_concurso');
-    const dataSalva = localStorage.getItem('data_palavra');
+    let palavraSalva = null;
+    let dataSalva = null;
+    let historicoPalavras = [];
+    
+    // Tratamento de segurança extrema para localStorage
+    try {
+        const palStr = localStorage.getItem('palavra_concurso');
+        if (palStr) palavraSalva = JSON.parse(palStr);
+        dataSalva = localStorage.getItem('data_palavra');
+        
+        const histStr = localStorage.getItem('historico_palavras');
+        if (histStr) historicoPalavras = JSON.parse(histStr);
+        if (!Array.isArray(historicoPalavras)) historicoPalavras = [];
+    } catch(e) {
+        console.warn("Cache local estava corrompido e foi resetado.");
+        historicoPalavras = [];
+        palavraSalva = null;
+    }
 
     const vocabContent = document.getElementById('vocab-content');
     const vocabLoading = document.getElementById('vocab-loading');
@@ -745,10 +747,8 @@ async function carregarVocabularioDiario(forceRefresh = false) {
     };
 
     if (!forceRefresh && palavraSalva && dataSalva === hoje) {
-        try {
-            renderizarPalavra(JSON.parse(palavraSalva));
-            return;
-        } catch(e) {} 
+        renderizarPalavra(palavraSalva);
+        return;
     }
 
     if (!API_KEY) {
@@ -770,30 +770,28 @@ async function carregarVocabularioDiario(forceRefresh = false) {
     }
 
     // Memória de curto prazo para impedir o Gemini de repetir palavras
-    let historicoPalavras = JSON.parse(localStorage.getItem('historico_palavras') || '[]');
     if (currentPalavraObj && !historicoPalavras.includes(currentPalavraObj.palavra)) {
         historicoPalavras.push(currentPalavraObj.palavra);
     }
-    // Mantém só as últimas 10 na memória para não sobrecarregar
+    // Mantém só as últimas 10 na memória
     if (historicoPalavras.length > 10) historicoPalavras.shift();
     localStorage.setItem('historico_palavras', JSON.stringify(historicoPalavras));
 
     try {
         const promptText = `Atue como um avaliador rigoroso de redação de concursos (foco em tribunais e carreiras policiais). 
-        Semente de aleatoriedade para garantir ineditismo: ${Math.random()}.
+        Semente de aleatoriedade: ${Date.now()}.
         Forneça UMA palavra de vocabulário avançado e formal útil para uma dissertação. 
         REGRAS CRUCIAIS:
         1. A palavra DEVE ser inédita.
-        2. É EXPRESSAMENTE PROIBIDO retornar qualquer uma destas palavras que já estudei: ${historicoPalavras.join(', ')}. Escolha um termo totalmente novo!
+        2. É EXPRESSAMENTE PROIBIDO retornar qualquer uma destas palavras: ${historicoPalavras.join(', ')}. Escolha um termo totalmente novo!
         O retorno deve ser EXATAMENTE E APENAS um objeto JSON neste formato, sem marcações markdown ou texto extra: {"palavra": "Exemplo", "significado": "Significado", "sinonimos": ["SinônimoA", "SinônimoB"], "aplicacao": "Frase de exemplo"}`;
 
-        // AQUI ESTAVA O ERRO! CORRIGIDO PARA O MODELO QUE FUNCIONA NA SUA CONTA
         const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${API_KEY}`, {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
                 contents: [{ parts: [{ text: promptText }] }],
                 generationConfig: {
-                    temperature: 1.1, // Aumenta a criatividade da IA para não repetir
+                    temperature: 1.2, // Força a IA a ser o mais criativa possível para não repetir
                     topP: 0.95
                 }
             })
@@ -822,14 +820,13 @@ async function carregarVocabularioDiario(forceRefresh = false) {
         renderizarPalavra(palavraObj);
     } catch (error) {
         console.error("Erro ao buscar palavra via IA:", error);
-        // Plano B com uma palavra diferente para você saber que caiu aqui
-        renderizarPalavra({ palavra: "Anacrônico", significado: "Que não está de acordo com a sua época; obsoleto, ultrapassado.", sinonimos: ["Obsoleto", "Antiquado"], aplicacao: "O sistema penitenciário brasileiro revela-se anacrônico diante das demandas atuais." });
+        // Fallback blindado para nunca travar a tela
+        renderizarPalavra({ palavra: "Anacrônico", significado: "Que não está de acordo com a sua época; obsoleto.", sinonimos: ["Ultrapassado", "Antiquado"], aplicacao: "O sistema prisional revela-se anacrônico diante das demandas atuais." });
     }
 }
 
 // --- CONTROLE DE CONECTIVOS E FLASHCARDS (ANKI) ---
 function setupFlashcardsEConectivos() {
-    // 1. Modal Conectivos (Agora aberto pela Nav Bar)
     if(elements.btnNavConectivos) {
         elements.btnNavConectivos.addEventListener('click', () => {
             if(elements.modalConectivos) elements.modalConectivos.classList.add('active');
@@ -841,14 +838,12 @@ function setupFlashcardsEConectivos() {
         });
     }
 
-    // 2. Atualizar Palavra 
     if(elements.btnRefreshWord) {
         elements.btnRefreshWord.addEventListener('click', () => {
             carregarVocabularioDiario(true);
         });
     }
 
-    // 3. Salvar Flashcard para o Baralho
     if(elements.btnSaveFlashcard) {
         elements.btnSaveFlashcard.addEventListener('click', () => {
             if(currentPalavraObj) {
@@ -856,7 +851,6 @@ function setupFlashcardsEConectivos() {
                 if(jaExiste) {
                     alert(`A palavra "${currentPalavraObj.palavra}" já está no seu baralho!`);
                 } else {
-                    // Inicialização padrão algoritmo Anki
                     const newCard = {
                         id: 'fc_' + Date.now(),
                         palavra: currentPalavraObj.palavra,
@@ -869,7 +863,7 @@ function setupFlashcardsEConectivos() {
                     };
                     appData.flashcards.push(newCard);
                     saveData();
-                    initAnkiSession(); // Atualiza a fila se estiver na aba
+                    initAnkiSession(); 
                     renderGerenciadorFlashcards();
                     alert(`"${currentPalavraObj.palavra}" adicionada ao baralho de Flashcards!`);
                 }
@@ -877,7 +871,6 @@ function setupFlashcardsEConectivos() {
         });
     }
     
-    // 4. Modal de Gerenciar Baralho
     if(elements.btnManageFlashcards) {
         elements.btnManageFlashcards.addEventListener('click', () => {
             renderGerenciadorFlashcards();
@@ -894,52 +887,65 @@ function setupFlashcardsEConectivos() {
 // --- LÓGICA DO ALGORITMO ANKI (REPETIÇÃO ESPAÇADA) ---
 function initAnkiSession() {
     const today = getTodayDate();
-    // Filtra os cards que estão agendados para hoje ou dias anteriores
     ankiStudyQueue = appData.flashcards.filter(f => f.nextReview <= today);
     
+    const ankiSess = document.getElementById('anki-study-session');
+    const ankiDone = document.getElementById('anki-done-msg');
+    
+    if(!ankiSess || !ankiDone) return;
+
     if (ankiStudyQueue.length > 0) {
-        document.getElementById('anki-study-session').style.display = 'flex';
-        document.getElementById('anki-done-msg').style.display = 'none';
+        ankiSess.style.display = 'flex';
+        ankiDone.style.display = 'none';
         loadNextAnkiCard();
     } else {
-        document.getElementById('anki-study-session').style.display = 'none';
-        document.getElementById('anki-done-msg').style.display = 'block';
+        ankiSess.style.display = 'none';
+        ankiDone.style.display = 'block';
     }
 }
 
 function loadNextAnkiCard() {
     if (ankiStudyQueue.length === 0) {
-        initAnkiSession(); // Recarrega para exibir a tela de sucesso
+        initAnkiSession(); 
         return;
     }
     
     currentAnkiCard = ankiStudyQueue[0];
     
-    // Reset da Interface
-    document.getElementById('anki-card').classList.remove('is-flipped');
-    document.getElementById('btn-anki-show').style.display = 'block';
-    document.getElementById('anki-controls').style.display = 'none';
+    const ankiCard = document.getElementById('anki-card');
+    const btnAnkiShow = document.getElementById('btn-anki-show');
+    const ankiControls = document.getElementById('anki-controls');
     
-    document.getElementById('anki-status').textContent = `REVISÕES PENDENTES: ${ankiStudyQueue.length}`;
+    if(ankiCard) ankiCard.classList.remove('is-flipped');
+    if(btnAnkiShow) btnAnkiShow.style.display = 'block';
+    if(ankiControls) ankiControls.style.display = 'none';
     
-    // Front do Card
-    document.getElementById('anki-word').textContent = currentAnkiCard.palavra;
+    const statusEl = document.getElementById('anki-status');
+    if(statusEl) statusEl.textContent = `REVISÕES PENDENTES: ${ankiStudyQueue.length}`;
     
-    // Back do Card
-    document.getElementById('anki-word-back').textContent = currentAnkiCard.palavra;
-    document.getElementById('anki-meaning').textContent = currentAnkiCard.significado;
-    document.getElementById('anki-example').textContent = `"${currentAnkiCard.aplicacao}"`;
+    const wordEl = document.getElementById('anki-word');
+    if(wordEl) wordEl.textContent = currentAnkiCard.palavra;
+    
+    const wordBackEl = document.getElementById('anki-word-back');
+    if(wordBackEl) wordBackEl.textContent = currentAnkiCard.palavra;
+    
+    const meanEl = document.getElementById('anki-meaning');
+    if(meanEl) meanEl.textContent = currentAnkiCard.significado;
+    
+    const exEl = document.getElementById('anki-example');
+    if(exEl) exEl.textContent = `"${currentAnkiCard.aplicacao}"`;
     
     const synContainer = document.getElementById('anki-synonyms');
-    synContainer.innerHTML = '';
-    currentAnkiCard.sinonimos.forEach(syn => {
-        const span = document.createElement('span');
-        span.style.cssText = "font-size: 0.8rem; background: var(--border-color); color: var(--text-main); padding: 4px 10px; border-radius: 12px; font-weight: 500;";
-        span.textContent = syn;
-        synContainer.appendChild(span);
-    });
+    if(synContainer) {
+        synContainer.innerHTML = '';
+        currentAnkiCard.sinonimos.forEach(syn => {
+            const span = document.createElement('span');
+            span.style.cssText = "font-size: 0.8rem; background: var(--border-color); color: var(--text-main); padding: 4px 10px; border-radius: 12px; font-weight: 500;";
+            span.textContent = syn;
+            synContainer.appendChild(span);
+        });
+    }
     
-    // Calcula as previsões de dias para os botões do Anki
     const ival = currentAnkiCard.interval || 0;
     const e = currentAnkiCard.ease || 2.5;
     
@@ -947,23 +953,32 @@ function loadNextAnkiCard() {
     const iGood = ival === 0 ? 1 : Math.ceil(ival * 2.5);
     const iEasy = ival === 0 ? 4 : Math.ceil(ival * e * 1.3);
     
-    document.getElementById('anki-time-2').textContent = `${iHard} d`;
-    document.getElementById('anki-time-3').textContent = `${iGood} d`;
-    document.getElementById('anki-time-4').textContent = `${iEasy} d`;
+    const t2 = document.getElementById('anki-time-2'); if(t2) t2.textContent = `${iHard} d`;
+    const t3 = document.getElementById('anki-time-3'); if(t3) t3.textContent = `${iGood} d`;
+    const t4 = document.getElementById('anki-time-4'); if(t4) t4.textContent = `${iEasy} d`;
 }
 
-// Lógica de Giro e Botões do Anki
-document.getElementById('anki-card-container').addEventListener('click', () => {
-    if (!currentAnkiCard) return;
-    document.getElementById('anki-card').classList.add('is-flipped');
-    document.getElementById('btn-anki-show').style.display = 'none';
-    document.getElementById('anki-controls').style.display = 'flex';
-});
+const cardContainer = document.getElementById('anki-card-container');
+if(cardContainer) {
+    cardContainer.addEventListener('click', () => {
+        if (!currentAnkiCard) return;
+        const ankiCard = document.getElementById('anki-card');
+        const btnAnkiShow = document.getElementById('btn-anki-show');
+        const ankiControls = document.getElementById('anki-controls');
+        if(ankiCard) ankiCard.classList.add('is-flipped');
+        if(btnAnkiShow) btnAnkiShow.style.display = 'none';
+        if(ankiControls) ankiControls.style.display = 'flex';
+    });
+}
 
-document.getElementById('btn-anki-show').addEventListener('click', (e) => {
-    e.stopPropagation();
-    document.getElementById('anki-card-container').click();
-});
+const btnShow = document.getElementById('btn-anki-show');
+if(btnShow) {
+    btnShow.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const cc = document.getElementById('anki-card-container');
+        if(cc) cc.click();
+    });
+}
 
 document.querySelectorAll('.btn-anki-rate').forEach(btn => {
     btn.addEventListener('click', (e) => {
@@ -973,51 +988,43 @@ document.querySelectorAll('.btn-anki-rate').forEach(btn => {
         let ival = currentAnkiCard.interval || 0;
         let ease = currentAnkiCard.ease || 2.5;
         
-        if (rating === 1) { // Errei
-            ival = 0;
-            ease = Math.max(1.3, ease - 0.2);
-        } else if (rating === 2) { // Difícil
-            ival = ival === 0 ? 1 : Math.ceil(ival * 1.2);
-            ease = Math.max(1.3, ease - 0.15);
-        } else if (rating === 3) { // Bom
+        if (rating === 1) { 
+            ival = 0; ease = Math.max(1.3, ease - 0.2);
+        } else if (rating === 2) { 
+            ival = ival === 0 ? 1 : Math.ceil(ival * 1.2); ease = Math.max(1.3, ease - 0.15);
+        } else if (rating === 3) { 
             ival = ival === 0 ? 1 : Math.ceil(ival * 2.5);
-        } else if (rating === 4) { // Fácil
-            ival = ival === 0 ? 4 : Math.ceil(ival * ease * 1.3);
-            ease += 0.15;
+        } else if (rating === 4) { 
+            ival = ival === 0 ? 4 : Math.ceil(ival * ease * 1.3); ease += 0.15;
         }
         
         currentAnkiCard.interval = ival;
         currentAnkiCard.ease = ease;
         
-        // Define a próxima data
         const nextDate = new Date();
         if (rating === 1) {
-            // Se errou, revisa hoje de novo no final da fila
             currentAnkiCard.nextReview = getTodayDate();
             ankiStudyQueue.push(ankiStudyQueue.shift()); 
         } else {
             nextDate.setDate(nextDate.getDate() + ival);
             currentAnkiCard.nextReview = `${nextDate.getFullYear()}-${String(nextDate.getMonth() + 1).padStart(2, '0')}-${String(nextDate.getDate()).padStart(2, '0')}`;
-            ankiStudyQueue.shift(); // Remove da fila de hoje
+            ankiStudyQueue.shift(); 
         }
         
-        // Salva na base de dados
         const idx = appData.flashcards.findIndex(f => f.id === currentAnkiCard.id);
         if (idx !== -1) appData.flashcards[idx] = currentAnkiCard;
         saveData();
-        
-        // Vai para a próxima carta
         loadNextAnkiCard();
     });
 });
 
-// Gerenciador de Flashcards (Para ver, editar ou deletar cartas antigas)
 function renderGerenciadorFlashcards() {
     if(!elements.allFlashcardsList) return;
     elements.allFlashcardsList.innerHTML = '';
     
     const fcList = appData.flashcards || [];
-    document.getElementById('fc-stat-total').textContent = fcList.length;
+    const fcStat = document.getElementById('fc-stat-total');
+    if(fcStat) fcStat.textContent = fcList.length;
 
     if(fcList.length === 0) {
         elements.allFlashcardsList.innerHTML = `<div style="grid-column: 1 / -1; padding: 3rem; text-align: center; color: var(--text-muted);">Você ainda não possui flashcards salvos no baralho.</div>`;
