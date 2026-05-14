@@ -876,9 +876,14 @@ function setupFlashcardsEConectivos() {
             elements.modalManageFlashcards.classList.remove('active');
         });
     }
+    if(document.getElementById('btn-close-view-fc')) {
+        document.getElementById('btn-close-view-fc').addEventListener('click', () => {
+            document.getElementById('view-fc-modal').classList.remove('active');
+        });
+    }
 }
 
-// --- LÓGICA DO ALGORITMO ANKI (REPETIÇÃO ESPAÇADA) ---
+// --- LÓGICA DO ALGORITMO ANKI E RENDERIZAÇÃO DO GERENCIADOR ---
 function initAnkiSession() {
     const today = getTodayDate();
     ankiStudyQueue = appData.flashcards.filter(f => f.nextReview <= today);
@@ -1012,6 +1017,7 @@ document.querySelectorAll('.btn-anki-rate').forEach(btn => {
     });
 });
 
+// FUNÇÃO ATUALIZADA: Renderiza os cards do gerenciador com Hover e Blur (Glassmorphism)
 function renderGerenciadorFlashcards() {
     if(!elements.allFlashcardsList) return;
     elements.allFlashcardsList.innerHTML = '';
@@ -1027,18 +1033,30 @@ function renderGerenciadorFlashcards() {
 
     fcList.forEach((card, index) => {
         const div = document.createElement('div');
-        div.className = 'error-card';
-        div.style.padding = '1rem';
+        div.className = 'fc-manage-card';
         div.innerHTML = `
-            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; z-index: 2; position: relative;">
                 <div>
-                    <h4 style="margin: 0 0 0.5rem 0; font-size: 1.1rem; color: var(--text-main);">${card.palavra}</h4>
+                    <h4 style="margin: 0 0 0.5rem 0; font-size: 1.2rem; color: var(--text-main); font-weight: 700;">${card.palavra}</h4>
                     <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0;">Próxima revisão: <strong>${formatDateBR(card.nextReview)}</strong></p>
                 </div>
-                <button class="icon-btn-small btn-del-fc" data-id="${card.id}" title="Apagar carta" style="color: var(--danger-color);"><svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M16 9v10H8V9h8m-1.5-6h-5l-1 1H5v2h14V4h-3.5l-1-1zM18 7H6v12c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7z"/></svg></button>
+                <div class="btn-del-fc-wrapper">
+                    <button class="btn-del-fc" data-id="${card.id}" title="Apagar carta">
+                        <svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M16 9v10H8V9h8m-1.5-6h-5l-1 1H5v2h14V4h-3.5l-1-1zM18 7H6v12c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7z"/></svg>
+                    </button>
+                </div>
+            </div>
+            
+            <div class="fc-view-overlay">
+                <button class="btn-view-content" data-index="${index}">
+                    <svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>
+                    Ver Conteúdo
+                </button>
             </div>
         `;
-        div.querySelector('.btn-del-fc').addEventListener('click', () => {
+        
+        div.querySelector('.btn-del-fc').addEventListener('click', (e) => {
+            e.stopPropagation();
             if(confirm(`Tem certeza que deseja apagar a carta "${card.palavra}"?`)) {
                 appData.flashcards = appData.flashcards.filter(f => f.id !== card.id);
                 saveData();
@@ -1046,6 +1064,32 @@ function renderGerenciadorFlashcards() {
                 initAnkiSession();
             }
         });
+
+        div.querySelector('.btn-view-content').addEventListener('click', (e) => {
+            e.stopPropagation();
+            openViewFlashcardModal(card);
+        });
+
         elements.allFlashcardsList.appendChild(div);
     });
+}
+
+function openViewFlashcardModal(card) {
+    const modal = document.getElementById('view-fc-modal');
+    document.getElementById('view-fc-word').textContent = card.palavra;
+    document.getElementById('view-fc-meaning').textContent = card.significado;
+    document.getElementById('view-fc-example').textContent = `"${card.aplicacao}"`;
+    
+    const synContainer = document.getElementById('view-fc-synonyms');
+    synContainer.innerHTML = '';
+    if(Array.isArray(card.sinonimos)) {
+        card.sinonimos.forEach(syn => {
+            const span = document.createElement('span');
+            span.style.cssText = "font-size: 0.75rem; background: var(--border-color); color: var(--text-main); padding: 4px 10px; border-radius: 12px; font-weight: 500;";
+            span.textContent = syn;
+            synContainer.appendChild(span);
+        });
+    }
+    
+    modal.classList.add('active');
 }
