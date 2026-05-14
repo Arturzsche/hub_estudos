@@ -124,9 +124,7 @@
                         <div id="vocab-content" style="display: none; flex-direction: column; gap: 0.5rem; padding-right: 65px;">
                             <h4 id="vocab-word" style="font-size: 2rem; color: var(--text-main); margin: 0; font-weight: 700;">Carregando...</h4>
                             <p id="vocab-meaning" style="font-size: 0.95rem; color: var(--text-muted); font-style: italic; margin: 0 0 8px 0; line-height: 1.4;"></p>
-                            
                             <div id="vocab-synonyms" style="display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px;"></div>
-                            
                             <div style="padding: 12px; background: var(--bg-color); border-left: 3px solid var(--text-main); border-radius: 4px;">
                                 <p id="vocab-example" style="font-size: 0.95rem; font-family: serif; color: var(--text-main); margin: 0; line-height: 1.5;"></p>
                             </div>
@@ -310,12 +308,26 @@
     </div>
 
     <div id="manage-flashcards-modal" class="modal-overlay">
-        <div class="modal-content" style="max-width: 900px; width: 95%; max-height: 90vh; overflow-y: auto; text-align: left; padding: 2rem; background: var(--bg-color);">
+        <div class="modal-content" style="max-width: 1000px; width: 95%; max-height: 90vh; overflow-y: auto; text-align: left; padding: 2rem; background: var(--bg-color);">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; border-bottom: 1px solid var(--border-color); padding-bottom: 1rem;">
                 <h2 style="font-size: 1.3rem; color: var(--text-main); margin: 0;">Baralho Lexical (<span id="fc-stat-total">0</span> cartas)</h2>
                 <button id="btn-close-manage-fc" class="icon-btn-small" style="font-size: 1.5rem; font-weight: bold;">&times;</button>
             </div>
-            <div id="all-flashcards-list" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem;"></div>
+            <div id="all-flashcards-list" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1.5rem;"></div>
+        </div>
+    </div>
+
+    <div id="view-fc-modal" class="modal-overlay">
+        <div class="modal-content" style="max-width: 500px; padding: 0; overflow: hidden; border: 1px solid var(--border-color); border-radius: 12px; background: var(--surface-color);">
+            <div style="padding: 2.5rem; position: relative;">
+                <button id="btn-close-view-fc" class="icon-btn-small" style="position: absolute; top: 15px; right: 15px; font-size: 1.2rem; font-weight: bold;">&times;</button>
+                <h4 id="view-fc-word" style="font-size: 2.2rem; color: var(--text-main); margin: 0 0 10px 0; font-weight: 700; text-align: center;">Palavra</h4>
+                <p id="view-fc-meaning" style="font-size: 1rem; color: var(--text-muted); font-style: italic; margin: 0 0 15px 0; line-height: 1.5; text-align: center;"></p>
+                <div id="view-fc-synonyms" style="display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 20px; justify-content: center;"></div>
+                <div style="padding: 15px; background: var(--bg-color); border-left: 4px solid var(--text-main); border-radius: 6px; text-align: left;">
+                    <p id="view-fc-example" style="font-size: 0.95rem; font-family: serif; color: var(--text-main); margin: 0; line-height: 1.6;"></p>
+                </div>
+            </div>
         </div>
     </div>
 
