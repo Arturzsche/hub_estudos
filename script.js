@@ -700,7 +700,6 @@ async function carregarVocabularioDiario(forceRefresh = false) {
     let dataSalva = null;
     let historicoPalavras = [];
     
-    // Tratamento de segurança extrema para localStorage
     try {
         const palStr = localStorage.getItem('palavra_concurso');
         if (palStr) palavraSalva = JSON.parse(palStr);
@@ -762,18 +761,15 @@ async function carregarVocabularioDiario(forceRefresh = false) {
         }
     }
 
-    // Reset interface para loading
     if (forceRefresh && vocabContent && vocabLoading) {
         vocabContent.style.display = 'none';
         vocabLoading.style.display = 'block';
-        vocabLoading.innerHTML = `<svg viewBox="0 0 24 24" width="24" height="24" style="animation: spin 1s linear infinite; margin-bottom: 8px; color: var(--text-muted);"><path fill="currentColor" d="M12 2v4c5.52 0 10 4.48 10 10s-4.48 10-10 10S2 21.52 2 16H0c0 6.63 5.37 12 12 12s12-5.37 12-12S18.63 2 12 2z"/></svg><br>Gerando nova palavra...`;
+        vocabLoading.innerHTML = `<div class="modern-spinner"></div><br>Gerando nova palavra...`;
     }
 
-    // Memória de curto prazo para impedir o Gemini de repetir palavras
     if (currentPalavraObj && !historicoPalavras.includes(currentPalavraObj.palavra)) {
         historicoPalavras.push(currentPalavraObj.palavra);
     }
-    // Mantém só as últimas 10 na memória
     if (historicoPalavras.length > 10) historicoPalavras.shift();
     localStorage.setItem('historico_palavras', JSON.stringify(historicoPalavras));
 
@@ -791,7 +787,7 @@ async function carregarVocabularioDiario(forceRefresh = false) {
             body: JSON.stringify({ 
                 contents: [{ parts: [{ text: promptText }] }],
                 generationConfig: {
-                    temperature: 1.2, // Força a IA a ser o mais criativa possível para não repetir
+                    temperature: 1.2, 
                     topP: 0.95
                 }
             })
@@ -810,7 +806,6 @@ async function carregarVocabularioDiario(forceRefresh = false) {
         localStorage.setItem('palavra_concurso', JSON.stringify(palavraObj));
         localStorage.setItem('data_palavra', hoje);
 
-        // Salva a nova palavra gerada no histórico para ela não se repetir em breve
         if (!historicoPalavras.includes(palavraObj.palavra)) {
             historicoPalavras.push(palavraObj.palavra);
             if (historicoPalavras.length > 10) historicoPalavras.shift();
@@ -820,7 +815,6 @@ async function carregarVocabularioDiario(forceRefresh = false) {
         renderizarPalavra(palavraObj);
     } catch (error) {
         console.error("Erro ao buscar palavra via IA:", error);
-        // Fallback blindado para nunca travar a tela
         renderizarPalavra({ palavra: "Anacrônico", significado: "Que não está de acordo com a sua época; obsoleto.", sinonimos: ["Ultrapassado", "Antiquado"], aplicacao: "O sistema prisional revela-se anacrônico diante das demandas atuais." });
     }
 }
