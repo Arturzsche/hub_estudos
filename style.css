@@ -263,6 +263,88 @@ body.dark-mode .error-card { box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
     margin: 0 auto 8px auto;
 }
 
+/* --- ESTILOS DO GERENCIADOR DE FLASHCARDS (EFEITO GLASSMORPHISM) --- */
+.fc-manage-card {
+    position: relative;
+    overflow: hidden;
+    background: var(--surface-color);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius);
+    padding: 1.5rem;
+    transition: var(--transition);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+}
+.fc-manage-card:hover {
+    border-color: var(--text-muted);
+    transform: translateY(-3px);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+}
+body.dark-mode .fc-manage-card { box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
+
+.fc-view-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.65);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    z-index: 10;
+}
+.fc-manage-card:hover .fc-view-overlay { 
+    opacity: 1; 
+}
+
+.btn-view-content {
+    background: var(--text-main);
+    color: var(--bg-color);
+    border: none;
+    padding: 10px 20px;
+    border-radius: 25px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    cursor: pointer;
+    transform: translateY(20px);
+    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+}
+.fc-manage-card:hover .btn-view-content { 
+    transform: translateY(0); 
+}
+.btn-view-content:hover { 
+    transform: scale(1.05) !important; 
+    filter: brightness(1.2);
+}
+
+.btn-del-fc-wrapper {
+    position: relative;
+    z-index: 11;
+}
+.btn-del-fc {
+    background: var(--surface-color);
+    border: 1px solid var(--border-color);
+    color: var(--danger-color);
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    cursor: pointer;
+}
+.btn-del-fc:hover {
+    background: var(--danger-color);
+    color: #fff;
+    border-color: var(--danger-color);
+    transform: scale(1.1);
+}
+
 @media (max-width: 800px) {
     header { grid-template-columns: 1fr; display: flex; flex-direction: column; gap: 1rem; }
     .dashboard-grid { grid-template-columns: 1fr; }
