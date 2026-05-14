@@ -1,3 +1,17 @@
+// --- FIREBASE CONFIGURATION ---
+const firebaseConfig = {
+    apiKey: "AIzaSyDKkVRT_2El3mT-9SjZPow9c0vtVMDjgPM",
+    authDomain: "hubestudos-1ce06.firebaseapp.com",
+    databaseURL: "https://hubestudos-1ce06-default-rtdb.firebaseio.com",
+    projectId: "hubestudos-1ce06",
+    storageBucket: "hubestudos-1ce06.firebasestorage.app",
+    messagingSenderId: "951170319139",
+    appId: "1:951170319139:web:5088d18ff383eebb934296"
+};
+
+firebase.initializeApp(firebaseConfig);
+const database = firebase.database();
+
 let timerInterval;
 let isRunning = false;
 let lastTickTime = 0; 
@@ -773,10 +787,15 @@ async function carregarVocabularioDiario(forceRefresh = false) {
         2. É EXPRESSAMENTE PROIBIDO retornar qualquer uma destas palavras que já estudei: ${historicoPalavras.join(', ')}. Escolha um termo totalmente novo!
         O retorno deve ser EXATAMENTE E APENAS um objeto JSON neste formato, sem marcações markdown ou texto extra: {"palavra": "Exemplo", "significado": "Significado", "sinonimos": ["SinônimoA", "SinônimoB"], "aplicacao": "Frase de exemplo"}`;
 
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`, {
+        // AQUI ESTAVA O ERRO! CORRIGIDO PARA O MODELO QUE FUNCIONA NA SUA CONTA
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${API_KEY}`, {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
-                contents: [{ parts: [{ text: promptText }] }]
+                contents: [{ parts: [{ text: promptText }] }],
+                generationConfig: {
+                    temperature: 1.1, // Aumenta a criatividade da IA para não repetir
+                    topP: 0.95
+                }
             })
         });
 
@@ -803,7 +822,8 @@ async function carregarVocabularioDiario(forceRefresh = false) {
         renderizarPalavra(palavraObj);
     } catch (error) {
         console.error("Erro ao buscar palavra via IA:", error);
-        renderizarPalavra({ palavra: "Mitigar", significado: "Tornar mais brando, suave; atenuar.", sinonimos: ["Abrandar", "Reduzir"], aplicacao: "É dever do Estado mitigar as desigualdades sociais." });
+        // Plano B com uma palavra diferente para você saber que caiu aqui
+        renderizarPalavra({ palavra: "Anacrônico", significado: "Que não está de acordo com a sua época; obsoleto, ultrapassado.", sinonimos: ["Obsoleto", "Antiquado"], aplicacao: "O sistema penitenciário brasileiro revela-se anacrônico diante das demandas atuais." });
     }
 }
 
