@@ -219,21 +219,27 @@
                     <div id="anki-status" style="margin-bottom: 1.5rem; color: var(--text-muted); font-weight: 600; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.05em;"></div>
                     
                     <div class="flashcard-container" id="anki-card-container" style="width: 100%; max-width: 650px; height: 380px;">
-                        <div class="flashcard" id="anki-card">
-                            <div class="flashcard-face flashcard-front" style="display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer;">
-                                <h2 id="anki-word" style="font-size: 3.5rem; color: var(--text-main); margin: 0; font-weight: 700;">Palavra</h2>
-                                <span style="font-size: 0.85rem; color: var(--text-muted); margin-top: 2rem; opacity: 0.6; text-transform: uppercase; letter-spacing: 1px;">(Clique para revelar a resposta)</span>
-                            </div>
-                            <div class="flashcard-face flashcard-back" style="align-items: flex-start; text-align: left; padding: 2.5rem; overflow-y: auto;">
-                                <h3 id="anki-word-back" style="font-size: 2rem; color: var(--text-main); margin-bottom: 1rem; font-weight: 700;">Palavra</h3>
-                                <p id="anki-meaning" style="font-size: 1.1rem; color: var(--text-main); font-weight: 500; margin-bottom: 1.5rem; line-height: 1.5;"></p>
-                                <div id="anki-synonyms" style="display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 2rem;"></div>
-                                <div style="padding: 1rem 1.5rem; background: var(--bg-color); border-left: 4px solid var(--text-main); border-radius: 4px; width: 100%;">
-                                    <p id="anki-example" style="font-size: 1rem; font-family: serif; color: var(--text-muted); line-height: 1.6; margin: 0;"></p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                       <div class="flashcard" id="anki-card">
+    
+    <!-- FRENTE DO CARTÃO (Pergunta) -->
+    <div class="flashcard-face flashcard-front" style="display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; padding: 2rem;">
+        <!-- Fonte responsiva com clamp, line-height para não encavalar e quebra de texto -->
+        <h2 id="anki-word" style="font-size: clamp(1.2rem, 3vw, 2rem); line-height: 1.4; text-align: center; color: var(--text-main); margin: 0; font-weight: 700; width: 100%; word-wrap: break-word;">Palavra</h2>
+        <span style="font-size: 0.85rem; color: var(--text-muted); margin-top: 1.5rem; opacity: 0.6; text-transform: uppercase; letter-spacing: 1px; text-align: center;">(Clique para revelar a resposta)</span>
+    </div>
+    
+    <!-- VERSO DO CARTÃO (Resposta) -->
+    <div class="flashcard-face flashcard-back" style="align-items: flex-start; text-align: left; padding: 2.5rem; overflow-y: auto;">
+        <!-- Fonte ligeiramente menor aqui também para caber melhor -->
+        <h3 id="anki-word-back" style="font-size: 1.4rem; line-height: 1.4; color: var(--text-main); margin-bottom: 1rem; font-weight: 700;">Palavra</h3>
+        <p id="anki-meaning" style="font-size: 1.1rem; color: var(--text-main); font-weight: 500; margin-bottom: 1.5rem; line-height: 1.5;"></p>
+        <div id="anki-synonyms" style="display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 2rem;"></div>
+        <div style="padding: 1rem 1.5rem; background: var(--bg-color); border-left: 4px solid var(--text-main); border-radius: 4px; width: 100%;">
+            <p id="anki-example" style="font-size: 1rem; font-family: serif; color: var(--text-muted); line-height: 1.6; margin: 0;"></p>
+        </div>
+    </div>
+    
+</div>
                     
                     <div style="margin-top: 2.5rem; width: 100%; max-width: 650px;">
                         <button id="btn-anki-show" class="btn primary" style="width: 100%; padding: 1.2rem; font-size: 1.1rem; font-weight: 600; display: none;">Mostrar Resposta</button>
