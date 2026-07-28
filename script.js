@@ -57,8 +57,6 @@ const elements = {
     modalEditRev: document.getElementById('edit-rev-modal'), editRevSubject: document.getElementById('edit-rev-subject'),
     editRevName: document.getElementById('edit-rev-name'), editRevNotes: document.getElementById('edit-rev-notes'),
     btnCancelEditRev: document.getElementById('btn-edit-rev-cancel'), btnSaveEditRev: document.getElementById('btn-edit-rev-save'),
-    
-    // Elementos IA & Flashcards
     btnRefreshWord: document.getElementById('btn-refresh-word'),
     btnSaveFlashcard: document.getElementById('btn-save-flashcard'),
     btnNavConectivos: document.getElementById('btn-nav-conectivos'),
@@ -71,19 +69,20 @@ const elements = {
 };
 
 async function init() {
-    // 1. Carrega o cache local imediatamente para a interface não travar
-    loadLocalDataOnly();
-    checkStreak();
-    calculateRecords();
-    renderSubjectBank(); 
-    renderSchedule();    
-    setupNavigation();
-    initChart();
-    initManualReviews(); 
+    // Isolamento de erros: Se uma função falhar, o resto do site continua funcionando.
+    try { loadLocalDataOnly(); } catch(e) { console.error("Erro no loadLocal:", e); }
+    try { checkStreak(); } catch(e) {}
+    try { calculateRecords(); } catch(e) {}
+    try { renderSubjectBank(); } catch(e) {}
+    try { renderSchedule(); } catch(e) {}
+    try { setupNavigation(); } catch(e) {}
     
-    carregarVocabularioDiario(false); 
-    setupFlashcardsEConectivos(); 
-    initAnkiSession();
+    try { initChart(); } catch(e) { console.warn("Gráfico ignorado:", e); }
+    try { initManualReviews(); } catch(e) {}
+    
+    try { carregarVocabularioDiario(false); } catch(e) { console.error("Erro na IA:", e); }
+    try { setupFlashcardsEConectivos(); } catch(e) {}
+    try { initAnkiSession(); } catch(e) {}
     
     if (localStorage.getItem('theme') === 'light') document.body.classList.remove('dark-mode');
 
@@ -107,10 +106,9 @@ async function init() {
         document.getElementById('clear-modal').classList.remove('active');
     });
 
-    loadTimerState();
-    updateUI();
+    try { loadTimerState(); } catch(e) { console.error("Erro no Timer:", e); }
+    try { updateUI(); } catch(e) { console.error("Erro na UI:", e); }
 
-    // 2. Busca os dados da nuvem em segundo plano
     loadCloudDataInBackground();
 }
 
@@ -151,23 +149,15 @@ async function loadCloudDataInBackground() {
 }
 
 async function saveData() {
-    // Mantém o backup local instantâneo
     localStorage.setItem('studyAppData', JSON.stringify(appData));
-
-    // Envia os dados atualizados para a nuvem de forma silenciosa
     if (JSONBIN_API_KEY) {
         try {
             await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}`, {
                 method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-Master-Key': JSONBIN_API_KEY
-                },
+                headers: { 'Content-Type': 'application/json', 'X-Master-Key': JSONBIN_API_KEY },
                 body: JSON.stringify(appData)
             });
-        } catch (error) {
-            console.error("Erro ao sincronizar com a nuvem:", error);
-        }
+        } catch (error) {}
     }
 }
 
@@ -217,7 +207,6 @@ function updateTodaysSubjects() {
 
 function updateTimerDisplay() {
     if(!elements.timeMain || !elements.timeMs) return;
-
     if (appData.timerMode === 'stopwatch') {
         if(elements.cycleSubject) elements.cycleSubject.textContent = "Estudo Livre";
         if(elements.cyclePhaseBadge) { elements.cyclePhaseBadge.textContent = "Cronômetro Progressivo"; elements.cyclePhaseBadge.className = "badge"; }
@@ -233,7 +222,6 @@ function updateTimerDisplay() {
 
         elements.timeMain.textContent = `${h}:${m}:${s}`;
         elements.timeMs.textContent = `.${msStr}`;
-
     } else {
         if(elements.btnSkipPhase) elements.btnSkipPhase.style.opacity = '1';
         if(elements.btnSkipBlock) elements.btnSkipBlock.style.opacity = '1';
@@ -510,7 +498,7 @@ function updateUI() {
         if(elements.dailyPercentage) elements.dailyPercentage.textContent = `${Math.floor(percentage)}%`;
 
         if (chartInstance) updateChartData(); renderHeatmap(); renderPendingReviews(); renderAllReviews();
-    } catch(e) { console.error("Erro no updateUI:", e); }
+    } catch(e) {}
 }
 
 function loadTimerState() {
@@ -625,6 +613,10 @@ function getChartData() {
 }
 
 function initChart() {
+    if (typeof Chart === 'undefined') {
+        console.warn("Aviso: A biblioteca Chart.js não foi carregada a tempo. Gráfico desativado temporariamente.");
+        return;
+    }
     const canvas = document.getElementById('weeklyChart'); if(!canvas) return; const ctx = canvas.getContext('2d');
     const textColor = getComputedStyle(document.body).getPropertyValue('--text-muted').trim() || '#999999';
     const barColor = getComputedStyle(document.body).getPropertyValue('--text-main').trim() || '#ffffff';
@@ -756,7 +748,6 @@ async function carregarVocabularioDiario(forceRefresh = false) {
         if (histStr) historicoPalavras = JSON.parse(histStr);
         if (!Array.isArray(historicoPalavras)) historicoPalavras = [];
     } catch(e) {
-        console.warn("Cache local estava corrompido e foi resetado.");
         historicoPalavras = [];
         palavraSalva = null;
     }
@@ -798,12 +789,21 @@ async function carregarVocabularioDiario(forceRefresh = false) {
     }
 
     if (!API_KEY) {
-        API_KEY = prompt("Segurança ativada! 🛡️\n\nCole sua NOVA chave de API do Gemini aqui.");
+        try {
+            API_KEY = prompt("Segurança ativada! 🛡️\n\nCole sua NOVA chave de API do Gemini aqui.");
+        } catch(e) { 
+            API_KEY = null; // Caso o navegador bloqueie o prompt
+        }
+        
         if (API_KEY && API_KEY.trim() !== "") {
             localStorage.setItem('gemini_api_key', API_KEY.trim());
         } else {
-            console.warn("Chave ausente. Carregando palavra offline.");
-            renderizarPalavra({ palavra: "Desídia", significado: "Disposição para evitar esforço físico ou moral; indolência, negligência.", sinonimos: ["Omissão", "Inércia"], aplicacao: "A impunidade é corolário da desídia estatal na estruturação de forças de segurança." });
+            renderizarPalavra({ 
+                palavra: "Desídia", 
+                significado: "Disposição para evitar esforço físico ou moral; indolência, negligência.", 
+                sinonimos: ["Omissão", "Inércia"], 
+                aplicacao: "A impunidade é corolário da desídia estatal na estruturação de forças de segurança." 
+            });
             return;
         }
     }
@@ -847,4 +847,294 @@ async function carregarVocabularioDiario(forceRefresh = false) {
 
         const data = await response.json();
         const respostaTexto = data.candidates[0].content.parts[0].text;
-        const jsonLimpo = respostaTexto.replace(/```json/g, '').replace(/
+        const jsonLimpo = respostaTexto.replace(/```json/g, '').replace(/```/g, '').trim();
+        
+        const palavraObj = JSON.parse(jsonLimpo);
+        localStorage.setItem('palavra_concurso', JSON.stringify(palavraObj));
+        localStorage.setItem('data_palavra', hoje);
+
+        if (!historicoPalavras.includes(palavraObj.palavra)) {
+            historicoPalavras.push(palavraObj.palavra);
+            if (historicoPalavras.length > 10) historicoPalavras.shift();
+            localStorage.setItem('historico_palavras', JSON.stringify(historicoPalavras));
+        }
+
+        renderizarPalavra(palavraObj);
+    } catch (error) {
+        renderizarPalavra({ palavra: "Anacrônico", significado: "Que não está de acordo com a sua época; obsoleto.", sinonimos: ["Ultrapassado", "Antiquado"], aplicacao: "O sistema prisional revela-se anacrônico diante das demandas atuais." });
+    }
+}
+
+// --- CONTROLE DE CONECTIVOS E FLASHCARDS (ANKI) ---
+function setupFlashcardsEConectivos() {
+    if(elements.btnNavConectivos) {
+        elements.btnNavConectivos.addEventListener('click', () => {
+            if(elements.modalConectivos) elements.modalConectivos.classList.add('active');
+        });
+    }
+    if(elements.btnCloseConectivos) {
+        elements.btnCloseConectivos.addEventListener('click', () => {
+            if(elements.modalConectivos) elements.modalConectivos.classList.remove('active');
+        });
+    }
+
+    if(elements.btnRefreshWord) {
+        elements.btnRefreshWord.addEventListener('click', () => {
+            carregarVocabularioDiario(true);
+        });
+    }
+
+    if(elements.btnSaveFlashcard) {
+        elements.btnSaveFlashcard.addEventListener('click', () => {
+            if(currentPalavraObj) {
+                const jaExiste = appData.flashcards.some(f => f.palavra === currentPalavraObj.palavra);
+                if(jaExiste) {
+                    alert(`A palavra "${currentPalavraObj.palavra}" já está no seu baralho!`);
+                } else {
+                    const newCard = {
+                        id: 'fc_' + Date.now(),
+                        palavra: currentPalavraObj.palavra,
+                        significado: currentPalavraObj.significado,
+                        sinonimos: currentPalavraObj.sinonimos,
+                        aplicacao: currentPalavraObj.aplicacao,
+                        interval: 0,
+                        ease: 2.5,
+                        nextReview: getTodayDate()
+                    };
+                    appData.flashcards.push(newCard);
+                    saveData();
+                    initAnkiSession(); 
+                    renderGerenciadorFlashcards();
+                    alert(`"${currentPalavraObj.palavra}" adicionada ao baralho de Flashcards!`);
+                }
+            }
+        });
+    }
+    
+    if(elements.btnManageFlashcards) {
+        elements.btnManageFlashcards.addEventListener('click', () => {
+            renderGerenciadorFlashcards();
+            elements.modalManageFlashcards.classList.add('active');
+        });
+    }
+    if(elements.btnCloseManageFc) {
+        elements.btnCloseManageFc.addEventListener('click', () => {
+            elements.modalManageFlashcards.classList.remove('active');
+        });
+    }
+    if(document.getElementById('btn-close-view-fc')) {
+        document.getElementById('btn-close-view-fc').addEventListener('click', () => {
+            document.getElementById('view-fc-modal').classList.remove('active');
+        });
+    }
+}
+
+// --- LÓGICA DO ALGORITMO ANKI E RENDERIZAÇÃO DO GERENCIADOR ---
+function initAnkiSession() {
+    const today = getTodayDate();
+    ankiStudyQueue = appData.flashcards.filter(f => f.nextReview <= today);
+    
+    const ankiSess = document.getElementById('anki-study-session');
+    const ankiDone = document.getElementById('anki-done-msg');
+    
+    if(!ankiSess || !ankiDone) return;
+
+    if (ankiStudyQueue.length > 0) {
+        ankiSess.style.display = 'flex';
+        ankiDone.style.display = 'none';
+        loadNextAnkiCard();
+    } else {
+        ankiSess.style.display = 'none';
+        ankiDone.style.display = 'block';
+    }
+}
+
+function loadNextAnkiCard() {
+    if (ankiStudyQueue.length === 0) {
+        initAnkiSession(); 
+        return;
+    }
+    
+    currentAnkiCard = ankiStudyQueue[0];
+    
+    const ankiCard = document.getElementById('anki-card');
+    const btnAnkiShow = document.getElementById('btn-anki-show');
+    const ankiControls = document.getElementById('anki-controls');
+    
+    if(ankiCard) ankiCard.classList.remove('is-flipped');
+    if(btnAnkiShow) btnAnkiShow.style.display = 'block';
+    if(ankiControls) ankiControls.style.display = 'none';
+    
+    const statusEl = document.getElementById('anki-status');
+    if(statusEl) statusEl.textContent = `REVISÕES PENDENTES: ${ankiStudyQueue.length}`;
+    
+    const wordEl = document.getElementById('anki-word');
+    if(wordEl) wordEl.textContent = currentAnkiCard.palavra;
+    
+    const wordBackEl = document.getElementById('anki-word-back');
+    if(wordBackEl) wordBackEl.textContent = currentAnkiCard.palavra;
+    
+    const meanEl = document.getElementById('anki-meaning');
+    if(meanEl) meanEl.textContent = currentAnkiCard.significado;
+    
+    const exEl = document.getElementById('anki-example');
+    if(exEl) exEl.textContent = `"${currentAnkiCard.aplicacao}"`;
+    
+    const synContainer = document.getElementById('anki-synonyms');
+    if(synContainer) {
+        synContainer.innerHTML = '';
+        currentAnkiCard.sinonimos.forEach(syn => {
+            const span = document.createElement('span');
+            span.style.cssText = "font-size: 0.8rem; background: var(--border-color); color: var(--text-main); padding: 4px 10px; border-radius: 12px; font-weight: 500;";
+            span.textContent = syn;
+            synContainer.appendChild(span);
+        });
+    }
+    
+    const ival = currentAnkiCard.interval || 0;
+    const e = currentAnkiCard.ease || 2.5;
+    
+    const iHard = ival === 0 ? 1 : Math.ceil(ival * 1.2);
+    const iGood = ival === 0 ? 1 : Math.ceil(ival * 2.5);
+    const iEasy = ival === 0 ? 4 : Math.ceil(ival * e * 1.3);
+    
+    const t2 = document.getElementById('anki-time-2'); if(t2) t2.textContent = `${iHard} d`;
+    const t3 = document.getElementById('anki-time-3'); if(t3) t3.textContent = `${iGood} d`;
+    const t4 = document.getElementById('anki-time-4'); if(t4) t4.textContent = `${iEasy} d`;
+}
+
+const cardContainer = document.getElementById('anki-card-container');
+if(cardContainer) {
+    cardContainer.addEventListener('click', () => {
+        if (!currentAnkiCard) return;
+        const ankiCard = document.getElementById('anki-card');
+        const btnAnkiShow = document.getElementById('btn-anki-show');
+        const ankiControls = document.getElementById('anki-controls');
+        if(ankiCard) ankiCard.classList.add('is-flipped');
+        if(btnAnkiShow) btnAnkiShow.style.display = 'none';
+        if(ankiControls) ankiControls.style.display = 'flex';
+    });
+}
+
+const btnShow = document.getElementById('btn-anki-show');
+if(btnShow) {
+    btnShow.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const cc = document.getElementById('anki-card-container');
+        if(cc) cc.click();
+    });
+}
+
+document.querySelectorAll('.btn-anki-rate').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const rating = parseInt(btn.getAttribute('data-rate'));
+        
+        let ival = currentAnkiCard.interval || 0;
+        let ease = currentAnkiCard.ease || 2.5;
+        
+        if (rating === 1) { 
+            ival = 0; ease = Math.max(1.3, ease - 0.2);
+        } else if (rating === 2) { 
+            ival = ival === 0 ? 1 : Math.ceil(ival * 1.2); ease = Math.max(1.3, ease - 0.15);
+        } else if (rating === 3) { 
+            ival = ival === 0 ? 1 : Math.ceil(ival * 2.5);
+        } else if (rating === 4) { 
+            ival = ival === 0 ? 4 : Math.ceil(ival * ease * 1.3); ease += 0.15;
+        }
+        
+        currentAnkiCard.interval = ival;
+        currentAnkiCard.ease = ease;
+        
+        const nextDate = new Date();
+        if (rating === 1) {
+            currentAnkiCard.nextReview = getTodayDate();
+            ankiStudyQueue.push(ankiStudyQueue.shift()); 
+        } else {
+            nextDate.setDate(nextDate.getDate() + ival);
+            currentAnkiCard.nextReview = `${nextDate.getFullYear()}-${String(nextDate.getMonth() + 1).padStart(2, '0')}-${String(nextDate.getDate()).padStart(2, '0')}`;
+            ankiStudyQueue.shift(); 
+        }
+        
+        const idx = appData.flashcards.findIndex(f => f.id === currentAnkiCard.id);
+        if (idx !== -1) appData.flashcards[idx] = currentAnkiCard;
+        saveData();
+        loadNextAnkiCard();
+    });
+});
+
+function renderGerenciadorFlashcards() {
+    if(!elements.allFlashcardsList) return;
+    elements.allFlashcardsList.innerHTML = '';
+    
+    const fcList = appData.flashcards || [];
+    const fcStat = document.getElementById('fc-stat-total');
+    if(fcStat) fcStat.textContent = fcList.length;
+
+    if(fcList.length === 0) {
+        elements.allFlashcardsList.innerHTML = `<div style="grid-column: 1 / -1; padding: 3rem; text-align: center; color: var(--text-muted);">Você ainda não possui flashcards salvos no baralho.</div>`;
+        return;
+    }
+
+    fcList.forEach((card, index) => {
+        const div = document.createElement('div');
+        div.className = 'fc-manage-card';
+        div.innerHTML = `
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; z-index: 2; position: relative;">
+                <div>
+                    <h4 style="margin: 0 0 0.5rem 0; font-size: 1.2rem; color: var(--text-main); font-weight: 700;">${card.palavra}</h4>
+                    <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0;">Próxima revisão: <strong>${formatDateBR(card.nextReview)}</strong></p>
+                </div>
+                <div class="btn-del-fc-wrapper">
+                    <button class="btn-del-fc" data-id="${card.id}" title="Apagar carta">
+                        <svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M16 9v10H8V9h8m-1.5-6h-5l-1 1H5v2h14V4h-3.5l-1-1zM18 7H6v12c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7z"/></svg>
+                    </button>
+                </div>
+            </div>
+            
+            <div class="fc-view-overlay">
+                <button class="btn-view-content" data-index="${index}">
+                    <svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>
+                    Ver Conteúdo
+                </button>
+            </div>
+        `;
+        
+        div.querySelector('.btn-del-fc').addEventListener('click', (e) => {
+            e.stopPropagation();
+            if(confirm(`Tem certeza que deseja apagar a carta "${card.palavra}"?`)) {
+                appData.flashcards = appData.flashcards.filter(f => f.id !== card.id);
+                saveData();
+                renderGerenciadorFlashcards();
+                initAnkiSession();
+            }
+        });
+
+        div.querySelector('.btn-view-content').addEventListener('click', (e) => {
+            e.stopPropagation();
+            openViewFlashcardModal(card);
+        });
+
+        elements.allFlashcardsList.appendChild(div);
+    });
+}
+
+function openViewFlashcardModal(card) {
+    const modal = document.getElementById('view-fc-modal');
+    document.getElementById('view-fc-word').textContent = card.palavra;
+    document.getElementById('view-fc-meaning').textContent = card.significado;
+    document.getElementById('view-fc-example').textContent = `"${card.aplicacao}"`;
+    
+    const synContainer = document.getElementById('view-fc-synonyms');
+    synContainer.innerHTML = '';
+    if(Array.isArray(card.sinonimos)) {
+        card.sinonimos.forEach(syn => {
+            const span = document.createElement('span');
+            span.style.cssText = "font-size: 0.75rem; background: var(--border-color); color: var(--text-main); padding: 4px 10px; border-radius: 12px; font-weight: 500;";
+            span.textContent = syn;
+            synContainer.appendChild(span);
+        });
+    }
+    
+    modal.classList.add('active');
+}
