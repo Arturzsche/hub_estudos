@@ -71,7 +71,8 @@ const elements = {
 };
 
 async function init() {
-    await loadData(); 
+    // 1. Carrega o cache local imediatamente para a interface não travar
+    loadLocalDataOnly();
     checkStreak();
     calculateRecords();
     renderSubjectBank(); 
@@ -108,6 +109,66 @@ async function init() {
 
     loadTimerState();
     updateUI();
+
+    // 2. Busca os dados da nuvem em segundo plano
+    loadCloudDataInBackground();
+}
+
+function loadLocalDataOnly() {
+    const localData = localStorage.getItem('studyAppData');
+    if (localData) {
+        try { mergeData(JSON.parse(localData)); } catch(e) {}
+    }
+    if (!appData.reviews) appData.reviews = [];
+    if (!appData.flashcards) appData.flashcards = [];
+    if (!appData.timerMode) appData.timerMode = 'pomodoro';
+    const today = getTodayDate();
+    if (!appData.history[today]) appData.history[today] = { time: 0, sessions: 0 };
+}
+
+async function loadCloudDataInBackground() {
+    if (!JSONBIN_API_KEY) return;
+    try {
+        const response = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}/latest`, {
+            headers: { 'X-Master-Key': JSONBIN_API_KEY }
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            if (data.record && data.record.iniciando) {
+                saveData(); 
+            } else if (data.record) {
+                mergeData(data.record);
+                localStorage.setItem('studyAppData', JSON.stringify(appData));
+                updateUI();
+                renderSchedule();
+                renderSubjectBank();
+            }
+        }
+    } catch (error) {
+        console.warn("Sincronização em segundo plano indisponível offline.", error);
+    }
+}
+
+async function saveData() {
+    // Mantém o backup local instantâneo
+    localStorage.setItem('studyAppData', JSON.stringify(appData));
+
+    // Envia os dados atualizados para a nuvem de forma silenciosa
+    if (JSONBIN_API_KEY) {
+        try {
+            await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Master-Key': JSONBIN_API_KEY
+                },
+                body: JSON.stringify(appData)
+            });
+        } catch (error) {
+            console.error("Erro ao sincronizar com a nuvem:", error);
+        }
+    }
 }
 
 function getTodayDate() {
@@ -223,71 +284,6 @@ function mergeData(parsedSaved) {
     if (parsedSaved.stopwatchMs !== undefined) appData.stopwatchMs = parsedSaved.stopwatchMs;
 }
 
-// ----------------- FUNÇÕES DE SINCRONIZAÇÃO (ATUALIZADAS) ----------------- //
-async function loadData() {
-    let dadosCarregados = false;
-    
-    // 1. Carrega o local primeiro para ter uma base
-    const localData = localStorage.getItem('studyAppData');
-    if (localData) {
-        try { mergeData(JSON.parse(localData)); } catch(e) {}
-    }
-
-    // 2. Conecta na nuvem
-    if (JSONBIN_API_KEY) {
-        try {
-            const response = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}/latest`, {
-                headers: { 'X-Master-Key': JSONBIN_API_KEY }
-            });
-            
-            if (response.ok) {
-                const data = await response.json();
-                
-                // Se for a primeira vez (tem a tag "iniciando"), joga os dados do notebook pra nuvem
-                if (data.record.iniciando) {
-                    saveData(); 
-                } else {
-                    // Se já tem dados reais na nuvem, usamos eles
-                    mergeData(data.record);
-                    localStorage.setItem('studyAppData', JSON.stringify(appData));
-                    dadosCarregados = true;
-                }
-            }
-        } catch (error) {
-            console.warn("Nuvem falhou, usando local.", error);
-        }
-    }
-    
-    // 3. Garante que as propriedades básicas existam
-    if (!appData.reviews) appData.reviews = [];
-    if (!appData.flashcards) appData.flashcards = [];
-    if (!appData.timerMode) appData.timerMode = 'pomodoro';
-    const today = getTodayDate();
-    if (!appData.history[today]) appData.history[today] = { time: 0, sessions: 0 };
-}
-
-async function saveData() {
-    // Mantém o backup local instantâneo
-    localStorage.setItem('studyAppData', JSON.stringify(appData));
-
-    // Envia os dados atualizados para a nuvem de forma silenciosa
-    if (JSONBIN_API_KEY) {
-        try {
-            await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}`, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-Master-Key': JSONBIN_API_KEY
-                },
-                body: JSON.stringify(appData)
-            });
-        } catch (error) {
-            console.error("Erro ao sincronizar com a nuvem:", error);
-        }
-    }
-}
-// ------------------------------------------------------------------------- //
-
 function checkStreak() {
     const today = getTodayDate(); const lastDateStr = appData.lastStudyDate; if (!lastDateStr) return;
     const diffDays = Math.round(Math.abs(new Date(today) - new Date(lastDateStr)) / (1000 * 60 * 60 * 24));
@@ -330,7 +326,6 @@ function renderHeatmap() {
     }
 }
 
-// ----------------- INTEGRAÇÃO GOOGLE CALENDAR ----------------- //
 function createGoogleCalendarLink(rev) {
     const nextDateStr = rev.nextReview.replace(/-/g, ''); 
     const text = encodeURIComponent(`Revisão: ${rev.name}`);
