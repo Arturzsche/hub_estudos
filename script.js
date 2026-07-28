@@ -91,6 +91,56 @@ async function init() {
     
     if (localStorage.getItem('theme') === 'light') document.body.classList.remove('dark-mode');
 
+    // --- ASSOCIAÇÃO SEGURA DOS BOTÕES DA UI ---
+    if(elements.btnAddSubject) {
+        elements.btnAddSubject.addEventListener('click', () => {
+            if(!elements.newSubjectInput) return; 
+            const val = elements.newSubjectInput.value.trim();
+            if (val && !appData.savedSubjects.includes(val)) { 
+                appData.savedSubjects.push(val); 
+                elements.newSubjectInput.value = ''; 
+                saveData(); 
+                renderSubjectBank(); 
+                updateReviewSubjects(); 
+            }
+        });
+    }
+
+    if(elements.newSubjectInput) {
+        elements.newSubjectInput.addEventListener('keypress', (e) => { 
+            if (e.key === 'Enter' && elements.btnAddSubject) elements.btnAddSubject.click(); 
+        });
+    }
+
+    if(elements.btnAddCycle) {
+        elements.btnAddCycle.addEventListener('click', () => { 
+            appData.schedule.push({ time: "00:00 - 00:00", days: ["", "", "", "", "", "", ""] }); 
+            saveData(); 
+            renderSchedule(); 
+        });
+    }
+
+    if(elements.themeToggle) {
+        elements.themeToggle.addEventListener('click', () => {
+            document.body.classList.toggle('dark-mode'); 
+            localStorage.setItem('theme', document.body.classList.contains('dark-mode') ? 'dark' : 'light');
+            if (chartInstance) updateChartData();
+        });
+    }
+
+    if(elements.macFullscreenBtn) {
+        elements.macFullscreenBtn.addEventListener('click', () => {
+            if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(e => console.log(e)); else document.exitFullscreen();
+        });
+    }
+
+    if(elements.focusToggle) {
+        elements.focusToggle.addEventListener('click', () => document.body.classList.toggle('focus-active'));
+    }
+
+    const btnPrintSchedule = document.getElementById('btn-print-schedule');
+    if (btnPrintSchedule) btnPrintSchedule.addEventListener('click', () => window.print());
+
     const btnOpenClear = document.getElementById('btn-open-clear');
     if(btnOpenClear) btnOpenClear.addEventListener('click', () => document.getElementById('clear-modal').classList.add('active'));
     const btnCancelClear = document.getElementById('btn-cancel-clear');
@@ -622,11 +672,6 @@ function skipBlock() {
     saveData(); updateTimerDisplay();
 }
 
-// Event Listeners Globais seguros
-document.addEventListener('DOMContentLoaded', () => {
-    // Garantir que os botões de controle respondem se carregados via HTML
-});
-
 // Delegação de eventos dos botões principais do timer
 document.addEventListener('click', (e) => {
     if (e.target.closest('#btn-toggle')) { if (isRunning) pauseTimer(); else startTimer(); }
@@ -693,15 +738,6 @@ function setupNavigation() {
     const btnToClick = document.querySelector(`.nav-btn[data-target="${savedView}"]`); if (btnToClick) btnToClick.click();
 }
 
-if(elements.themeToggle) elements.themeToggle.addEventListener('click', () => {
-    document.body.classList.toggle('dark-mode'); localStorage.setItem('theme', document.body.classList.contains('dark-mode') ? 'dark' : 'light');
-    if (chartInstance) updateChartData();
-});
-if(elements.macFullscreenBtn) elements.macFullscreenBtn.addEventListener('click', () => {
-    if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(e => console.log(e)); else document.exitFullscreen();
-});
-if(elements.focusToggle) elements.focusToggle.addEventListener('click', () => document.body.classList.toggle('focus-active'));
-
 function renderSubjectBank() {
     if(!elements.subjectBank) return; elements.subjectBank.innerHTML = '';
     appData.savedSubjects.forEach((subject, index) => {
@@ -713,12 +749,6 @@ function renderSubjectBank() {
         elements.subjectBank.appendChild(pill);
     });
 }
-
-if(elements.btnAddSubject) elements.btnAddSubject.addEventListener('click', () => {
-    if(!elements.newSubjectInput) return; const val = elements.newSubjectInput.value.trim();
-    if (val && !appData.savedSubjects.includes(val)) { appData.savedSubjects.push(val); elements.newSubjectInput.value = ''; saveData(); renderSubjectBank(); updateReviewSubjects(); }
-});
-if(elements.newSubjectInput) elements.newSubjectInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') elements.btnAddSubject.click(); });
 
 function renderSchedule() {
     if(!elements.scheduleTableBody) return; elements.scheduleTableBody.innerHTML = '';
@@ -746,8 +776,6 @@ function renderSchedule() {
     });
 }
 
-if(elements.btnAddCycle) elements.btnAddCycle.addEventListener('click', () => { appData.schedule.push({ time: "00:00 - 00:00", days: ["", "", "", "", "", "", ""] }); saveData(); renderSchedule(); });
-
 document.addEventListener('keydown', (e) => {
     if (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA' || document.activeElement.tagName === 'SELECT' || document.activeElement.isContentEditable) return;
     const timerEl = document.getElementById('timer'); if (!timerEl || !timerEl.classList.contains('active')) return;
@@ -761,16 +789,6 @@ document.addEventListener('keydown', (e) => {
 
 window.addEventListener('beforeunload', () => { if (isRunning) pauseTimer(); });
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden' && isRunning) localStorage.setItem('lastTick', Date.now().toString()); });
-
-const btnPrintSchedule = document.getElementById('btn-print-schedule');
-if (btnPrintSchedule) btnPrintSchedule.addEventListener('click', () => window.print());
-
-// Inicializa o app com segurança assim que o DOM estiver pronto
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init);
-} else {
-    init();
-}
 
 // --- 🧠 INTEGRAÇÃO IA: PALAVRA DO DIA BLINDADA CONTRA REPETIÇÃO E TRAVAMENTOS ---
 async function carregarVocabularioDiario(forceRefresh = false) {
@@ -1178,4 +1196,11 @@ function openViewFlashcardModal(card) {
     }
     
     modal.classList.add('active');
+}
+
+// Inicializa o app com segurança assim que o DOM estiver pronto
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+} else {
+    init();
 }
