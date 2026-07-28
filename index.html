@@ -206,7 +206,13 @@
             <div class="container" style="display: flex; flex-direction: column; align-items: center; min-height: 70vh;">
                 <div style="width: 100%; display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
                     <h2 style="font-size: 1.5rem; color: var(--text-main); margin: 0; text-transform: none; letter-spacing: normal;">Sessão de Estudos Lexical</h2>
-                    <button id="btn-manage-flashcards" class="btn secondary">Gerenciar Baralho</button>
+                    <div style="display: flex; gap: 1rem;">
+                        <button id="btn-open-ia-generator" class="btn-ia-magic" title="Gerar Flashcards com IA">
+                            <svg viewBox="0 0 24 24" width="20" height="20" style="margin-right: 8px;"><path fill="currentColor" d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 9h-2V7h-2v5H6v2h2v5h2v-5h2v-2z"/></svg>
+                            Gerar com IA ✨
+                        </button>
+                        <button id="btn-manage-flashcards" class="btn secondary">Gerenciar Baralho</button>
+                    </div>
                 </div>
 
                 <div id="anki-study-session" style="display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; flex: 1; padding-bottom: 2rem;">
@@ -351,6 +357,33 @@
                 </tbody>
             </table>
             <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 1rem; font-style: italic;">Dica de Ouro: Use-os com precisão e moderação. O excesso de conectivos rebuscados sem base de conteúdo retira a fluidez e a naturalidade do seu texto.</p>
+        </div>
+    </div>
+
+    <!-- MODAL DO GERADOR IA INJETADO AQUI -->
+    <div id="ia-generator-modal" class="modal-overlay">
+        <div class="modal-content" style="max-width: 600px; padding: 2rem; text-align: left;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                <h2 style="color: var(--text-main); font-size: 1.5rem; margin: 0; display: flex; align-items: center; gap: 8px;">
+                    Gerador de Flashcards IA 🧠
+                </h2>
+                <button class="icon-btn-small" id="btn-close-ia-generator" style="font-size: 1.5rem; font-weight: bold;">&times;</button>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 1.2rem;">
+                <p style="color: var(--text-muted); font-size: 0.9rem; margin: 0; line-height: 1.5;">
+                    Cole abaixo um trecho de lei seca, jurisprudência ou resumo. A IA atuará como um examinador de banca, extraindo os conceitos-chave e criando os flashcards automaticamente.
+                </p>
+                <textarea id="ia-source-text" rows="8" placeholder="Ex: A administração pública direta é composta pelos órgãos dos entes federativos (União, Estados, DF e Municípios)..." style="width: 100%; padding: 1rem; background: var(--bg-color); border: 1px solid var(--border-color); border-radius: 8px; color: var(--text-main); font-family: inherit; font-size: 0.95rem; resize: vertical; outline: none; transition: border 0.3s;"></textarea>
+                
+                <div id="ia-generator-status" style="display: none; text-align: center; padding: 1.5rem; color: var(--text-main); font-weight: 600; font-size: 0.95rem; background: var(--bg-color); border-radius: 8px; border: 1px dashed var(--border-color);">
+                    <div class="modern-spinner" style="margin: 0 auto 15px;"></div>
+                    <span id="ia-status-text">Analisando o texto e estruturando material...</span>
+                </div>
+                
+                <button id="btn-generate-ai-cards" class="btn-ia-magic" style="width: 100%; justify-content: center; padding: 1rem; font-size: 1rem; display: flex; align-items: center; gap: 8px;">
+                    Gerar Flashcards Mágicos ✨
+                </button>
+            </div>
         </div>
     </div>
 

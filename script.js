@@ -20,7 +20,7 @@ const CYCLE_PHASES = [
 const REVIEW_INTERVALS = [1, 7, 15, 30, 60];
 
 let appData = {
-    updatedAt: 0, // Timestamp de controle de conflito de versão
+    updatedAt: 0,
     history: {}, streak: 0, lastStudyDate: null, recordDay: 0, recordWeek: 0, dailyGoalSeconds: 14400, 
     savedSubjects: ["Direito Administrativo", "Controle Externo", "AFO", "Lei Orgânica", "Regimento Interno", "Português", "Prova Discursiva"],
     schedule: [
@@ -35,7 +35,7 @@ let todaysSubjects = [];
 let currentEditingRevId = null;
 let elements = {};
 
-// Injeta dinamicamente a tela de login estilizada no DOM
+// Injeta dinamicamente a tela de login
 function injectLoginUI() {
     if (document.getElementById('custom-login-overlay')) return;
 
@@ -49,16 +49,16 @@ function injectLoginUI() {
     `;
 
     overlay.innerHTML = `
-        <div style="background: var(--card-bg, #1e1e2f); border: 1px solid var(--border-color, #2a2a3c); padding: 2.5rem; border-radius: 16px; width: 100%; max-width: 400px; box-shadow: 0 20px 40px rgba(0,0,0,0.5); text-align: center;">
+        <div style="background: var(--surface-color); border: 1px solid var(--border-color); padding: 2.5rem; border-radius: 16px; width: 100%; max-width: 400px; box-shadow: 0 20px 40px rgba(0,0,0,0.5); text-align: center;">
             <div style="margin-bottom: 1.5rem;">
-                <h2 style="color: var(--text-main, #fff); font-size: 1.5rem; font-weight: 700; margin-bottom: 0.5rem;">Acesso Restrito 🛡️</h2>
-                <p style="color: var(--text-muted, #8a8a9e); font-size: 0.85rem;">Digite sua senha mestra para sincronizar seus estudos.</p>
+                <h2 style="color: var(--text-main); font-size: 1.5rem; font-weight: 700; margin-bottom: 0.5rem;">Acesso Restrito 🛡️</h2>
+                <p style="color: var(--text-muted); font-size: 0.85rem;">Digite sua senha mestra para sincronizar seus estudos.</p>
             </div>
             <form id="login-form" style="display: flex; flex-direction: column; gap: 1rem;">
-                <input type="password" id="login-password" placeholder="Senha de Acesso" required style="width: 100%; padding: 0.9rem 1rem; background: var(--bg-color, #12121a); border: 1px solid var(--border-color, #2a2a3c); border-radius: 8px; color: var(--text-main, #fff); font-size: 1rem; outline: none; transition: border 0.2s;">
-                <button type="submit" style="width: 100%; padding: 0.9rem; background: var(--text-main, #fff); color: var(--bg-color, #12121a); border: none; border-radius: 8px; font-weight: 700; font-size: 0.95rem; cursor: pointer; transition: opacity 0.2s;">Entrar no Painel</button>
+                <input type="password" id="login-password" placeholder="Senha de Acesso" required style="width: 100%; padding: 0.9rem 1rem; background: var(--bg-color); border: 1px solid var(--border-color); border-radius: 8px; color: var(--text-main); font-size: 1rem; outline: none;">
+                <button type="submit" style="width: 100%; padding: 0.9rem; background: var(--text-main); color: var(--bg-color); border: none; border-radius: 8px; font-weight: 700; font-size: 0.95rem; cursor: pointer;">Entrar no Painel</button>
             </form>
-            <p id="login-error" style="color: #ff5252; font-size: 0.75rem; margin-top: 1rem; display: none;">Senha incorreta. Tente novamente.</p>
+            <p id="login-error" style="color: var(--danger-color); font-size: 0.75rem; margin-top: 1rem; display: none;">Senha incorreta. Tente novamente.</p>
         </div>
     `;
     document.body.appendChild(overlay);
@@ -66,7 +66,6 @@ function injectLoginUI() {
     document.getElementById('login-form').addEventListener('submit', (e) => {
         e.preventDefault();
         const pass = document.getElementById('login-password').value;
-        // Senha padrão inicial (você pode alterar para a que preferir aqui)
         const MASTER_PASS = "tce2026"; 
 
         if (pass === MASTER_PASS) {
@@ -74,13 +73,12 @@ function injectLoginUI() {
             overlay.remove();
             initAppFully();
         } else {
-            const errEl = document.getElementById('login-error');
-            errEl.style.display = 'block';
+            document.getElementById('login-error').style.display = 'block';
         }
     });
 }
 
-// Mapeia os elementos com segurança após o carregamento da página
+// Mapeamento global de elementos (Incluindo os da IA)
 function initElements() {
     elements = {
         timeMain: document.getElementById('time-main'), timeMs: document.getElementById('time-ms'),
@@ -106,24 +104,26 @@ function initElements() {
         modalEditRev: document.getElementById('edit-rev-modal'), editRevSubject: document.getElementById('edit-rev-subject'),
         editRevName: document.getElementById('edit-rev-name'), editRevNotes: document.getElementById('edit-rev-notes'),
         btnCancelEditRev: document.getElementById('btn-edit-rev-cancel'), btnSaveEditRev: document.getElementById('btn-edit-rev-save'),
-        btnRefreshWord: document.getElementById('btn-refresh-word'),
-        btnSaveFlashcard: document.getElementById('btn-save-flashcard'),
-        btnNavConectivos: document.getElementById('btn-nav-conectivos'),
-        btnCloseConectivos: document.getElementById('btn-close-conectivos'),
-        modalConectivos: document.getElementById('conectivos-modal'),
-        btnManageFlashcards: document.getElementById('btn-manage-flashcards'),
-        modalManageFlashcards: document.getElementById('manage-flashcards-modal'),
-        btnCloseManageFc: document.getElementById('btn-close-manage-fc'),
-        allFlashcardsList: document.getElementById('all-flashcards-list')
+        btnRefreshWord: document.getElementById('btn-refresh-word'), btnSaveFlashcard: document.getElementById('btn-save-flashcard'),
+        btnNavConectivos: document.getElementById('btn-nav-conectivos'), btnCloseConectivos: document.getElementById('btn-close-conectivos'),
+        modalConectivos: document.getElementById('conectivos-modal'), btnManageFlashcards: document.getElementById('btn-manage-flashcards'),
+        modalManageFlashcards: document.getElementById('manage-flashcards-modal'), btnCloseManageFc: document.getElementById('btn-close-manage-fc'),
+        allFlashcardsList: document.getElementById('all-flashcards-list'),
+        
+        // Elementos da IA
+        btnOpenIaGenerator: document.getElementById('btn-open-ia-generator'),
+        modalIaGenerator: document.getElementById('ia-generator-modal'),
+        btnCloseIaGenerator: document.getElementById('btn-close-ia-generator'),
+        btnGenerateAiCards: document.getElementById('btn-generate-ai-cards'),
+        iaSourceText: document.getElementById('ia-source-text'),
+        iaGeneratorStatus: document.getElementById('ia-generator-status'),
+        iaStatusText: document.getElementById('ia-status-text')
     };
 }
 
-// Ponto de entrada protegido por autenticação
 function init() {
-    const isLoggedIn = localStorage.getItem('is_app_logged_in');
-    if (isLoggedIn !== 'true') {
-        injectLoginUI();
-        return; // Trava a inicialização até efetuar o login
+    if (localStorage.getItem('is_app_logged_in') !== 'true') {
+        injectLoginUI(); return;
     }
     initAppFully();
 }
@@ -137,13 +137,12 @@ function initAppFully() {
     try { renderSubjectBank(); } catch(e) {}
     try { renderSchedule(); } catch(e) {}
     try { setupNavigation(); } catch(e) {}
-    
     try { initChart(); } catch(e) {}
     try { initManualReviews(); } catch(e) {}
-    
     try { carregarVocabularioDiario(false); } catch(e) {}
     try { setupFlashcardsEConectivos(); } catch(e) {}
     try { initAnkiSession(); } catch(e) {}
+    try { setupIaGenerator(); } catch(e) {} // Inicializa módulo de IA
     
     if (localStorage.getItem('theme') === 'light') document.body.classList.remove('dark-mode');
 
@@ -154,9 +153,7 @@ function initAppFully() {
             if (val && !appData.savedSubjects.includes(val)) { 
                 appData.savedSubjects.push(val); 
                 elements.newSubjectInput.value = ''; 
-                saveData(); 
-                renderSubjectBank(); 
-                updateReviewSubjects(); 
+                saveData(); renderSubjectBank(); updateReviewSubjects(); 
             }
         });
     }
@@ -170,8 +167,7 @@ function initAppFully() {
     if(elements.btnAddCycle) {
         elements.btnAddCycle.addEventListener('click', () => { 
             appData.schedule.push({ time: "00:00 - 00:00", days: ["", "", "", "", "", "", ""] }); 
-            saveData(); 
-            renderSchedule(); 
+            saveData(); renderSchedule(); 
         });
     }
 
@@ -183,15 +179,11 @@ function initAppFully() {
         });
     }
 
-    if(elements.macFullscreenBtn) {
-        elements.macFullscreenBtn.addEventListener('click', () => {
-            if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(e => console.log(e)); else document.exitFullscreen();
-        });
-    }
+    if(elements.macFullscreenBtn) elements.macFullscreenBtn.addEventListener('click', () => {
+        if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(e => console.log(e)); else document.exitFullscreen();
+    });
 
-    if(elements.focusToggle) {
-        elements.focusToggle.addEventListener('click', () => document.body.classList.toggle('focus-active'));
-    }
+    if(elements.focusToggle) elements.focusToggle.addEventListener('click', () => document.body.classList.toggle('focus-active'));
 
     const btnPrintSchedule = document.getElementById('btn-print-schedule');
     if (btnPrintSchedule) btnPrintSchedule.addEventListener('click', () => window.print());
@@ -234,15 +226,11 @@ function loadLocalDataOnly() {
     if (!appData.history[today]) appData.history[today] = { time: 0, sessions: 0 };
 }
 
-// Sincronização inteligente com proteção contra sobrescrita de abas velhas
 async function loadCloudDataInBackground() {
     if (!JSONBIN_API_KEY || localStorage.getItem('is_app_logged_in') !== 'true') return;
     try {
         const response = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}/latest?t=${Date.now()}`, {
-            headers: { 
-                'X-Master-Key': JSONBIN_API_KEY,
-                'X-Bin-Meta': 'false'
-            }
+            headers: { 'X-Master-Key': JSONBIN_API_KEY, 'X-Bin-Meta': 'false' }
         });
         
         if (response.ok) {
@@ -253,43 +241,31 @@ async function loadCloudDataInBackground() {
                 const remoteTime = actualData.updatedAt || 0;
                 const localTime = appData.updatedAt || 0;
 
-                // Só atualiza se a nuvem for estritamente mais recente que os dados locais
                 if (remoteTime > localTime) {
                     const remoteStr = JSON.stringify(actualData);
                     mergeData(actualData);
                     localStorage.setItem('studyAppData', remoteStr);
-                    updateUI();
-                    renderSchedule();
-                    renderSubjectBank();
-                    console.log("☁️ Dados sincronizados da nuvem (Mais recentes detectados).");
+                    updateUI(); renderSchedule(); renderSubjectBank();
                 }
             }
         }
-    } catch (error) {
-        console.warn("Sincronização em segundo plano indisponível offline.", error);
-    }
+    } catch (error) {}
 }
 
-// Verifica a nuvem automaticamente a cada 20 segundos ou ao focar na aba
 setInterval(() => {
-    if (!document.hidden && localStorage.getItem('is_app_logged_in') === 'true') {
-        loadCloudDataInBackground();
-    }
+    if (!document.hidden && localStorage.getItem('is_app_logged_in') === 'true') loadCloudDataInBackground();
 }, 20000);
 
 document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible' && localStorage.getItem('is_app_logged_in') === 'true') {
-        loadCloudDataInBackground();
-    }
+    if (document.visibilityState === 'visible' && localStorage.getItem('is_app_logged_in') === 'true') loadCloudDataInBackground();
 });
 
 async function saveData() {
     if (localStorage.getItem('is_app_logged_in') !== 'true') return;
     
-    // Atualiza o carimbo de tempo da alteração atual
     appData.updatedAt = Date.now();
-    
     localStorage.setItem('studyAppData', JSON.stringify(appData));
+    
     if (JSONBIN_API_KEY) {
         try {
             await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}`, {
@@ -737,7 +713,6 @@ function skipBlock() {
     saveData(); updateTimerDisplay();
 }
 
-// Delegação de eventos dos botões principais do timer
 document.addEventListener('click', (e) => {
     if (e.target.closest('#btn-toggle')) { if (isRunning) pauseTimer(); else startTimer(); }
     if (e.target.closest('#btn-reset')) { resetTimer(); }
@@ -855,7 +830,6 @@ document.addEventListener('keydown', (e) => {
 window.addEventListener('beforeunload', () => { if (isRunning) pauseTimer(); });
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden' && isRunning) localStorage.setItem('lastTick', Date.now().toString()); });
 
-// --- 🧠 INTEGRAÇÃO IA: PALAVRA DO DIA BLINDADA CONTRA REPETIÇÃO E TRAVAMENTOS ---
 async function carregarVocabularioDiario(forceRefresh = false) {
     let API_KEY = localStorage.getItem('gemini_api_key');
     const hoje = getTodayDate();
@@ -989,7 +963,6 @@ async function carregarVocabularioDiario(forceRefresh = false) {
     }
 }
 
-// --- CONTROLE DE CONECTIVOS E FLASHCARDS (ANKI) ---
 function setupFlashcardsEConectivos() {
     if(elements.btnNavConectivos) {
         elements.btnNavConectivos.addEventListener('click', () => {
@@ -1053,7 +1026,6 @@ function setupFlashcardsEConectivos() {
     }
 }
 
-// --- LÓGICA DO ALGORITMO ANKI E RENDERIZAÇÃO DO GERENCIADOR ---
 function initAnkiSession() {
     const today = getTodayDate();
     ankiStudyQueue = appData.flashcards.filter(f => f.nextReview <= today);
@@ -1263,7 +1235,144 @@ function openViewFlashcardModal(card) {
     modal.classList.add('active');
 }
 
-// Inicialização segura controlada por login
+// --- GERADOR AUTOMÁTICO DE FLASHCARDS COM IA (BLINDADO) ---
+
+function setupIaGenerator() {
+    if (elements.btnOpenIaGenerator) {
+        elements.btnOpenIaGenerator.addEventListener('click', () => {
+            if (elements.iaSourceText) elements.iaSourceText.value = '';
+            if (elements.modalIaGenerator) elements.modalIaGenerator.classList.add('active');
+        });
+    }
+
+    if (elements.btnCloseIaGenerator) {
+        elements.btnCloseIaGenerator.addEventListener('click', () => {
+            if (elements.modalIaGenerator) elements.modalIaGenerator.classList.remove('active');
+        });
+    }
+
+    if (elements.btnGenerateAiCards) {
+        elements.btnGenerateAiCards.addEventListener('click', gerarFlashcardsComIA);
+    }
+}
+
+// Extrator de JSON Seguro (Evita que o código quebre por retornos mal formatados da IA)
+function extractSafeJSON(text) {
+    try {
+        const match = text.match(/\[[\s\S]*\]/);
+        if (match) {
+            return JSON.parse(match[0]);
+        }
+        return JSON.parse(text);
+    } catch (e) {
+        console.error("Falha ao limpar o JSON da IA:", e);
+        return null;
+    }
+}
+
+async function gerarFlashcardsComIA() {
+    const texto = elements.iaSourceText.value.trim();
+    if (!texto) {
+        alert("Por favor, cole algum texto de estudo para a IA analisar.");
+        return;
+    }
+
+    let API_KEY = localStorage.getItem('gemini_api_key');
+    if (!API_KEY) {
+        alert("Chave da API do Gemini não encontrada. Carregue a palavra do dia primeiro para configurar a chave mestra.");
+        return;
+    }
+
+    elements.btnGenerateAiCards.style.display = 'none';
+    elements.iaSourceText.style.display = 'none';
+    elements.iaGeneratorStatus.style.display = 'block';
+    elements.iaStatusText.textContent = "Analisando o texto e estruturando material...";
+
+    try {
+        const promptText = `Atue como um examinador de bancas de concurso público.
+        Analise o texto fornecido abaixo, extraia os conceitos mais críticos, regras e exceções, e transforme-os em flashcards de memorização ativa.
+        Gere entre 3 e 5 flashcards diretos e objetivos.
+        
+        REGRAS ABSOLUTAS DE SAÍDA:
+        O retorno deve ser ESTRITAMENTE um array JSON válido. NENHUM texto antes, NENHUM texto depois. Não use crases de marcação.
+        
+        Estrutura obrigatória:
+        - "palavra": A pergunta, conceito ou lacuna.
+        - "significado": A resposta direta e correta.
+        - "sinonimos": Array com 2 termos chaves.
+        - "aplicacao": Uma dica ou exceção à regra.
+
+        TEXTO PARA ANÁLISE:
+        "${texto}"`;
+
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${API_KEY}`, {
+            method: 'POST', 
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                contents: [{ parts: [{ text: promptText }] }],
+                generationConfig: { temperature: 0.2 } 
+            })
+        });
+
+        if (!response.ok) {
+            if(response.status === 403) throw new Error("Chave de API inválida ou expirada.");
+            throw new Error(`Erro de conexão (${response.status})`);
+        }
+
+        const data = await response.json();
+        elements.iaStatusText.textContent = "Salvando flashcards no seu baralho...";
+        
+        const respostaTexto = data.candidates[0].content.parts[0].text;
+        const cardsGerados = extractSafeJSON(respostaTexto);
+
+        if (!cardsGerados || !Array.isArray(cardsGerados)) {
+            throw new Error("A IA retornou um formato ilegível. Tente novamente.");
+        }
+
+        let cardsAdicionados = 0;
+        const hoje = getTodayDate();
+
+        cardsGerados.forEach(cardData => {
+            const jaExiste = appData.flashcards.some(f => f.palavra.toLowerCase() === cardData.palavra.toLowerCase());
+            
+            if (!jaExiste) {
+                const newCard = {
+                    id: 'fc_ia_' + Date.now() + Math.floor(Math.random() * 10000),
+                    palavra: cardData.palavra || "Sem Pergunta",
+                    significado: cardData.significado || "Sem Resposta",
+                    sinonimos: Array.isArray(cardData.sinonimos) ? cardData.sinonimos : [],
+                    aplicacao: cardData.aplicacao || "Gerado por IA",
+                    interval: 0,
+                    ease: 2.5,
+                    nextReview: hoje 
+                };
+                appData.flashcards.push(newCard);
+                cardsAdicionados++;
+            }
+        });
+
+        if (cardsAdicionados > 0) {
+            saveData(); 
+            initAnkiSession(); 
+            try { renderGerenciadorFlashcards(); } catch(e) {}
+            
+            alert(`✅ Sucesso! ${cardsAdicionados} flashcards foram gerados e já estão na sua fila de revisão!`);
+            elements.modalIaGenerator.classList.remove('active');
+        } else {
+            alert("⚠️ A IA gerou flashcards que já existem no seu baralho, ou o texto era muito curto.");
+        }
+
+    } catch (error) {
+        console.error("Erro no Gerador de Flashcards:", error);
+        alert(`❌ Erro: ${error.message}`);
+    } finally {
+        elements.btnGenerateAiCards.style.display = 'flex';
+        elements.iaSourceText.style.display = 'block';
+        elements.iaGeneratorStatus.style.display = 'none';
+        elements.iaSourceText.value = '';
+    }
+}
+
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);
 } else {
