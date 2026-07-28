@@ -5,19 +5,19 @@ import PIL.Image
 import os
 import time
 import json
-import subprocess # <--- Importante para executar programas do Windows
+import subprocess
 
 app = Flask(__name__)
 CORS(app) 
 
 # --- CONFIGURAÇÕES ---
-# 1. Coloque a sua chave de API NOVA aqui:
+# Coloque a sua chave de API aqui:
 client = genai.Client(api_key="COLE_SUA_NOVA_CHAVE_AQUI")
 
-# 2. Caminho da sua pasta de estudos:
+# Caminho da sua pasta de estudos:
 PASTA_ALVO = r"C:\Users\artur\OneDrive\Área de Trabalho\ESTUDOS"
 
-# 3. Caminho do executável do Xournal++ no seu PC:
+# Caminho do executável do Xournal++ no seu PC:
 XOURNAL_PATH = r"C:\Program Files\Xournal++\bin\xournalpp.exe"
 
 @app.route('/mapear')
@@ -44,17 +44,14 @@ def mapear_pdfs():
 
     return Response(gerar_eventos(), mimetype='text/event-stream')
 
-# --- NOVA ROTA: ABRIR DIRETO NO XOURNAL++ ---
 @app.route('/abrir_local')
 def abrir_local():
     caminho = request.args.get('caminho')
     if caminho and os.path.exists(caminho):
         try:
-            # Tenta forçar a abertura no Xournal++
             subprocess.Popen([XOURNAL_PATH, caminho])
             return jsonify({"status": "ok", "message": "Abrindo no Xournal++"})
         except Exception as e:
-            # Se o caminho do Xournal estiver errado, ele abre no leitor de PDF padrão do Windows como plano B
             try:
                 os.startfile(caminho)
                 return jsonify({"status": "fallback", "message": "Xournal não encontrado, abrindo leitor padrão."})
@@ -62,7 +59,7 @@ def abrir_local():
                 return jsonify({"status": "error", "message": str(e2)}), 500
     return jsonify({"error": "Arquivo não encontrado"}), 404
 
-# --- ROTA DE INTELIGÊNCIA ARTIFICIAL ---
+# --- ROTA DE INTELIGÊNCIA ARTIFICIAL: ANÁLISE DE ERRO ---
 @app.route('/analisar_erro', methods=['POST'])
 def analisar_erro():
     if 'image' not in request.files:
@@ -89,23 +86,72 @@ def analisar_erro():
         )
         
         text = response.text.strip()
-        
         if text.startswith("```json"):
             text = text[7:]
         elif text.startswith("```"):
             text = text[3:]
-            
         if text.endswith("```"):
             text = text[:-3]
             
-        text = text.strip()
-        dados_json = json.loads(text)
+        dados_json = json.loads(text.strip())
         return jsonify(dados_json)
         
     except Exception as e:
-        print(f"================ ERRO NA IA ================\n{e}\n============================================")
+        return jsonify({"error": str(e)}), 500
+
+# --- NOVA ROTA: GERADOR DE FLASHCARDS POR PDF ---
+@app.route('/gerar_flashcards_pdf', methods=['POST'])
+def gerar_flashcards_pdf():
+    if 'file' not in request.files:
+        return jsonify({"error": "Nenhum arquivo PDF recebido"}), 400
+    
+    file = request.files['file']
+    temp_path = os.path.join("temp_" + file.filename)
+    file.save(temp_path)
+    
+    try:
+        sample_file = client.files.upload(file=temp_path)
+        
+        prompt = """
+        Atue como um examinador especialista em bancas de concurso público.
+        Analise o documento PDF fornecido, extraia os conceitos mais críticos, prazos, regras ou exceções, 
+        e transforme-os em flashcards de memorização ativa de alta qualidade.
+        Gere entre 4 e 7 flashcards diretos e objetivos.
+        
+        REGRAS ABSOLUTAS DE SAÍDA:
+        O retorno deve ser ESTRITAMENTE um array JSON válido contendo objetos. NENHUM texto antes, NENHUM texto depois. Não use crases de marcação markdown.
+        
+        Estrutura obrigatória de cada objeto:
+        - "palavra": A pergunta, conceito ou lacuna.
+        - "significado": A resposta direta e correta.
+        - "sinonimos": Array com 2 termos chaves do assunto.
+        - "aplicacao": Uma dica, mnemônico ou exceção à regra tirada do texto.
+        """
+        
+        response = client.models.generate_content(
+            model='gemini-2.5-flash',
+            contents=[sample_file, prompt]
+        )
+        
+        if os.path.exists(temp_path):
+            os.remove(temp_path)
+            
+        text = response.text.strip()
+        if text.startswith("```json"):
+            text = text[7:]
+        elif text.startswith("```"):
+            text = text[3:]
+        if text.endswith("```"):
+            text = text[:-3]
+            
+        cards_json = json.loads(text.strip())
+        return jsonify(cards_json)
+        
+    except Exception as e:
+        if os.path.exists(temp_path):
+            os.remove(temp_path)
         return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
-    print("Servidor rodando na porta 5000. IA e Ponte para o Xournal++ Ativadas!")
+    print("Servidor rodando na porta 5000. IA, PDFs e Xournal++ ativados!")
     app.run(port=5000, debug=True)

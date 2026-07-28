@@ -1,4 +1,3 @@
-// Chaves de API para sincronização na nuvem (JSONBin)
 const JSONBIN_API_KEY = "$2a$10$9gyhyeKRkMY0JiZPZC5dX.ARzXCN3kTTi2sZoZjDMRvw/m3HIys1y"; 
 const JSONBIN_BIN_ID = "6a68916eda38895dfe9b01c3";
 
@@ -35,7 +34,6 @@ let todaysSubjects = [];
 let currentEditingRevId = null;
 let elements = {};
 
-// Injeta dinamicamente a tela de login
 function injectLoginUI() {
     if (document.getElementById('custom-login-overlay')) return;
 
@@ -78,7 +76,6 @@ function injectLoginUI() {
     });
 }
 
-// Mapeamento global de elementos (Incluindo os da IA)
 function initElements() {
     elements = {
         timeMain: document.getElementById('time-main'), timeMs: document.getElementById('time-ms'),
@@ -110,7 +107,6 @@ function initElements() {
         modalManageFlashcards: document.getElementById('manage-flashcards-modal'), btnCloseManageFc: document.getElementById('btn-close-manage-fc'),
         allFlashcardsList: document.getElementById('all-flashcards-list'),
         
-        // Elementos da IA
         btnOpenIaGenerator: document.getElementById('btn-open-ia-generator'),
         modalIaGenerator: document.getElementById('ia-generator-modal'),
         btnCloseIaGenerator: document.getElementById('btn-close-ia-generator'),
@@ -142,7 +138,7 @@ function initAppFully() {
     try { carregarVocabularioDiario(false); } catch(e) {}
     try { setupFlashcardsEConectivos(); } catch(e) {}
     try { initAnkiSession(); } catch(e) {}
-    try { setupIaGenerator(); } catch(e) {} // Inicializa módulo de IA
+    try { setupIaGenerator(); } catch(e) {}
     
     if (localStorage.getItem('theme') === 'light') document.body.classList.remove('dark-mode');
 
@@ -1235,12 +1231,16 @@ function openViewFlashcardModal(card) {
     modal.classList.add('active');
 }
 
-// --- GERADOR AUTOMÁTICO DE FLASHCARDS COM IA (BLINDADO) ---
+// --- GERADOR DE FLASHCARDS COM SUPORTE A PDF NO BACKEND ---
 
 function setupIaGenerator() {
     if (elements.btnOpenIaGenerator) {
         elements.btnOpenIaGenerator.addEventListener('click', () => {
             if (elements.iaSourceText) elements.iaSourceText.value = '';
+            const fileInput = document.getElementById('ia-pdf-file');
+            if (fileInput) fileInput.value = '';
+            const fileLabel = document.getElementById('pdf-file-label');
+            if (fileLabel) fileLabel.textContent = "Clique para selecionar um PDF";
             if (elements.modalIaGenerator) elements.modalIaGenerator.classList.add('active');
         });
     }
@@ -1251,82 +1251,73 @@ function setupIaGenerator() {
         });
     }
 
+    const fileInput = document.getElementById('ia-pdf-file');
+    if (fileInput) {
+        fileInput.addEventListener('change', (e) => {
+            const fileLabel = document.getElementById('pdf-file-label');
+            if (e.target.files.length > 0) {
+                fileLabel.textContent = `📄 ${e.target.files[0].name}`;
+            } else {
+                fileLabel.textContent = "Clique para selecionar um PDF";
+            }
+        });
+    }
+
     if (elements.btnGenerateAiCards) {
         elements.btnGenerateAiCards.addEventListener('click', gerarFlashcardsComIA);
     }
 }
 
-// Extrator de JSON Seguro (Evita que o código quebre por retornos mal formatados da IA)
-function extractSafeJSON(text) {
-    try {
-        const match = text.match(/\[[\s\S]*\]/);
-        if (match) {
-            return JSON.parse(match[0]);
-        }
-        return JSON.parse(text);
-    } catch (e) {
-        console.error("Falha ao limpar o JSON da IA:", e);
-        return null;
-    }
-}
-
 async function gerarFlashcardsComIA() {
+    const fileInput = document.getElementById('ia-pdf-file');
     const texto = elements.iaSourceText.value.trim();
-    if (!texto) {
-        alert("Por favor, cole algum texto de estudo para a IA analisar.");
-        return;
-    }
+    const hasFile = fileInput && fileInput.files.length > 0;
 
-    let API_KEY = localStorage.getItem('gemini_api_key');
-    if (!API_KEY) {
-        alert("Chave da API do Gemini não encontrada. Carregue a palavra do dia primeiro para configurar a chave mestra.");
+    if (!hasFile && !texto) {
+        alert("Por favor, selecione um arquivo PDF ou cole algum texto para a IA analisar.");
         return;
     }
 
     elements.btnGenerateAiCards.style.display = 'none';
-    elements.iaSourceText.style.display = 'none';
     elements.iaGeneratorStatus.style.display = 'block';
-    elements.iaStatusText.textContent = "Analisando o texto e estruturando material...";
+    elements.iaStatusText.textContent = hasFile ? "Enviando e lendo PDF no servidor..." : "Analisando o texto...";
 
     try {
-        const promptText = `Atue como um examinador de bancas de concurso público.
-        Analise o texto fornecido abaixo, extraia os conceitos mais críticos, regras e exceções, e transforme-os em flashcards de memorização ativa.
-        Gere entre 3 e 5 flashcards diretos e objetivos.
-        
-        REGRAS ABSOLUTAS DE SAÍDA:
-        O retorno deve ser ESTRITAMENTE um array JSON válido. NENHUM texto antes, NENHUM texto depois. Não use crases de marcação.
-        
-        Estrutura obrigatória:
-        - "palavra": A pergunta, conceito ou lacuna.
-        - "significado": A resposta direta e correta.
-        - "sinonimos": Array com 2 termos chaves.
-        - "aplicacao": Uma dica ou exceção à regra.
+        let cardsGerados = [];
 
-        TEXTO PARA ANÁLISE:
-        "${texto}"`;
+        if (hasFile) {
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
 
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${API_KEY}`, {
-            method: 'POST', 
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-                contents: [{ parts: [{ text: promptText }] }],
-                generationConfig: { temperature: 0.2 } 
-            })
-        });
+            const response = await fetch('http://localhost:5000/gerar_flashcards_pdf', {
+                method: 'POST',
+                body: formData
+            });
 
-        if (!response.ok) {
-            if(response.status === 403) throw new Error("Chave de API inválida ou expirada.");
-            throw new Error(`Erro de conexão (${response.status})`);
-        }
+            if (!response.ok) throw new Error("Erro ao processar o PDF no servidor local.");
+            cardsGerados = await response.json();
 
-        const data = await response.json();
-        elements.iaStatusText.textContent = "Salvando flashcards no seu baralho...";
-        
-        const respostaTexto = data.candidates[0].content.parts[0].text;
-        const cardsGerados = extractSafeJSON(respostaTexto);
+        } else {
+            let API_KEY = localStorage.getItem('gemini_api_key');
+            if (!API_KEY) {
+                alert("Chave da API do Gemini não encontrada. Carregue a palavra do dia primeiro.");
+                return;
+            }
 
-        if (!cardsGerados || !Array.isArray(cardsGerados)) {
-            throw new Error("A IA retornou um formato ilegível. Tente novamente.");
+            const promptText = `Atue como um examinador de bancas de concurso público. Analise o texto e gere entre 3 e 5 flashcards em array JSON puro, sem crases, com as chaves: "palavra", "significado", "sinonimos" (array) e "aplicacao". TEXTO: "${texto}"`;
+
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${API_KEY}`, {
+                method: 'POST', 
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ contents: [{ parts: [{ text: promptText }] }] })
+            });
+
+            if (!response.ok) throw new Error("Erro na API do Gemini.");
+            const data = await response.json();
+            const respostaTexto = data.candidates[0].content.parts[0].text;
+            
+            const match = respostaTexto.match(/\[[\s\S]*\]/);
+            cardsGerados = match ? JSON.parse(match[0]) : JSON.parse(respostaTexto);
         }
 
         let cardsAdicionados = 0;
@@ -1334,42 +1325,37 @@ async function gerarFlashcardsComIA() {
 
         cardsGerados.forEach(cardData => {
             const jaExiste = appData.flashcards.some(f => f.palavra.toLowerCase() === cardData.palavra.toLowerCase());
-            
             if (!jaExiste) {
-                const newCard = {
+                appData.flashcards.push({
                     id: 'fc_ia_' + Date.now() + Math.floor(Math.random() * 10000),
-                    palavra: cardData.palavra || "Sem Pergunta",
-                    significado: cardData.significado || "Sem Resposta",
+                    palavra: cardData.palavra || "Pergunta",
+                    significado: cardData.significado || "Resposta",
                     sinonimos: Array.isArray(cardData.sinonimos) ? cardData.sinonimos : [],
                     aplicacao: cardData.aplicacao || "Gerado por IA",
                     interval: 0,
                     ease: 2.5,
-                    nextReview: hoje 
-                };
-                appData.flashcards.push(newCard);
+                    nextReview: hoje
+                });
                 cardsAdicionados++;
             }
         });
 
         if (cardsAdicionados > 0) {
-            saveData(); 
-            initAnkiSession(); 
+            saveData();
+            initAnkiSession();
             try { renderGerenciadorFlashcards(); } catch(e) {}
-            
-            alert(`✅ Sucesso! ${cardsAdicionados} flashcards foram gerados e já estão na sua fila de revisão!`);
+            alert(`✅ Sucesso! ${cardsAdicionados} flashcards criados e adicionados à revisão!`);
             elements.modalIaGenerator.classList.remove('active');
         } else {
-            alert("⚠️ A IA gerou flashcards que já existem no seu baralho, ou o texto era muito curto.");
+            alert("⚠️ Os flashcards gerados já existiam no seu baralho.");
         }
 
     } catch (error) {
-        console.error("Erro no Gerador de Flashcards:", error);
-        alert(`❌ Erro: ${error.message}`);
+        console.error("Erro:", error);
+        alert(`❌ Erro ao gerar flashcards: ${error.message}`);
     } finally {
         elements.btnGenerateAiCards.style.display = 'flex';
-        elements.iaSourceText.style.display = 'block';
         elements.iaGeneratorStatus.style.display = 'none';
-        elements.iaSourceText.value = '';
     }
 }
 
