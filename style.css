@@ -377,3 +377,24 @@ body.dark-mode .fc-manage-card { box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
     #schedule-table th { font-weight: bold !important; text-transform: uppercase !important; font-size: 10pt !important; border-bottom: 3px solid #000 !important; }
 }
 @keyframes spin { 100% { transform: rotate(360deg); } }
+
+/* --- BOTÃO IA MÁGICO --- */
+.btn-ia-magic {
+    display: inline-flex;
+    align-items: center;
+    background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+    color: white;
+    border: none;
+    border-radius: var(--radius);
+    padding: 0.7rem 1.2rem;
+    font-weight: 600;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+    box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
+}
+.btn-ia-magic:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(99, 102, 241, 0.4);
+    color: white;
+}
