@@ -1,3 +1,4 @@
+// Chaves de API para sincronização na nuvem (JSONBin)
 const JSONBIN_API_KEY = "$2a$10$9gyhyeKRkMY0JiZPZC5dX.ARzXCN3kTTi2sZoZjDMRvw/m3HIys1y"; 
 const JSONBIN_BIN_ID = "6a68916eda38895dfe9b01c3";
 
@@ -9,6 +10,8 @@ let currentPalavraObj = null;
 
 let ankiStudyQueue = [];
 let currentAnkiCard = null;
+
+let isAppReady = false; // TRAVA DE SEGURANÇA CONTRA SOBREPOSIÇÃO
 
 const CYCLE_PHASES = [
     { name: "Teoria (50min)", ms: 50 * 60 * 1000, isStudy: true },
@@ -124,10 +127,19 @@ function init() {
     initAppFully();
 }
 
-function initAppFully() {
+async function initAppFully() {
     initElements(); 
 
+    // 1. Carrega dados locais antigos apenas para evitar tela branca
     try { loadLocalDataOnly(); } catch(e) {}
+    
+    // 2. A MÁGICA: Aguarda a nuvem terminar de baixar TUDO antes de fazer verificações
+    await loadCloudDataInBackground(true);
+    
+    // 3. DESTRAVA O APLICATIVO PARA SALVAMENTO
+    isAppReady = true;
+
+    // 4. Só agora ele verifica streaks e horários (se precisar salvar, já tem os dados da nuvem!)
     try { checkStreak(); } catch(e) {}
     try { calculateRecords(); } catch(e) {}
     try { renderSubjectBank(); } catch(e) {}
@@ -206,8 +218,6 @@ function initAppFully() {
 
     try { loadTimerState(); } catch(e) {}
     try { updateUI(); } catch(e) {}
-
-    loadCloudDataInBackground();
 }
 
 function loadLocalDataOnly() {
@@ -222,7 +232,7 @@ function loadLocalDataOnly() {
     if (!appData.history[today]) appData.history[today] = { time: 0, sessions: 0 };
 }
 
-async function loadCloudDataInBackground() {
+async function loadCloudDataInBackground(isInitial = false) {
     if (!JSONBIN_API_KEY || localStorage.getItem('is_app_logged_in') !== 'true') return;
     try {
         const response = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}/latest?t=${Date.now()}`, {
@@ -241,23 +251,35 @@ async function loadCloudDataInBackground() {
                     const remoteStr = JSON.stringify(actualData);
                     mergeData(actualData);
                     localStorage.setItem('studyAppData', remoteStr);
-                    updateUI(); renderSchedule(); renderSubjectBank();
+                    
+                    if (!isInitial) {
+                        updateUI(); 
+                        renderSchedule(); 
+                        renderSubjectBank();
+                        updateTimerDisplay(); // Força a visualização do cronômetro atualizar na hora
+                    }
                 }
             }
         }
     } catch (error) {}
 }
 
+// Inicia o loop apenas DEPOIS de carregar a primeira vez
 setInterval(() => {
-    if (!document.hidden && localStorage.getItem('is_app_logged_in') === 'true') loadCloudDataInBackground();
+    if (!document.hidden && localStorage.getItem('is_app_logged_in') === 'true' && isAppReady) {
+        loadCloudDataInBackground(false);
+    }
 }, 20000);
 
 document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible' && localStorage.getItem('is_app_logged_in') === 'true') loadCloudDataInBackground();
+    if (document.visibilityState === 'visible' && localStorage.getItem('is_app_logged_in') === 'true' && isAppReady) {
+        loadCloudDataInBackground(false);
+    }
 });
 
 async function saveData() {
-    if (localStorage.getItem('is_app_logged_in') !== 'true') return;
+    // BLOQUEIO TOTAL se o app não estiver pronto
+    if (localStorage.getItem('is_app_logged_in') !== 'true' || !isAppReady) return; 
     
     appData.updatedAt = Date.now();
     localStorage.setItem('studyAppData', JSON.stringify(appData));
