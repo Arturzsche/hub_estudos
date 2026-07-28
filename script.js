@@ -32,55 +32,60 @@ let appData = {
 
 let todaysSubjects = [];
 let currentEditingRevId = null;
+let elements = {};
 
-const elements = {
-    timeMain: document.getElementById('time-main'), timeMs: document.getElementById('time-ms'),
-    btnToggle: document.getElementById('btn-toggle'), btnSkipPhase: document.getElementById('btn-skip-phase'),
-    btnSkipBlock: document.getElementById('btn-skip-block'), btnTimerMode: document.getElementById('btn-timer-mode'), 
-    iconPlay: document.getElementById('icon-play'), iconPause: document.getElementById('icon-pause'),
-    btnReset: document.getElementById('btn-reset'), totalTimeDisplay: document.getElementById('total-time-display'),
-    sessionsDisplay: document.getElementById('sessions-display'), streakDisplay: document.getElementById('streak-display'),
-    recordDayDisplay: document.getElementById('record-day-display'), recordWeekDisplay: document.getElementById('record-week-display'),
-    totalAccumulated: document.getElementById('total-accumulated'), themeToggle: document.getElementById('theme-toggle'),
-    focusToggle: document.getElementById('focus-toggle'), dailyProgressFill: document.getElementById('daily-progress-fill'),
-    dailyPercentage: document.getElementById('daily-percentage'), heatmapGrid: document.getElementById('heatmap-grid'),
-    macFullscreenBtn: document.getElementById('mac-fullscreen-btn'), scheduleTableBody: document.querySelector('#schedule-table tbody'),
-    subjectBank: document.getElementById('subject-bank'), newSubjectInput: document.getElementById('new-subject-input'),
-    btnAddSubject: document.getElementById('btn-add-subject'), btnAddCycle: document.getElementById('btn-add-cycle'),
-    cycleSubject: document.getElementById('cycle-subject'), cyclePhaseBadge: document.getElementById('cycle-phase-badge'),
-    btnOpenManualRev: document.getElementById('btn-add-manual-review'), modalManualRev: document.getElementById('manual-rev-modal'),
-    inputManualRevName: document.getElementById('manual-rev-name'), selectManualRevSubject: document.getElementById('manual-rev-subject'),
-    inputManualRevNotes: document.getElementById('manual-rev-notes'), btnCancelManualRev: document.getElementById('btn-manual-rev-cancel'),
-    btnSaveManualRev: document.getElementById('btn-manual-rev-save'), btnManageReviews: document.getElementById('btn-manage-reviews'),
-    modalManageRev: document.getElementById('manage-rev-modal'), btnCloseManage: document.getElementById('btn-close-manage'),
-    allReviewsList: document.getElementById('all-reviews-list'), filterReviewSubject: document.getElementById('filter-review-subject'),
-    modalEditRev: document.getElementById('edit-rev-modal'), editRevSubject: document.getElementById('edit-rev-subject'),
-    editRevName: document.getElementById('edit-rev-name'), editRevNotes: document.getElementById('edit-rev-notes'),
-    btnCancelEditRev: document.getElementById('btn-edit-rev-cancel'), btnSaveEditRev: document.getElementById('btn-edit-rev-save'),
-    btnRefreshWord: document.getElementById('btn-refresh-word'),
-    btnSaveFlashcard: document.getElementById('btn-save-flashcard'),
-    btnNavConectivos: document.getElementById('btn-nav-conectivos'),
-    btnCloseConectivos: document.getElementById('btn-close-conectivos'),
-    modalConectivos: document.getElementById('conectivos-modal'),
-    btnManageFlashcards: document.getElementById('btn-manage-flashcards'),
-    modalManageFlashcards: document.getElementById('manage-flashcards-modal'),
-    btnCloseManageFc: document.getElementById('btn-close-manage-fc'),
-    allFlashcardsList: document.getElementById('all-flashcards-list')
-};
+// Mapeia os elementos com segurança após o carregamento da página
+function initElements() {
+    elements = {
+        timeMain: document.getElementById('time-main'), timeMs: document.getElementById('time-ms'),
+        btnToggle: document.getElementById('btn-toggle'), btnSkipPhase: document.getElementById('btn-skip-phase'),
+        btnSkipBlock: document.getElementById('btn-skip-block'), btnTimerMode: document.getElementById('btn-timer-mode'), 
+        iconPlay: document.getElementById('icon-play'), iconPause: document.getElementById('icon-pause'),
+        btnReset: document.getElementById('btn-reset'), totalTimeDisplay: document.getElementById('total-time-display'),
+        sessionsDisplay: document.getElementById('sessions-display'), streakDisplay: document.getElementById('streak-display'),
+        recordDayDisplay: document.getElementById('record-day-display'), recordWeekDisplay: document.getElementById('record-week-display'),
+        totalAccumulated: document.getElementById('total-accumulated'), themeToggle: document.getElementById('theme-toggle'),
+        focusToggle: document.getElementById('focus-toggle'), dailyProgressFill: document.getElementById('daily-progress-fill'),
+        dailyPercentage: document.getElementById('daily-percentage'), heatmapGrid: document.getElementById('heatmap-grid'),
+        macFullscreenBtn: document.getElementById('mac-fullscreen-btn'), scheduleTableBody: document.querySelector('#schedule-table tbody'),
+        subjectBank: document.getElementById('subject-bank'), newSubjectInput: document.getElementById('new-subject-input'),
+        btnAddSubject: document.getElementById('btn-add-subject'), btnAddCycle: document.getElementById('btn-add-cycle'),
+        cycleSubject: document.getElementById('cycle-subject'), cyclePhaseBadge: document.getElementById('cycle-phase-badge'),
+        btnOpenManualRev: document.getElementById('btn-add-manual-review'), modalManualRev: document.getElementById('manual-rev-modal'),
+        inputManualRevName: document.getElementById('manual-rev-name'), selectManualRevSubject: document.getElementById('manual-rev-subject'),
+        inputManualRevNotes: document.getElementById('manual-rev-notes'), btnCancelManualRev: document.getElementById('btn-manual-rev-cancel'),
+        btnSaveManualRev: document.getElementById('btn-manual-rev-save'), btnManageReviews: document.getElementById('btn-manage-reviews'),
+        modalManageRev: document.getElementById('manage-rev-modal'), btnCloseManage: document.getElementById('btn-close-manage'),
+        allReviewsList: document.getElementById('all-reviews-list'), filterReviewSubject: document.getElementById('filter-review-subject'),
+        modalEditRev: document.getElementById('edit-rev-modal'), editRevSubject: document.getElementById('edit-rev-subject'),
+        editRevName: document.getElementById('edit-rev-name'), editRevNotes: document.getElementById('edit-rev-notes'),
+        btnCancelEditRev: document.getElementById('btn-edit-rev-cancel'), btnSaveEditRev: document.getElementById('btn-edit-rev-save'),
+        btnRefreshWord: document.getElementById('btn-refresh-word'),
+        btnSaveFlashcard: document.getElementById('btn-save-flashcard'),
+        btnNavConectivos: document.getElementById('btn-nav-conectivos'),
+        btnCloseConectivos: document.getElementById('btn-close-conectivos'),
+        modalConectivos: document.getElementById('conectivos-modal'),
+        btnManageFlashcards: document.getElementById('btn-manage-flashcards'),
+        modalManageFlashcards: document.getElementById('manage-flashcards-modal'),
+        btnCloseManageFc: document.getElementById('btn-close-manage-fc'),
+        allFlashcardsList: document.getElementById('all-flashcards-list')
+    };
+}
 
 async function init() {
-    // Isolamento de erros: Se uma função falhar, o resto do site continua funcionando.
-    try { loadLocalDataOnly(); } catch(e) { console.error("Erro no loadLocal:", e); }
+    initElements(); // Garante que os elementos existem antes de interagir com eles
+
+    try { loadLocalDataOnly(); } catch(e) {}
     try { checkStreak(); } catch(e) {}
     try { calculateRecords(); } catch(e) {}
     try { renderSubjectBank(); } catch(e) {}
     try { renderSchedule(); } catch(e) {}
     try { setupNavigation(); } catch(e) {}
     
-    try { initChart(); } catch(e) { console.warn("Gráfico ignorado:", e); }
+    try { initChart(); } catch(e) {}
     try { initManualReviews(); } catch(e) {}
     
-    try { carregarVocabularioDiario(false); } catch(e) { console.error("Erro na IA:", e); }
+    try { carregarVocabularioDiario(false); } catch(e) {}
     try { setupFlashcardsEConectivos(); } catch(e) {}
     try { initAnkiSession(); } catch(e) {}
     
@@ -106,8 +111,8 @@ async function init() {
         document.getElementById('clear-modal').classList.remove('active');
     });
 
-    try { loadTimerState(); } catch(e) { console.error("Erro no Timer:", e); }
-    try { updateUI(); } catch(e) { console.error("Erro na UI:", e); }
+    try { loadTimerState(); } catch(e) {}
+    try { updateUI(); } catch(e) {}
 
     loadCloudDataInBackground();
 }
@@ -124,24 +129,21 @@ function loadLocalDataOnly() {
     if (!appData.history[today]) appData.history[today] = { time: 0, sessions: 0 };
 }
 
-// Substitua a sua função loadCloudDataInBackground atual por esta:
 async function loadCloudDataInBackground() {
     if (!JSONBIN_API_KEY) return;
     try {
-        // O parâmetro ?t=${Date.now()} impede que o navegador ou a nuvem usem dados velhos em cache
         const response = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}/latest?t=${Date.now()}`, {
             headers: { 
                 'X-Master-Key': JSONBIN_API_KEY,
-                'X-Bin-Meta': 'false' // Traz direto o conteúdo puro
+                'X-Bin-Meta': 'false'
             }
         });
         
         if (response.ok) {
             const remoteData = await response.json();
-            const actualData = remoteData.record || remoteData; // Trata o formato do JSONBin
+            const actualData = remoteData.record || remoteData;
             
             if (actualData && !actualData.iniciando) {
-                // Compara se o dado remoto é diferente do local antes de atualizar a UI
                 const localStr = localStorage.getItem('studyAppData');
                 const remoteStr = JSON.stringify(actualData);
                 
@@ -151,7 +153,6 @@ async function loadCloudDataInBackground() {
                     updateUI();
                     renderSchedule();
                     renderSubjectBank();
-                    console.log("🔄 Dados atualizados da nuvem em segundo plano!");
                 }
             }
         }
@@ -160,26 +161,18 @@ async function loadCloudDataInBackground() {
     }
 }
 
-// --- GATILHOS DE TEMPO REAL ---
-
-// 1. Verifica a nuvem automaticamente a cada 20 segundos (sem precisar dar F5)
+// Sincronização automática a cada 20 segundos ou ao focar na aba
 setInterval(() => {
-    if (!document.hidden) { // Só roda se a aba estiver aberta e visível para economizar
+    if (!document.hidden) {
         loadCloudDataInBackground();
     }
 }, 20000);
 
-// 2. Sincroniza instantaneamente assim que você clica de volta na aba do navegador
 document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') {
         loadCloudDataInBackground();
     }
 });
-        }
-    } catch (error) {
-        console.warn("Sincronização em segundo plano indisponível offline.", error);
-    }
-}
 
 async function saveData() {
     localStorage.setItem('studyAppData', JSON.stringify(appData));
@@ -629,11 +622,24 @@ function skipBlock() {
     saveData(); updateTimerDisplay();
 }
 
-if(elements.btnToggle) elements.btnToggle.addEventListener('click', () => { if (isRunning) pauseTimer(); else startTimer(); });
-if(elements.btnReset) elements.btnReset.addEventListener('click', resetTimer);
-if(elements.btnSkipPhase) elements.btnSkipPhase.addEventListener('click', skipPhase);
-if(elements.btnSkipBlock) elements.btnSkipBlock.addEventListener('click', skipBlock);
-if(elements.btnTimerMode) elements.btnTimerMode.addEventListener('click', () => { pauseTimer(); appData.timerMode = appData.timerMode === 'pomodoro' ? 'stopwatch' : 'pomodoro'; saveData(); updateTimerDisplay(); });
+// Event Listeners Globais seguros
+document.addEventListener('DOMContentLoaded', () => {
+    // Garantir que os botões de controle respondem se carregados via HTML
+});
+
+// Delegação de eventos dos botões principais do timer
+document.addEventListener('click', (e) => {
+    if (e.target.closest('#btn-toggle')) { if (isRunning) pauseTimer(); else startTimer(); }
+    if (e.target.closest('#btn-reset')) { resetTimer(); }
+    if (e.target.closest('#btn-skip-phase')) { skipPhase(); }
+    if (e.target.closest('#btn-skip-block')) { skipBlock(); }
+    if (e.target.closest('#btn-timer-mode')) { 
+        pauseTimer(); 
+        appData.timerMode = appData.timerMode === 'pomodoro' ? 'stopwatch' : 'pomodoro'; 
+        saveData(); 
+        updateTimerDisplay(); 
+    }
+});
 
 function getChartData() {
     const labels = []; const data = []; const today = new Date();
@@ -646,10 +652,7 @@ function getChartData() {
 }
 
 function initChart() {
-    if (typeof Chart === 'undefined') {
-        console.warn("Aviso: A biblioteca Chart.js não foi carregada a tempo. Gráfico desativado temporariamente.");
-        return;
-    }
+    if (typeof Chart === 'undefined') return;
     const canvas = document.getElementById('weeklyChart'); if(!canvas) return; const ctx = canvas.getContext('2d');
     const textColor = getComputedStyle(document.body).getPropertyValue('--text-muted').trim() || '#999999';
     const barColor = getComputedStyle(document.body).getPropertyValue('--text-main').trim() || '#ffffff';
@@ -762,7 +765,12 @@ document.addEventListener('visibilitychange', () => { if (document.visibilitySta
 const btnPrintSchedule = document.getElementById('btn-print-schedule');
 if (btnPrintSchedule) btnPrintSchedule.addEventListener('click', () => window.print());
 
-init();
+// Inicializa o app com segurança assim que o DOM estiver pronto
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+} else {
+    init();
+}
 
 // --- 🧠 INTEGRAÇÃO IA: PALAVRA DO DIA BLINDADA CONTRA REPETIÇÃO E TRAVAMENTOS ---
 async function carregarVocabularioDiario(forceRefresh = false) {
@@ -825,7 +833,7 @@ async function carregarVocabularioDiario(forceRefresh = false) {
         try {
             API_KEY = prompt("Segurança ativada! 🛡️\n\nCole sua NOVA chave de API do Gemini aqui.");
         } catch(e) { 
-            API_KEY = null; // Caso o navegador bloqueie o prompt
+            API_KEY = null;
         }
         
         if (API_KEY && API_KEY.trim() !== "") {
