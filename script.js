@@ -20,6 +20,7 @@ const CYCLE_PHASES = [
 const REVIEW_INTERVALS = [1, 7, 15, 30, 60];
 
 let appData = {
+    updatedAt: 0, // Timestamp de controle de conflito de versão
     history: {}, streak: 0, lastStudyDate: null, recordDay: 0, recordWeek: 0, dailyGoalSeconds: 14400, 
     savedSubjects: ["Direito Administrativo", "Controle Externo", "AFO", "Lei Orgânica", "Regimento Interno", "Português", "Prova Discursiva"],
     schedule: [
@@ -33,6 +34,51 @@ let appData = {
 let todaysSubjects = [];
 let currentEditingRevId = null;
 let elements = {};
+
+// Injeta dinamicamente a tela de login estilizada no DOM
+function injectLoginUI() {
+    if (document.getElementById('custom-login-overlay')) return;
+
+    const overlay = document.createElement('div');
+    overlay.id = 'custom-login-overlay';
+    overlay.style.cssText = `
+        position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+        background: rgba(10, 10, 15, 0.85); backdrop-filter: blur(10px);
+        display: flex; align-items: center; justify-content: center; z-index: 999999;
+        font-family: 'Inter', sans-serif;
+    `;
+
+    overlay.innerHTML = `
+        <div style="background: var(--card-bg, #1e1e2f); border: 1px solid var(--border-color, #2a2a3c); padding: 2.5rem; border-radius: 16px; width: 100%; max-width: 400px; box-shadow: 0 20px 40px rgba(0,0,0,0.5); text-align: center;">
+            <div style="margin-bottom: 1.5rem;">
+                <h2 style="color: var(--text-main, #fff); font-size: 1.5rem; font-weight: 700; margin-bottom: 0.5rem;">Acesso Restrito 🛡️</h2>
+                <p style="color: var(--text-muted, #8a8a9e); font-size: 0.85rem;">Digite sua senha mestra para sincronizar seus estudos.</p>
+            </div>
+            <form id="login-form" style="display: flex; flex-direction: column; gap: 1rem;">
+                <input type="password" id="login-password" placeholder="Senha de Acesso" required style="width: 100%; padding: 0.9rem 1rem; background: var(--bg-color, #12121a); border: 1px solid var(--border-color, #2a2a3c); border-radius: 8px; color: var(--text-main, #fff); font-size: 1rem; outline: none; transition: border 0.2s;">
+                <button type="submit" style="width: 100%; padding: 0.9rem; background: var(--text-main, #fff); color: var(--bg-color, #12121a); border: none; border-radius: 8px; font-weight: 700; font-size: 0.95rem; cursor: pointer; transition: opacity 0.2s;">Entrar no Painel</button>
+            </form>
+            <p id="login-error" style="color: #ff5252; font-size: 0.75rem; margin-top: 1rem; display: none;">Senha incorreta. Tente novamente.</p>
+        </div>
+    `;
+    document.body.appendChild(overlay);
+
+    document.getElementById('login-form').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const pass = document.getElementById('login-password').value;
+        // Senha padrão inicial (você pode alterar para a que preferir aqui)
+        const MASTER_PASS = "tce2026"; 
+
+        if (pass === MASTER_PASS) {
+            localStorage.setItem('is_app_logged_in', 'true');
+            overlay.remove();
+            initAppFully();
+        } else {
+            const errEl = document.getElementById('login-error');
+            errEl.style.display = 'block';
+        }
+    });
+}
 
 // Mapeia os elementos com segurança após o carregamento da página
 function initElements() {
@@ -72,8 +118,18 @@ function initElements() {
     };
 }
 
-async function init() {
-    initElements(); // Garante que os elementos existem antes de interagir com eles
+// Ponto de entrada protegido por autenticação
+function init() {
+    const isLoggedIn = localStorage.getItem('is_app_logged_in');
+    if (isLoggedIn !== 'true') {
+        injectLoginUI();
+        return; // Trava a inicialização até efetuar o login
+    }
+    initAppFully();
+}
+
+function initAppFully() {
+    initElements(); 
 
     try { loadLocalDataOnly(); } catch(e) {}
     try { checkStreak(); } catch(e) {}
@@ -91,7 +147,6 @@ async function init() {
     
     if (localStorage.getItem('theme') === 'light') document.body.classList.remove('dark-mode');
 
-    // --- ASSOCIAÇÃO SEGURA DOS BOTÕES DA UI ---
     if(elements.btnAddSubject) {
         elements.btnAddSubject.addEventListener('click', () => {
             if(!elements.newSubjectInput) return; 
@@ -179,8 +234,9 @@ function loadLocalDataOnly() {
     if (!appData.history[today]) appData.history[today] = { time: 0, sessions: 0 };
 }
 
+// Sincronização inteligente com proteção contra sobrescrita de abas velhas
 async function loadCloudDataInBackground() {
-    if (!JSONBIN_API_KEY) return;
+    if (!JSONBIN_API_KEY || localStorage.getItem('is_app_logged_in') !== 'true') return;
     try {
         const response = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}/latest?t=${Date.now()}`, {
             headers: { 
@@ -194,15 +250,18 @@ async function loadCloudDataInBackground() {
             const actualData = remoteData.record || remoteData;
             
             if (actualData && !actualData.iniciando) {
-                const localStr = localStorage.getItem('studyAppData');
-                const remoteStr = JSON.stringify(actualData);
-                
-                if (localStr !== remoteStr) {
+                const remoteTime = actualData.updatedAt || 0;
+                const localTime = appData.updatedAt || 0;
+
+                // Só atualiza se a nuvem for estritamente mais recente que os dados locais
+                if (remoteTime > localTime) {
+                    const remoteStr = JSON.stringify(actualData);
                     mergeData(actualData);
                     localStorage.setItem('studyAppData', remoteStr);
                     updateUI();
                     renderSchedule();
                     renderSubjectBank();
+                    console.log("☁️ Dados sincronizados da nuvem (Mais recentes detectados).");
                 }
             }
         }
@@ -211,20 +270,25 @@ async function loadCloudDataInBackground() {
     }
 }
 
-// Sincronização automática a cada 20 segundos ou ao focar na aba
+// Verifica a nuvem automaticamente a cada 20 segundos ou ao focar na aba
 setInterval(() => {
-    if (!document.hidden) {
+    if (!document.hidden && localStorage.getItem('is_app_logged_in') === 'true') {
         loadCloudDataInBackground();
     }
 }, 20000);
 
 document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') {
+    if (document.visibilityState === 'visible' && localStorage.getItem('is_app_logged_in') === 'true') {
         loadCloudDataInBackground();
     }
 });
 
 async function saveData() {
+    if (localStorage.getItem('is_app_logged_in') !== 'true') return;
+    
+    // Atualiza o carimbo de tempo da alteração atual
+    appData.updatedAt = Date.now();
+    
     localStorage.setItem('studyAppData', JSON.stringify(appData));
     if (JSONBIN_API_KEY) {
         try {
@@ -334,6 +398,7 @@ function updateToggleBtn() {
 }
 
 function mergeData(parsedSaved) {
+    if (parsedSaved.updatedAt !== undefined) appData.updatedAt = parsedSaved.updatedAt;
     if (parsedSaved.schedule) appData.schedule = parsedSaved.schedule;
     if (parsedSaved.savedSubjects) appData.savedSubjects = parsedSaved.savedSubjects;
     appData.history = parsedSaved.history || {};
@@ -1198,7 +1263,7 @@ function openViewFlashcardModal(card) {
     modal.classList.add('active');
 }
 
-// Inicializa o app com segurança assim que o DOM estiver pronto
+// Inicialização segura controlada por login
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);
 } else {
