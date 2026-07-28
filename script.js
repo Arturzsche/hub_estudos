@@ -124,24 +124,57 @@ function loadLocalDataOnly() {
     if (!appData.history[today]) appData.history[today] = { time: 0, sessions: 0 };
 }
 
+// Substitua a sua função loadCloudDataInBackground atual por esta:
 async function loadCloudDataInBackground() {
     if (!JSONBIN_API_KEY) return;
     try {
-        const response = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}/latest`, {
-            headers: { 'X-Master-Key': JSONBIN_API_KEY }
+        // O parâmetro ?t=${Date.now()} impede que o navegador ou a nuvem usem dados velhos em cache
+        const response = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}/latest?t=${Date.now()}`, {
+            headers: { 
+                'X-Master-Key': JSONBIN_API_KEY,
+                'X-Bin-Meta': 'false' // Traz direto o conteúdo puro
+            }
         });
         
         if (response.ok) {
-            const data = await response.json();
-            if (data.record && data.record.iniciando) {
-                saveData(); 
-            } else if (data.record) {
-                mergeData(data.record);
-                localStorage.setItem('studyAppData', JSON.stringify(appData));
-                updateUI();
-                renderSchedule();
-                renderSubjectBank();
+            const remoteData = await response.json();
+            const actualData = remoteData.record || remoteData; // Trata o formato do JSONBin
+            
+            if (actualData && !actualData.iniciando) {
+                // Compara se o dado remoto é diferente do local antes de atualizar a UI
+                const localStr = localStorage.getItem('studyAppData');
+                const remoteStr = JSON.stringify(actualData);
+                
+                if (localStr !== remoteStr) {
+                    mergeData(actualData);
+                    localStorage.setItem('studyAppData', remoteStr);
+                    updateUI();
+                    renderSchedule();
+                    renderSubjectBank();
+                    console.log("🔄 Dados atualizados da nuvem em segundo plano!");
+                }
             }
+        }
+    } catch (error) {
+        console.warn("Sincronização em segundo plano indisponível offline.", error);
+    }
+}
+
+// --- GATILHOS DE TEMPO REAL ---
+
+// 1. Verifica a nuvem automaticamente a cada 20 segundos (sem precisar dar F5)
+setInterval(() => {
+    if (!document.hidden) { // Só roda se a aba estiver aberta e visível para economizar
+        loadCloudDataInBackground();
+    }
+}, 20000);
+
+// 2. Sincroniza instantaneamente assim que você clica de volta na aba do navegador
+document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+        loadCloudDataInBackground();
+    }
+});
         }
     } catch (error) {
         console.warn("Sincronização em segundo plano indisponível offline.", error);
