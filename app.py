@@ -99,7 +99,7 @@ def analisar_erro():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-# --- NOVA ROTA: GERADOR DE FLASHCARDS POR PDF ---
+# --- NOVA ROTA: GERADOR DE FLASHCARDS POR PDF COM ESPERA SEGURA ---
 @app.route('/gerar_flashcards_pdf', methods=['POST'])
 def gerar_flashcards_pdf():
     if 'file' not in request.files:
@@ -110,7 +110,17 @@ def gerar_flashcards_pdf():
     file.save(temp_path)
     
     try:
+        # Faz o upload para a nuvem do Gemini
         sample_file = client.files.upload(file=temp_path)
+        
+        # LOOP DE SEGURANÇA: Aguarda a IA terminar de ler o PDF grande
+        # O Gemini precisa de alguns segundos para extrair o texto de arquivos extensos.
+        while getattr(sample_file.state, 'name', str(sample_file.state)) == "PROCESSING":
+            time.sleep(2) # Espera 2 segundos
+            sample_file = client.files.get(name=sample_file.name) # Checa o status novamente
+            
+        if getattr(sample_file.state, 'name', str(sample_file.state)) == "FAILED":
+            raise Exception("A inteligência artificial não conseguiu ler o conteúdo deste PDF.")
         
         prompt = """
         Atue como um examinador especialista em bancas de concurso público.
@@ -133,6 +143,7 @@ def gerar_flashcards_pdf():
             contents=[sample_file, prompt]
         )
         
+        # Limpa o arquivo temporário
         if os.path.exists(temp_path):
             os.remove(temp_path)
             

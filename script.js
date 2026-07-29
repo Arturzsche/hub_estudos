@@ -1,4 +1,3 @@
-// Chaves de API para sincronização na nuvem (JSONBin)
 const JSONBIN_API_KEY = "$2a$10$9gyhyeKRkMY0JiZPZC5dX.ARzXCN3kTTi2sZoZjDMRvw/m3HIys1y"; 
 const JSONBIN_BIN_ID = "6a68916eda38895dfe9b01c3";
 
@@ -11,7 +10,10 @@ let currentPalavraObj = null;
 let ankiStudyQueue = [];
 let currentAnkiCard = null;
 
-let isAppReady = false; // TRAVA DE SEGURANÇA CONTRA SOBREPOSIÇÃO
+let isAppReady = false; 
+
+// VARIÁVEL DAS NOVAS SUB-ABAS DE FLASHCARDS
+let currentFcType = 'lexical';
 
 const CYCLE_PHASES = [
     { name: "Teoria (50min)", ms: 50 * 60 * 1000, isStudy: true },
@@ -130,16 +132,10 @@ function init() {
 async function initAppFully() {
     initElements(); 
 
-    // 1. Carrega dados locais antigos apenas para evitar tela branca
     try { loadLocalDataOnly(); } catch(e) {}
-    
-    // 2. A MÁGICA: Aguarda a nuvem terminar de baixar TUDO antes de fazer verificações
     await loadCloudDataInBackground(true);
-    
-    // 3. DESTRAVA O APLICATIVO PARA SALVAMENTO
     isAppReady = true;
 
-    // 4. Só agora ele verifica streaks e horários (se precisar salvar, já tem os dados da nuvem!)
     try { checkStreak(); } catch(e) {}
     try { calculateRecords(); } catch(e) {}
     try { renderSubjectBank(); } catch(e) {}
@@ -153,6 +149,16 @@ async function initAppFully() {
     try { setupIaGenerator(); } catch(e) {}
     
     if (localStorage.getItem('theme') === 'light') document.body.classList.remove('dark-mode');
+
+    // Setup de alternância das sub-abas de flashcards
+    document.querySelectorAll('.fc-tab').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            document.querySelectorAll('.fc-tab').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            currentFcType = btn.getAttribute('data-fctype');
+            initAnkiSession();
+        });
+    });
 
     if(elements.btnAddSubject) {
         elements.btnAddSubject.addEventListener('click', () => {
@@ -256,7 +262,7 @@ async function loadCloudDataInBackground(isInitial = false) {
                         updateUI(); 
                         renderSchedule(); 
                         renderSubjectBank();
-                        updateTimerDisplay(); // Força a visualização do cronômetro atualizar na hora
+                        updateTimerDisplay(); 
                     }
                 }
             }
@@ -264,7 +270,6 @@ async function loadCloudDataInBackground(isInitial = false) {
     } catch (error) {}
 }
 
-// Inicia o loop apenas DEPOIS de carregar a primeira vez
 setInterval(() => {
     if (!document.hidden && localStorage.getItem('is_app_logged_in') === 'true' && isAppReady) {
         loadCloudDataInBackground(false);
@@ -278,7 +283,6 @@ document.addEventListener('visibilitychange', () => {
 });
 
 async function saveData() {
-    // BLOQUEIO TOTAL se o app não estiver pronto
     if (localStorage.getItem('is_app_logged_in') !== 'true' || !isAppReady) return; 
     
     appData.updatedAt = Date.now();
@@ -566,7 +570,7 @@ function renderAllReviews() {
                 </div>
                 <div style="display: flex; gap: 4px; flex-shrink: 0; align-self: flex-start;">
                     <button class="icon-btn-small edit-rev-btn" data-id="${rev.id}" title="Editar Revisão" style="padding: 4px;"><svg viewBox="0 0 24 24" width="14" height="14"><path fill="currentColor" d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg></button>
-                    <button class="icon-btn-small del-rev-btn" data-id="${rev.id}" title="Excluir Definitivamente" style="color: var(--danger-color); padding: 4px;"><svg viewBox="0 0 24 24" width="14" height="14"><path fill="currentColor" d="M16 9v10H8V9h8m-1.5-6h-5l-1 1H5v2h14V4h-3.5l-1-1zM18 7H6v12c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7z"/></svg></button>
+                    <button class="icon-btn-small del-rev-btn" data-id="${rev.id}" title="Excluir Definitivamente" style="color: var(--danger-color); padding: 4px;"><svg viewBox="0 0 24 24" width="14" height="14"><path fill="currentColor" d="M16 9v10H8V9h8m-1.5-6h-5l-1 1H5v2h14V4h-3.5l-1-1zM18 7H6v12c0 1.1.9 2 2 2h8c1.1 0 2-2 2h8c1.1 0 2-.9 2-2V7z"/></svg></button>
                 </div>
             </div>
             <div class="error-footer" style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.5rem; border-top: 1px dashed var(--border-color); padding-top: 0.6rem;">
@@ -1008,6 +1012,7 @@ function setupFlashcardsEConectivos() {
                 } else {
                     const newCard = {
                         id: 'fc_' + Date.now(),
+                        type: 'lexical', // TAG DA ABA
                         palavra: currentPalavraObj.palavra,
                         significado: currentPalavraObj.significado,
                         sinonimos: currentPalavraObj.sinonimos,
@@ -1020,7 +1025,7 @@ function setupFlashcardsEConectivos() {
                     saveData();
                     initAnkiSession(); 
                     renderGerenciadorFlashcards();
-                    alert(`"${currentPalavraObj.palavra}" adicionada ao baralho de Flashcards!`);
+                    alert(`"${currentPalavraObj.palavra}" adicionada ao Arsenal Lexical!`);
                 }
             }
         });
@@ -1044,9 +1049,16 @@ function setupFlashcardsEConectivos() {
     }
 }
 
+// INICIA SESSÃO FILTRANDO PELA ABA ATIVA
 function initAnkiSession() {
     const today = getTodayDate();
-    ankiStudyQueue = appData.flashcards.filter(f => f.nextReview <= today);
+    
+    // Filtra pelos cards do tipo ativo. Se não tiver 'type' (cartas velhas), considera como 'lexical'.
+    ankiStudyQueue = appData.flashcards.filter(f => {
+        const isDue = f.nextReview <= today;
+        const cardType = f.type || 'lexical';
+        return isDue && cardType === currentFcType;
+    });
     
     const ankiSess = document.getElementById('anki-study-session');
     const ankiDone = document.getElementById('anki-done-msg');
@@ -1080,7 +1092,7 @@ function loadNextAnkiCard() {
     if(ankiControls) ankiControls.style.display = 'none';
     
     const statusEl = document.getElementById('anki-status');
-    if(statusEl) statusEl.textContent = `REVISÕES PENDENTES: ${ankiStudyQueue.length}`;
+    if(statusEl) statusEl.textContent = `REVISÕES PENDENTES (${currentFcType === 'lexical' ? 'LEXICAL' : 'TEORIA'}): ${ankiStudyQueue.length}`;
     
     const wordEl = document.getElementById('anki-word');
     if(wordEl) wordEl.textContent = currentAnkiCard.palavra;
@@ -1181,12 +1193,14 @@ function renderGerenciadorFlashcards() {
     if(!elements.allFlashcardsList) return;
     elements.allFlashcardsList.innerHTML = '';
     
-    const fcList = appData.flashcards || [];
+    // Filtra o gerenciador apenas com as cartas da ABA ATUAL
+    const fcList = (appData.flashcards || []).filter(f => (f.type || 'lexical') === currentFcType);
+    
     const fcStat = document.getElementById('fc-stat-total');
     if(fcStat) fcStat.textContent = fcList.length;
 
     if(fcList.length === 0) {
-        elements.allFlashcardsList.innerHTML = `<div style="grid-column: 1 / -1; padding: 3rem; text-align: center; color: var(--text-muted);">Você ainda não possui flashcards salvos no baralho.</div>`;
+        elements.allFlashcardsList.innerHTML = `<div style="grid-column: 1 / -1; padding: 3rem; text-align: center; color: var(--text-muted);">Esta seção do seu baralho está vazia.</div>`;
         return;
     }
 
@@ -1196,7 +1210,7 @@ function renderGerenciadorFlashcards() {
         div.innerHTML = `
             <div style="display: flex; justify-content: space-between; align-items: flex-start; z-index: 2; position: relative;">
                 <div>
-                    <h4 style="margin: 0 0 0.5rem 0; font-size: 1.2rem; color: var(--text-main); font-weight: 700;">${card.palavra}</h4>
+                    <h4 style="margin: 0 0 0.5rem 0; font-size: 1.2rem; color: var(--text-main); font-weight: 700; word-wrap: break-word;">${card.palavra}</h4>
                     <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0;">Próxima revisão: <strong>${formatDateBR(card.nextReview)}</strong></p>
                 </div>
                 <div class="btn-del-fc-wrapper">
@@ -1302,7 +1316,7 @@ async function gerarFlashcardsComIA() {
 
     elements.btnGenerateAiCards.style.display = 'none';
     elements.iaGeneratorStatus.style.display = 'block';
-    elements.iaStatusText.textContent = hasFile ? "Enviando e lendo PDF no servidor..." : "Analisando o texto...";
+    elements.iaStatusText.textContent = hasFile ? "Enviando e analisando o PDF no servidor (Isso pode levar alguns segundos)..." : "Analisando o texto...";
 
     try {
         let cardsGerados = [];
@@ -1350,6 +1364,7 @@ async function gerarFlashcardsComIA() {
             if (!jaExiste) {
                 appData.flashcards.push({
                     id: 'fc_ia_' + Date.now() + Math.floor(Math.random() * 10000),
+                    type: 'theory', // TAG DA ABA DE TEORIA
                     palavra: cardData.palavra || "Pergunta",
                     significado: cardData.significado || "Resposta",
                     sinonimos: Array.isArray(cardData.sinonimos) ? cardData.sinonimos : [],
@@ -1364,9 +1379,16 @@ async function gerarFlashcardsComIA() {
 
         if (cardsAdicionados > 0) {
             saveData();
+            
+            // Força a mudança visual para a aba "Sabatina Teórica" após gerar
+            document.querySelectorAll('.fc-tab').forEach(b => b.classList.remove('active'));
+            document.querySelector('.fc-tab[data-fctype="theory"]').classList.add('active');
+            currentFcType = 'theory';
+            
             initAnkiSession();
             try { renderGerenciadorFlashcards(); } catch(e) {}
-            alert(`✅ Sucesso! ${cardsAdicionados} flashcards criados e adicionados à revisão!`);
+            
+            alert(`✅ Sucesso! ${cardsAdicionados} flashcards foram enviados para a sua Sabatina Teórica!`);
             elements.modalIaGenerator.classList.remove('active');
         } else {
             alert("⚠️ Os flashcards gerados já existiam no seu baralho.");

@@ -345,6 +345,72 @@ body.dark-mode .fc-manage-card { box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
     transform: scale(1.1);
 }
 
+/* --- BOTÃO IA MÁGICO --- */
+.btn-ia-magic {
+    display: inline-flex;
+    align-items: center;
+    background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+    color: white;
+    border: none;
+    border-radius: var(--radius);
+    padding: 0.7rem 1.2rem;
+    font-weight: 600;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+    box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
+}
+.btn-ia-magic:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(99, 102, 241, 0.4);
+    color: white;
+}
+
+/* --- NOVO CABEÇALHO DOS FLASHCARDS E SUB-ABAS (ANTI-ENCAVALAMENTO) --- */
+.fc-header-container {
+    display: flex; 
+    flex-direction: column; 
+    align-items: center; 
+    gap: 1.5rem; 
+    width: 100%; 
+    margin-bottom: 2rem;
+}
+.fc-header-top {
+    display: flex; 
+    justify-content: space-between; 
+    align-items: center; 
+    width: 100%; 
+    flex-wrap: wrap; 
+    gap: 1.5rem;
+}
+.fc-tabs {
+    display: flex; 
+    background: var(--bg-color); 
+    border: 1px solid var(--border-color); 
+    border-radius: 12px; 
+    padding: 6px; 
+    gap: 6px;
+}
+.fc-tab {
+    background: transparent; 
+    border: none; 
+    padding: 0.6rem 2rem; 
+    border-radius: 8px; 
+    font-size: 0.9rem; 
+    font-weight: 600; 
+    color: var(--text-muted); 
+    cursor: pointer; 
+    transition: var(--transition);
+}
+.fc-tab.active {
+    background: var(--surface-color); 
+    color: var(--text-main); 
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+}
+body.dark-mode .fc-tab.active {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+
 @media (max-width: 800px) {
     header { grid-template-columns: 1fr; display: flex; flex-direction: column; gap: 1rem; }
     .dashboard-grid { grid-template-columns: 1fr; }
@@ -356,6 +422,11 @@ body.dark-mode .fc-manage-card { box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
     .schedule-table th, .schedule-table td { padding: 0.8rem 0.3rem; font-size: 0.8rem; }
     .btn-remove-row { left: 0; }
     .conectivos-table td:first-child { white-space: normal; }
+    
+    /* Correções responsivas novas */
+    .fc-header-top { flex-direction: column; justify-content: center; text-align: center; }
+    .fc-tabs { width: 100%; display: grid; grid-template-columns: 1fr 1fr; }
+    .fc-tab { padding: 0.6rem 1rem; }
 }
 
 #manage-rev-modal .modal-content, #manage-flashcards-modal .modal-content { background: var(--bg-color); }
@@ -377,24 +448,3 @@ body.dark-mode .fc-manage-card { box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
     #schedule-table th { font-weight: bold !important; text-transform: uppercase !important; font-size: 10pt !important; border-bottom: 3px solid #000 !important; }
 }
 @keyframes spin { 100% { transform: rotate(360deg); } }
-
-/* --- BOTÃO IA MÁGICO --- */
-.btn-ia-magic {
-    display: inline-flex;
-    align-items: center;
-    background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
-    color: white;
-    border: none;
-    border-radius: var(--radius);
-    padding: 0.7rem 1.2rem;
-    font-weight: 600;
-    font-size: 0.9rem;
-    cursor: pointer;
-    transition: transform 0.2s, box-shadow 0.2s;
-    box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
-}
-.btn-ia-magic:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(99, 102, 241, 0.4);
-    color: white;
-}

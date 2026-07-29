@@ -204,14 +204,24 @@
 
         <section id="flashcards" class="view">
             <div class="container" style="display: flex; flex-direction: column; align-items: center; min-height: 70vh;">
-                <div style="width: 100%; display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
-                    <h2 style="font-size: 1.5rem; color: var(--text-main); margin: 0; text-transform: none; letter-spacing: normal;">Sessão de Estudos Lexical</h2>
-                    <div style="display: flex; gap: 1rem;">
-                        <button id="btn-open-ia-generator" class="btn-ia-magic" title="Gerar Flashcards com IA">
-                            <svg viewBox="0 0 24 24" width="20" height="20" style="margin-right: 8px;"><path fill="currentColor" d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 9h-2V7h-2v5H6v2h2v5h2v-5h2v-2z"/></svg>
-                            Gerar com IA ✨
-                        </button>
-                        <button id="btn-manage-flashcards" class="btn secondary">Gerenciar Baralho</button>
+                
+                <!-- CABEÇALHO REFEITO E ORGANIZADO -->
+                <div class="fc-header-container">
+                    <div class="fc-header-top">
+                        <h2 style="font-size: 1.5rem; color: var(--text-main); margin: 0; text-transform: none; letter-spacing: normal;">Central de Memorização</h2>
+                        <div style="display: flex; gap: 1rem; flex-wrap: wrap; justify-content: center;">
+                            <button id="btn-open-ia-generator" class="btn-ia-magic" title="Gerar Flashcards com IA">
+                                <svg viewBox="0 0 24 24" width="20" height="20" style="margin-right: 8px;"><path fill="currentColor" d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 9h-2V7h-2v5H6v2h2v5h2v-5h2v-2z"/></svg>
+                                Análise IA ✨
+                            </button>
+                            <button id="btn-manage-flashcards" class="btn secondary">Gerenciar Baralho</button>
+                        </div>
+                    </div>
+                    
+                    <!-- NOVO SISTEMA DE SUB-ABAS -->
+                    <div class="fc-tabs">
+                        <button class="fc-tab active" data-fctype="lexical">Arsenal Lexical</button>
+                        <button class="fc-tab" data-fctype="theory">Sabatina Teórica</button>
                     </div>
                 </div>
 
@@ -221,7 +231,7 @@
                     <div class="flashcard-container" id="anki-card-container" style="width: 100%; max-width: 650px; height: 380px;">
                         <div class="flashcard" id="anki-card">
                             <div class="flashcard-face flashcard-front" style="display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; padding: 2rem;">
-                                <h2 id="anki-word" style="font-size: clamp(1.2rem, 3vw, 2rem); line-height: 1.4; text-align: center; color: var(--text-main); margin: 0; font-weight: 700; width: 100%; word-wrap: break-word;">Palavra</h2>
+                                <h2 id="anki-word" style="font-size: clamp(1.2rem, 3vw, 2.5rem); line-height: 1.4; text-align: center; color: var(--text-main); margin: 0; font-weight: 700; width: 100%; word-wrap: break-word;">Palavra</h2>
                                 <span style="font-size: 0.85rem; color: var(--text-muted); margin-top: 1.5rem; opacity: 0.6; text-transform: uppercase; letter-spacing: 1px; text-align: center;">(Clique para revelar a resposta)</span>
                             </div>
                             <div class="flashcard-face flashcard-back" style="align-items: flex-start; text-align: left; padding: 2.5rem; overflow-y: auto;">
@@ -248,8 +258,8 @@
 
                 <div id="anki-done-msg" style="text-align: center; padding: 4rem 1rem; display: none;">
                     <svg viewBox="0 0 24 24" width="80" height="80" style="color: var(--success-color); margin-bottom: 1.5rem;"><path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
-                    <h3 style="font-size: 1.8rem; color: var(--text-main); margin-bottom: 1rem;">Parabéns! 🎉</h3>
-                    <p style="color: var(--text-muted); font-size: 1.1rem;">Você já revisou todo o seu baralho agendado para hoje.</p>
+                    <h3 style="font-size: 1.8rem; color: var(--text-main); margin-bottom: 1rem;">Tudo Limpo! 🎉</h3>
+                    <p style="color: var(--text-muted); font-size: 1.1rem;">Você já revisou todo o seu baralho desta categoria agendado para hoje.</p>
                 </div>
             </div>
         </section>
@@ -316,7 +326,7 @@
     <div id="manage-flashcards-modal" class="modal-overlay">
         <div class="modal-content" style="max-width: 1000px; width: 95%; max-height: 90vh; overflow-y: auto; text-align: left; padding: 2rem; background: var(--bg-color);">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; border-bottom: 1px solid var(--border-color); padding-bottom: 1rem;">
-                <h2 style="font-size: 1.3rem; color: var(--text-main); margin: 0;">Baralho Lexical (<span id="fc-stat-total">0</span> cartas)</h2>
+                <h2 style="font-size: 1.3rem; color: var(--text-main); margin: 0;">Baralho (<span id="fc-stat-total">0</span> cartas)</h2>
                 <button id="btn-close-manage-fc" class="icon-btn-small" style="font-size: 1.5rem; font-weight: bold;">&times;</button>
             </div>
             <div id="all-flashcards-list" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1.5rem;"></div>
@@ -371,7 +381,7 @@
             </div>
             <div style="display: flex; flex-direction: column; gap: 1.2rem;">
                 <p style="color: var(--text-muted); font-size: 0.9rem; margin: 0; line-height: 1.5;">
-                    Envie um arquivo PDF de teoria ou cole um trecho abaixo. A IA fará a leitura completa e criará os flashcards para o seu baralho.
+                    Envie um arquivo PDF ou cole um trecho de texto. A IA fará a leitura e os enviará diretamente para a sua <b>Sabatina Teórica</b>.
                 </p>
                 
                 <div style="border: 2px dashed var(--border-color); padding: 1.2rem; border-radius: 8px; text-align: center; background: var(--bg-color);">
