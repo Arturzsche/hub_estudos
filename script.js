@@ -993,21 +993,44 @@ async function carregarVocabularioDiario(forceRefresh = false) {
 function renderRepertorioList() {
     const list = document.getElementById('repertorio-list');
     const badge = document.getElementById('rep-count-badge');
+    const filterSelect = document.getElementById('filter-repertorio-eixo');
+    
     if(!list) return;
     list.innerHTML = '';
     
     if(!appData.repertorios) appData.repertorios = [];
-    
-    if(badge) badge.textContent = appData.repertorios.length;
 
-    if(appData.repertorios.length === 0) {
+    if (filterSelect) {
+        const currentFilter = filterSelect.value;
+        const eixosUnicos = [...new Set(appData.repertorios.map(r => r.eixo))].sort();
+        
+        filterSelect.innerHTML = '<option value="all">Todos os Eixos</option>';
+        eixosUnicos.forEach(eixo => {
+            const option = document.createElement('option');
+            option.value = eixo;
+            option.textContent = eixo;
+            filterSelect.appendChild(option);
+        });
+        filterSelect.value = currentFilter || 'all';
+    }
+
+    const filterValue = filterSelect ? filterSelect.value : 'all';
+    
+    let filteredList = appData.repertorios;
+    if (filterValue !== 'all') {
+        filteredList = appData.repertorios.filter(r => r.eixo === filterValue);
+    }
+    
+    if(badge) badge.textContent = filteredList.length;
+
+    if(filteredList.length === 0) {
         list.innerHTML = `<div style="text-align: center; padding: 3rem; background: var(--surface-color); border: 1px dashed var(--border-color); border-radius: 12px; color: var(--text-muted);">
-            Seu acervo está vazio. Clique em "Gerar Novo Curinga" para receber seu primeiro repertório!
+            Nenhum repertório encontrado para esta seleção.
         </div>`;
         return;
     }
 
-    [...appData.repertorios].reverse().forEach((rep) => {
+    [...filteredList].reverse().forEach((rep) => {
         const card = document.createElement('div');
         card.style.cssText = "background: var(--surface-color); border: 1px solid var(--border-color); border-radius: 12px; padding: 2rem; box-shadow: 0 4px 15px rgba(0,0,0,0.03); position: relative;";
         
@@ -1071,17 +1094,18 @@ async function carregarRepertorioDiario() {
         Forneça UM repertório sociocultural curinga e de alto nível.
         NÃO repita nenhum destes: ${nomesExistentes}.
         
-        REGRAS DE SIMPLICIDADE OBRIGATÓRIAS:
-        - Na 'explicacao', use linguagem MUITO BÁSICA, direta e didática (nível ensino médio). Sem jargões complexos. Foque apenas na ideia central prática.
-        - No 'gatilho', seja curto e cirúrgico. Diga exatamente em quais temas encaixar e como conectar.
+        REGRAS OBRIGATÓRIAS:
+        1. MANTENHA RIGOROSAMENTE A ACENTUAÇÃO GRÁFICA CORRETA DO PORTUGUÊS (acentos, til, cedilha). NUNCA remova os acentos das palavras.
+        2. Na 'explicacao', use linguagem MUITO BÁSICA, direta e didática (nível ensino médio). Sem jargões complexos. Foque apenas na ideia central.
+        3. No 'gatilho', seja curto e cirúrgico. Diga exatamente em quais temas encaixar e como conectar.
         
-        O RETORNO DEVE SER ESTRITAMENTE UM OBJETO JSON VÁLIDO. NÃO USE crases.
+        O RETORNO DEVE SER ESTRITAMENTE UM OBJETO JSON VÁLIDO EM PORTUGUÊS DO BRASIL. NÃO USE crases.
         Formato obrigatório:
         {
-            "eixo": "Eixo Temático do assunto",
+            "eixo": "Eixo Temático do assunto (ex: Segurança, Saúde, Meio Ambiente)",
             "nome": "O título do conceito, livro, filme, lei ou fato",
             "autor": "Quem formulou ou onde ocorreu",
-            "explicacao": "Resumo super simples, direto e prático da ideia.",
+            "explicacao": "Resumo super simples e acentuado da ideia.",
             "gatilho": "Frase curta indicando onde e como usar."
         }`;
 
@@ -1105,6 +1129,10 @@ async function carregarRepertorioDiario() {
         
         appData.repertorios.push(repObj);
         saveData();
+        
+        const filterSelect = document.getElementById('filter-repertorio-eixo');
+        if(filterSelect) filterSelect.value = 'all';
+        
         renderRepertorioList();
         
     } catch (error) {
@@ -1121,6 +1149,10 @@ function setupRepertorio() {
         elements.btnRefreshRep.addEventListener('click', () => {
             carregarRepertorioDiario();
         });
+    }
+    const filterSelect = document.getElementById('filter-repertorio-eixo');
+    if (filterSelect) {
+        filterSelect.addEventListener('change', renderRepertorioList);
     }
 }
 
