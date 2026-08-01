@@ -111,13 +111,16 @@ function initElements() {
         modalConectivos: document.getElementById('conectivos-modal'), btnManageFlashcards: document.getElementById('btn-manage-flashcards'),
         modalManageFlashcards: document.getElementById('manage-flashcards-modal'), btnCloseManageFc: document.getElementById('btn-close-manage-fc'),
         allFlashcardsList: document.getElementById('all-flashcards-list'),
+        
         btnOpenIaGenerator: document.getElementById('btn-open-ia-generator'),
         modalIaGenerator: document.getElementById('ia-generator-modal'),
         btnCloseIaGenerator: document.getElementById('btn-close-ia-generator'),
         btnGenerateAiCards: document.getElementById('btn-generate-ai-cards'),
         iaSourceText: document.getElementById('ia-source-text'),
         iaGeneratorStatus: document.getElementById('ia-generator-status'),
-        iaStatusText: document.getElementById('ia-status-text')
+        iaStatusText: document.getElementById('ia-status-text'),
+        
+        btnRefreshRep: document.getElementById('btn-refresh-repertorio')
     };
 }
 
@@ -143,9 +146,11 @@ async function initAppFully() {
     try { initChart(); } catch(e) {}
     try { initManualReviews(); } catch(e) {}
     try { carregarVocabularioDiario(false); } catch(e) {}
+    try { carregarRepertorioDiario(false); } catch(e) {}
     try { setupFlashcardsEConectivos(); } catch(e) {}
     try { initAnkiSession(); } catch(e) {}
     try { setupIaGenerator(); } catch(e) {}
+    try { setupRepertorio(); } catch(e) {}
     
     if (localStorage.getItem('theme') === 'light') document.body.classList.remove('dark-mode');
 
@@ -981,6 +986,117 @@ async function carregarVocabularioDiario(forceRefresh = false) {
         renderizarPalavra(palavraObj);
     } catch (error) {
         renderizarPalavra({ palavra: "Anacrônico", significado: "Que não está de acordo com a sua época; obsoleto.", sinonimos: ["Ultrapassado", "Antiquado"], aplicacao: "O sistema prisional revela-se anacrônico diante das demandas atuais." });
+    }
+}
+
+// NOVA FUNÇÃO: REPERTÓRIO SOCIOCULTURAL AUTOMATIZADO
+async function carregarRepertorioDiario(forceRefresh = false) {
+    let API_KEY = localStorage.getItem('gemini_api_key');
+    const hoje = getTodayDate();
+    let repertorioSalvo = null;
+    let dataRepSalva = null;
+    let historicoRepertorios = [];
+    
+    try {
+        const repStr = localStorage.getItem('repertorio_fcc');
+        if (repStr) repertorioSalvo = JSON.parse(repStr);
+        dataRepSalva = localStorage.getItem('data_repertorio');
+        
+        const histStr = localStorage.getItem('historico_repertorios');
+        if (histStr) historicoRepertorios = JSON.parse(histStr);
+        if (!Array.isArray(historicoRepertorios)) historicoRepertorios = [];
+    } catch(e) {
+        historicoRepertorios = [];
+    }
+
+    const contentDiv = document.getElementById('repertorio-content');
+    const loadingDiv = document.getElementById('repertorio-loading');
+
+    const renderizarRepertorio = (dados) => {
+        if(!contentDiv || !loadingDiv) return;
+        
+        document.getElementById('rep-eixo').textContent = dados.eixo;
+        document.getElementById('rep-nome').textContent = dados.nome;
+        document.getElementById('rep-autor').textContent = dados.autor;
+        document.getElementById('rep-explicacao').textContent = dados.explicacao;
+        document.getElementById('rep-gatilho').textContent = dados.gatilho;
+        
+        loadingDiv.style.display = 'none';
+        contentDiv.style.display = 'block';
+    };
+
+    if (!forceRefresh && repertorioSalvo && dataRepSalva === hoje) {
+        renderizarRepertorio(repertorioSalvo);
+        return;
+    }
+
+    if (!API_KEY) {
+        return; // Retorna silenciosamente e usa o fallback se necessário, ou aguarda a key na Palavra do dia
+    }
+
+    if (forceRefresh && contentDiv && loadingDiv) {
+        contentDiv.style.display = 'none';
+        loadingDiv.style.display = 'block';
+    }
+
+    try {
+        const promptText = `Atue como um corretor especialista em discursivas de concursos (Tribunais, controle e segurança). 
+        Semente de aleatoriedade: ${Date.now()}.
+        Forneça UM repertório sociocultural curinga e de alto nível (pode ser literatura, filosofia, fato histórico, legislação ou cinema).
+        NÃO repita os últimos enviados: ${historicoRepertorios.join(', ')}.
+        
+        O RETORNO DEVE SER ESTRITAMENTE UM OBJETO JSON VÁLIDO. NENHUM TEXTO ANTES OU DEPOIS. Não use crases (\`\`\`).
+        Formato obrigatório das chaves:
+        {
+            "eixo": "Eixo Temático do assunto",
+            "nome": "O título do conceito, livro, filme, lei ou fato",
+            "autor": "Quem formulou ou onde ocorreu",
+            "explicacao": "Um resumo muito didático e direto ao ponto do que se trata",
+            "gatilho": "Como e onde conectar essa ideia dentro de um parágrafo de argumentação"
+        }`;
+
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${API_KEY}`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                contents: [{ parts: [{ text: promptText }] }],
+                generationConfig: { temperature: 1.1 }
+            })
+        });
+
+        if (!response.ok) throw new Error("Erro na API.");
+
+        const data = await response.json();
+        const respostaTexto = data.candidates[0].content.parts[0].text;
+        
+        const jsonLimpo = respostaTexto.replace(/```json/g, '').replace(/```/g, '').trim();
+        const repObj = JSON.parse(jsonLimpo);
+        
+        localStorage.setItem('repertorio_fcc', JSON.stringify(repObj));
+        localStorage.setItem('data_repertorio', hoje);
+
+        if (!historicoRepertorios.includes(repObj.nome)) {
+            historicoRepertorios.push(repObj.nome);
+            if (historicoRepertorios.length > 30) historicoRepertorios.shift(); 
+            localStorage.setItem('historico_repertorios', JSON.stringify(historicoRepertorios));
+        }
+
+        renderizarRepertorio(repObj);
+    } catch (error) {
+        renderizarRepertorio({ 
+            eixo: "Administração Pública / Sociedade", 
+            nome: "O Cidadão de Papel", 
+            autor: "Gilberto Dimenstein", 
+            explicacao: "Denuncia a ineficácia dos direitos constitucionais no Brasil, afirmando que, na prática, as garantias legais muitas vezes existem apenas no documento, deixando parte da população à margem da verdadeira cidadania.", 
+            gatilho: "Excelente para argumentações sobre ineficiência estatal, descumprimento de políticas públicas, negligência institucional ou a importância da fiscalização governamental." 
+        });
+    }
+}
+
+function setupRepertorio() {
+    if(elements.btnRefreshRep) {
+        elements.btnRefreshRep.addEventListener('click', () => {
+            carregarRepertorioDiario(true);
+        });
     }
 }
 
