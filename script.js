@@ -12,7 +12,6 @@ let currentAnkiCard = null;
 
 let isAppReady = false; 
 
-// VARIÁVEL DAS NOVAS SUB-ABAS DE FLASHCARDS
 let currentFcType = 'lexical';
 
 const CYCLE_PHASES = [
@@ -32,7 +31,7 @@ let appData = {
         { time: "15:30 - 17:00", days: ["", "", "", "", "", "", ""] }
     ],
     cycleState: { date: "", subjectIndex: 0, phaseIndex: 0, msRemaining: CYCLE_PHASES[0].ms },
-    reviews: [], flashcards: [], timerMode: 'pomodoro', stopwatchMs: 0 
+    reviews: [], flashcards: [], repertorios: [], timerMode: 'pomodoro', stopwatchMs: 0 
 };
 
 let todaysSubjects = [];
@@ -146,7 +145,6 @@ async function initAppFully() {
     try { initChart(); } catch(e) {}
     try { initManualReviews(); } catch(e) {}
     try { carregarVocabularioDiario(false); } catch(e) {}
-    try { carregarRepertorioDiario(false); } catch(e) {}
     try { setupFlashcardsEConectivos(); } catch(e) {}
     try { initAnkiSession(); } catch(e) {}
     try { setupIaGenerator(); } catch(e) {}
@@ -154,7 +152,6 @@ async function initAppFully() {
     
     if (localStorage.getItem('theme') === 'light') document.body.classList.remove('dark-mode');
 
-    // Setup de alternância das sub-abas de flashcards
     document.querySelectorAll('.fc-tab').forEach(btn => {
         btn.addEventListener('click', (e) => {
             document.querySelectorAll('.fc-tab').forEach(b => b.classList.remove('active'));
@@ -237,6 +234,7 @@ function loadLocalDataOnly() {
     }
     if (!appData.reviews) appData.reviews = [];
     if (!appData.flashcards) appData.flashcards = [];
+    if (!appData.repertorios) appData.repertorios = [];
     if (!appData.timerMode) appData.timerMode = 'pomodoro';
     const today = getTodayDate();
     if (!appData.history[today]) appData.history[today] = { time: 0, sessions: 0 };
@@ -267,6 +265,7 @@ async function loadCloudDataInBackground(isInitial = false) {
                         renderSchedule(); 
                         renderSubjectBank();
                         updateTimerDisplay(); 
+                        try { renderRepertorioList(); } catch(e) {}
                     }
                 }
             }
@@ -411,6 +410,7 @@ function mergeData(parsedSaved) {
     if (parsedSaved.cycleState) appData.cycleState = parsedSaved.cycleState;
     if (parsedSaved.reviews) appData.reviews = parsedSaved.reviews;
     if (parsedSaved.flashcards) appData.flashcards = parsedSaved.flashcards; 
+    if (parsedSaved.repertorios) appData.repertorios = parsedSaved.repertorios;
     if (parsedSaved.timerMode) appData.timerMode = parsedSaved.timerMode;
     if (parsedSaved.stopwatchMs !== undefined) appData.stopwatchMs = parsedSaved.stopwatchMs;
 }
@@ -989,70 +989,100 @@ async function carregarVocabularioDiario(forceRefresh = false) {
     }
 }
 
-// NOVA FUNÇÃO: REPERTÓRIO SOCIOCULTURAL AUTOMATIZADO
-async function carregarRepertorioDiario(forceRefresh = false) {
-    let API_KEY = localStorage.getItem('gemini_api_key');
-    const hoje = getTodayDate();
-    let repertorioSalvo = null;
-    let dataRepSalva = null;
-    let historicoRepertorios = [];
+// --- SISTEMA DE REPERTÓRIO SOCIOCULTURAL AUTOMATIZADO E SALVO ---
+function renderRepertorioList() {
+    const list = document.getElementById('repertorio-list');
+    const badge = document.getElementById('rep-count-badge');
+    if(!list) return;
+    list.innerHTML = '';
     
-    try {
-        const repStr = localStorage.getItem('repertorio_fcc');
-        if (repStr) repertorioSalvo = JSON.parse(repStr);
-        dataRepSalva = localStorage.getItem('data_repertorio');
-        
-        const histStr = localStorage.getItem('historico_repertorios');
-        if (histStr) historicoRepertorios = JSON.parse(histStr);
-        if (!Array.isArray(historicoRepertorios)) historicoRepertorios = [];
-    } catch(e) {
-        historicoRepertorios = [];
-    }
+    if(!appData.repertorios) appData.repertorios = [];
+    
+    if(badge) badge.textContent = appData.repertorios.length;
 
-    const contentDiv = document.getElementById('repertorio-content');
-    const loadingDiv = document.getElementById('repertorio-loading');
-
-    const renderizarRepertorio = (dados) => {
-        if(!contentDiv || !loadingDiv) return;
-        
-        document.getElementById('rep-eixo').textContent = dados.eixo;
-        document.getElementById('rep-nome').textContent = dados.nome;
-        document.getElementById('rep-autor').textContent = dados.autor;
-        document.getElementById('rep-explicacao').textContent = dados.explicacao;
-        document.getElementById('rep-gatilho').textContent = dados.gatilho;
-        
-        loadingDiv.style.display = 'none';
-        contentDiv.style.display = 'block';
-    };
-
-    if (!forceRefresh && repertorioSalvo && dataRepSalva === hoje) {
-        renderizarRepertorio(repertorioSalvo);
+    if(appData.repertorios.length === 0) {
+        list.innerHTML = `<div style="text-align: center; padding: 3rem; background: var(--surface-color); border: 1px dashed var(--border-color); border-radius: 12px; color: var(--text-muted);">
+            Seu acervo está vazio. Clique em "Gerar Novo Curinga" para receber seu primeiro repertório!
+        </div>`;
         return;
     }
 
+    [...appData.repertorios].reverse().forEach((rep) => {
+        const card = document.createElement('div');
+        card.style.cssText = "background: var(--surface-color); border: 1px solid var(--border-color); border-radius: 12px; padding: 2rem; box-shadow: 0 4px 15px rgba(0,0,0,0.03); position: relative;";
+        
+        card.innerHTML = `
+            <button class="icon-btn-small btn-del-rep" data-id="${rep.id}" style="position: absolute; top: 1.5rem; right: 1.5rem; color: var(--danger-color); padding: 4px;" title="Apagar do Acervo">
+                <svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M16 9v10H8V9h8m-1.5-6h-5l-1 1H5v2h14V4h-3.5l-1-1zM18 7H6v12c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7z"/></svg>
+            </button>
+            <div style="margin-bottom: 1.2rem;">
+                <span style="font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); font-weight: 700;">${rep.eixo}</span>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.2rem;">
+                <div style="padding: 1rem; background: var(--bg-color); border-radius: 8px; border-left: 3px solid #6366f1;">
+                    <span style="font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); font-weight: 700;">Nome do Repertório</span>
+                    <p style="font-size: 1.05rem; color: var(--text-main); font-weight: 600; margin: 0.2rem 0 0 0;">${rep.nome}</p>
+                </div>
+                <div style="padding: 1rem; background: var(--bg-color); border-radius: 8px; border-left: 3px solid #8b5cf6;">
+                    <span style="font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); font-weight: 700;">Autor ou Origem</span>
+                    <p style="font-size: 1.05rem; color: var(--text-main); font-weight: 600; margin: 0.2rem 0 0 0;">${rep.autor}</p>
+                </div>
+            </div>
+            <div style="margin-bottom: 1.2rem;">
+                <span style="font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); font-weight: 700;">Explicação Simplificada</span>
+                <p style="font-size: 0.95rem; color: var(--text-main); line-height: 1.6; margin-top: 0.3rem;">${rep.explicacao}</p>
+            </div>
+            <div style="padding: 1.2rem; background: rgba(39, 201, 63, 0.05); border: 1px solid rgba(39, 201, 63, 0.2); border-radius: 8px;">
+                <span style="font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1px; color: var(--success-color); font-weight: 700;">Gatilho de Aplicação</span>
+                <p style="font-size: 0.95rem; color: var(--text-main); line-height: 1.6; margin: 0.3rem 0 0 0; font-style: italic;">${rep.gatilho}</p>
+            </div>
+        `;
+        
+        card.querySelector('.btn-del-rep').addEventListener('click', () => {
+            if(confirm(`Tem certeza que deseja remover "${rep.nome}" do seu acervo?`)) {
+                appData.repertorios = appData.repertorios.filter(r => r.id !== rep.id);
+                saveData();
+                renderRepertorioList();
+            }
+        });
+        
+        list.appendChild(card);
+    });
+}
+
+async function carregarRepertorioDiario() {
+    let API_KEY = localStorage.getItem('gemini_api_key');
     if (!API_KEY) {
-        return; // Retorna silenciosamente e usa o fallback se necessário, ou aguarda a key na Palavra do dia
+        alert("Cadastre a chave da API do Gemini carregando a palavra do dia primeiro.");
+        return;
     }
 
-    if (forceRefresh && contentDiv && loadingDiv) {
-        contentDiv.style.display = 'none';
-        loadingDiv.style.display = 'block';
-    }
+    const containerMain = document.getElementById('repertorio-container-main');
+    const loadingDiv = document.getElementById('repertorio-loading');
+
+    containerMain.style.display = 'none';
+    loadingDiv.style.display = 'block';
+
+    if(!appData.repertorios) appData.repertorios = [];
+    const nomesExistentes = appData.repertorios.map(r => r.nome).join(', ');
 
     try {
-        const promptText = `Atue como um corretor especialista em discursivas de concursos (Tribunais, controle e segurança). 
-        Semente de aleatoriedade: ${Date.now()}.
-        Forneça UM repertório sociocultural curinga e de alto nível (pode ser literatura, filosofia, fato histórico, legislação ou cinema).
-        NÃO repita os últimos enviados: ${historicoRepertorios.join(', ')}.
+        const promptText = `Atue como um professor especialista em redação para concursos públicos. 
+        Forneça UM repertório sociocultural curinga e de alto nível.
+        NÃO repita nenhum destes: ${nomesExistentes}.
         
-        O RETORNO DEVE SER ESTRITAMENTE UM OBJETO JSON VÁLIDO. NENHUM TEXTO ANTES OU DEPOIS. Não use crases (\`\`\`).
-        Formato obrigatório das chaves:
+        REGRAS DE SIMPLICIDADE OBRIGATÓRIAS:
+        - Na 'explicacao', use linguagem MUITO BÁSICA, direta e didática (nível ensino médio). Sem jargões complexos. Foque apenas na ideia central prática.
+        - No 'gatilho', seja curto e cirúrgico. Diga exatamente em quais temas encaixar e como conectar.
+        
+        O RETORNO DEVE SER ESTRITAMENTE UM OBJETO JSON VÁLIDO. NÃO USE crases.
+        Formato obrigatório:
         {
             "eixo": "Eixo Temático do assunto",
             "nome": "O título do conceito, livro, filme, lei ou fato",
             "autor": "Quem formulou ou onde ocorreu",
-            "explicacao": "Um resumo muito didático e direto ao ponto do que se trata",
-            "gatilho": "Como e onde conectar essa ideia dentro de um parágrafo de argumentação"
+            "explicacao": "Resumo super simples, direto e prático da ideia.",
+            "gatilho": "Frase curta indicando onde e como usar."
         }`;
 
         const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${API_KEY}`, {
@@ -1071,31 +1101,25 @@ async function carregarRepertorioDiario(forceRefresh = false) {
         const jsonLimpo = respostaTexto.replace(/```json/g, '').replace(/```/g, '').trim();
         const repObj = JSON.parse(jsonLimpo);
         
-        localStorage.setItem('repertorio_fcc', JSON.stringify(repObj));
-        localStorage.setItem('data_repertorio', hoje);
-
-        if (!historicoRepertorios.includes(repObj.nome)) {
-            historicoRepertorios.push(repObj.nome);
-            if (historicoRepertorios.length > 30) historicoRepertorios.shift(); 
-            localStorage.setItem('historico_repertorios', JSON.stringify(historicoRepertorios));
-        }
-
-        renderizarRepertorio(repObj);
+        repObj.id = 'rep_' + Date.now();
+        
+        appData.repertorios.push(repObj);
+        saveData();
+        renderRepertorioList();
+        
     } catch (error) {
-        renderizarRepertorio({ 
-            eixo: "Administração Pública / Sociedade", 
-            nome: "O Cidadão de Papel", 
-            autor: "Gilberto Dimenstein", 
-            explicacao: "Denuncia a ineficácia dos direitos constitucionais no Brasil, afirmando que, na prática, as garantias legais muitas vezes existem apenas no documento, deixando parte da população à margem da verdadeira cidadania.", 
-            gatilho: "Excelente para argumentações sobre ineficiência estatal, descumprimento de políticas públicas, negligência institucional ou a importância da fiscalização governamental." 
-        });
+        alert("Ocorreu um erro ao gerar o repertório. Tente novamente em alguns segundos.");
+    } finally {
+        loadingDiv.style.display = 'none';
+        containerMain.style.display = 'block';
     }
 }
 
 function setupRepertorio() {
+    renderRepertorioList();
     if(elements.btnRefreshRep) {
         elements.btnRefreshRep.addEventListener('click', () => {
-            carregarRepertorioDiario(true);
+            carregarRepertorioDiario();
         });
     }
 }
@@ -1164,11 +1188,9 @@ function setupFlashcardsEConectivos() {
     }
 }
 
-// INICIA SESSÃO FILTRANDO PELA ABA ATIVA
 function initAnkiSession() {
     const today = getTodayDate();
     
-    // Filtra pelos cards do tipo ativo. Se não tiver 'type' (cartas velhas), considera como 'lexical'.
     ankiStudyQueue = appData.flashcards.filter(f => {
         const isDue = f.nextReview <= today;
         const cardType = f.type || 'lexical';
@@ -1308,7 +1330,6 @@ function renderGerenciadorFlashcards() {
     if(!elements.allFlashcardsList) return;
     elements.allFlashcardsList.innerHTML = '';
     
-    // Filtra o gerenciador apenas com as cartas da ABA ATUAL
     const fcList = (appData.flashcards || []).filter(f => (f.type || 'lexical') === currentFcType);
     
     const fcStat = document.getElementById('fc-stat-total');
@@ -1323,7 +1344,6 @@ function renderGerenciadorFlashcards() {
         const div = document.createElement('div');
         div.className = 'fc-manage-card';
         
-        // Estrutura atualizada: Lixeira separada e elevada para não ser engolida pelo overlay
         div.innerHTML = `
             <div style="position: relative; z-index: 5;">
                 <h4 style="margin: 0 0 0.5rem 0; font-size: 1.2rem; color: var(--text-main); font-weight: 700; word-wrap: break-word; padding-right: 40px;">${card.palavra}</h4>
@@ -1382,8 +1402,6 @@ function openViewFlashcardModal(card) {
     
     modal.classList.add('active');
 }
-
-// --- GERADOR DE FLASHCARDS COM SUPORTE A PDF NO BACKEND ---
 
 function setupIaGenerator() {
     if (elements.btnOpenIaGenerator) {
@@ -1480,7 +1498,7 @@ async function gerarFlashcardsComIA() {
             if (!jaExiste) {
                 appData.flashcards.push({
                     id: 'fc_ia_' + Date.now() + Math.floor(Math.random() * 10000),
-                    type: 'theory', // TAG DA ABA DE TEORIA
+                    type: 'theory', 
                     palavra: cardData.palavra || "Pergunta",
                     significado: cardData.significado || "Resposta",
                     sinonimos: Array.isArray(cardData.sinonimos) ? cardData.sinonimos : [],
@@ -1496,7 +1514,6 @@ async function gerarFlashcardsComIA() {
         if (cardsAdicionados > 0) {
             saveData();
             
-            // Força a mudança visual para a aba "Sabatina Teórica" após gerar
             document.querySelectorAll('.fc-tab').forEach(b => b.classList.remove('active'));
             document.querySelector('.fc-tab[data-fctype="theory"]').classList.add('active');
             currentFcType = 'theory';
