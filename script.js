@@ -22,6 +22,14 @@ const CYCLE_PHASES = [
 
 const REVIEW_INTERVALS = [1, 7, 15, 30, 60];
 
+// Define rigidamente os eixos temáticos aceitos
+const PREDEFINED_EIXOS = [
+    "Tecnologia e Sociedade",
+    "Trabalho e Modernidade",
+    "Cultura, Comportamento e Cidadania",
+    "Meio Ambiente e Sustentabilidade"
+];
+
 let appData = {
     updatedAt: 0,
     history: {}, streak: 0, lastStudyDate: null, recordDay: 0, recordWeek: 0, dailyGoalSeconds: 14400, 
@@ -1000,27 +1008,15 @@ function renderRepertorioList() {
     
     if(!appData.repertorios) appData.repertorios = [];
 
-    // Predefine os eixos que queremos manter sempre como prioridade na lista
-    const predefinedEixos = [
-        "Tecnologia e Sociedade",
-        "Trabalho e Modernidade",
-        "Cultura, Comportamento e Cidadania",
-        "Meio Ambiente e Sustentabilidade"
-    ];
-
-    if (filterSelect) {
-        const currentFilter = filterSelect.value;
-        const eixosNoAcervo = [...new Set(appData.repertorios.map(r => r.eixo))];
-        const allEixos = [...new Set([...predefinedEixos, ...eixosNoAcervo])].sort();
-        
+    // Preenche o Select apenas com os eixos permitidos estritamente
+    if (filterSelect && filterSelect.options.length <= 1) {
         filterSelect.innerHTML = '<option value="all">Todos os Eixos</option>';
-        allEixos.forEach(eixo => {
+        PREDEFINED_EIXOS.forEach(eixo => {
             const option = document.createElement('option');
             option.value = eixo;
             option.textContent = eixo;
             filterSelect.appendChild(option);
         });
-        filterSelect.value = currentFilter || 'all';
     }
 
     const filterValue = filterSelect ? filterSelect.value : 'all';
@@ -1099,15 +1095,16 @@ async function carregarRepertorioDiario() {
     const nomesExistentes = appData.repertorios.map(r => r.nome).join(', ');
 
     try {
-        const promptText = `Atue como um professor especialista em redação para concursos públicos (foco FCC). 
+        const promptText = `Atue como um professor especialista em redação para concursos públicos (foco FCC e bancas rigorosas). 
         Forneça UM repertório sociocultural curinga e de alto nível.
         NÃO repita nenhum destes: ${nomesExistentes}.
         
         REGRAS OBRIGATÓRIAS:
-        1. MANTENHA RIGOROSAMENTE A ACENTUAÇÃO GRÁFICA CORRETA DO PORTUGUÊS (acentos, til, cedilha). NUNCA remova os acentos das palavras.
-        2. Na 'explicacao', use linguagem MUITO BÁSICA, direta e didática (nível ensino médio). Sem jargões complexos. Foque apenas na ideia central.
-        3. No 'gatilho', seja curto e cirúrgico. Diga exatamente em quais temas encaixar e como conectar.
-        4. OBRIGATÓRIO: O 'eixo' DEVE ser EXATAMENTE UM dos 4 listados abaixo (escolha o que melhor se encaixa ao repertório):
+        1. FONTES VARIADAS: O repertório NÃO precisa ser apenas um livro. Você PODE E DEVE variar trazendo obras cinematográficas (filmes/documentários), séries, pensadores/sociólogos, fatos históricos, notícias de grande relevância, leis, etc.
+        2. MANTENHA RIGOROSAMENTE A ACENTUAÇÃO GRÁFICA CORRETA DO PORTUGUÊS (acentos, til, cedilha). NUNCA remova os acentos das palavras.
+        3. Na 'explicacao', use linguagem MUITO BÁSICA, direta e didática (nível ensino médio). Foque apenas na ideia central.
+        4. No 'gatilho', seja curto e cirúrgico indicando como e onde conectar a ideia.
+        5. ENQUADRAMENTO ESTRITO: O 'eixo' retornado DEVE SER RIGOROSAMENTE EXATAMENTE UM DOS 4 ABAIXO. Avalie o repertório gerado e encaixe-o na melhor opção:
            - "Tecnologia e Sociedade"
            - "Trabalho e Modernidade"
            - "Cultura, Comportamento e Cidadania"
@@ -1116,9 +1113,9 @@ async function carregarRepertorioDiario() {
         O RETORNO DEVE SER ESTRITAMENTE UM OBJETO JSON VÁLIDO EM PORTUGUÊS DO BRASIL. NÃO USE crases.
         Formato obrigatório:
         {
-            "eixo": "Nome do eixo (copie exatamente um dos 4 acima)",
-            "nome": "O título do conceito, livro, filme, lei ou fato",
-            "autor": "Quem formulou ou onde ocorreu",
+            "eixo": "Nome do eixo (copie estritamente uma das 4 opções acima)",
+            "nome": "O título do conceito, filme, livro, lei, notícia ou fato histórico",
+            "autor": "Quem formulou, dirigiu, ou onde ocorreu (ex: Zygmunt Bauman, Filme de 2013, Fato Histórico, etc)",
             "explicacao": "Resumo super simples e acentuado da ideia.",
             "gatilho": "Frase curta indicando onde e como usar."
         }`;
@@ -1140,6 +1137,11 @@ async function carregarRepertorioDiario() {
         const repObj = JSON.parse(jsonLimpo);
         
         repObj.id = 'rep_' + Date.now();
+        
+        // Garante que o eixo seja um dos 4 permitidos, por segurança adicional.
+        if (!PREDEFINED_EIXOS.includes(repObj.eixo)) {
+            repObj.eixo = "Cultura, Comportamento e Cidadania"; // Fallback de segurança
+        }
         
         appData.repertorios.push(repObj);
         saveData();
@@ -1197,7 +1199,7 @@ function setupFlashcardsEConectivos() {
                 } else {
                     const newCard = {
                         id: 'fc_' + Date.now(),
-                        type: 'lexical', // TAG DA ABA
+                        type: 'lexical', 
                         palavra: currentPalavraObj.palavra,
                         significado: currentPalavraObj.significado,
                         sinonimos: currentPalavraObj.sinonimos,
