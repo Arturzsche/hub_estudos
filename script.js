@@ -1,5 +1,6 @@
-const JSONBIN_API_KEY = "$2a$10$9gyhyeKRkMY0JiZPZC5dX.ARzXCN3kTTi2sZoZjDMRvw/m3HIys1y"; 
-const JSONBIN_BIN_ID = "6a68916eda38895dfe9b01c3";
+const GITHUB_TOKEN = "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"; // Ex: ghp_1a2b3c4d5e...
+const GIST_ID = "f13ced57c6740bec464f9b29df237ed4"; // Ex: a1b2c3d4e5f6...
+const GIST_FILENAME = "meusestudos_db.json";
 
 let timerInterval;
 let isRunning = false;
@@ -117,7 +118,6 @@ function initElements() {
         modalConectivos: document.getElementById('conectivos-modal'), btnManageFlashcards: document.getElementById('btn-manage-flashcards'),
         modalManageFlashcards: document.getElementById('manage-flashcards-modal'), btnCloseManageFc: document.getElementById('btn-close-manage-fc'),
         allFlashcardsList: document.getElementById('all-flashcards-list'),
-        
         btnOpenIaGenerator: document.getElementById('btn-open-ia-generator'),
         modalIaGenerator: document.getElementById('ia-generator-modal'),
         btnCloseIaGenerator: document.getElementById('btn-close-ia-generator'),
@@ -125,7 +125,6 @@ function initElements() {
         iaSourceText: document.getElementById('ia-source-text'),
         iaGeneratorStatus: document.getElementById('ia-generator-status'),
         iaStatusText: document.getElementById('ia-status-text'),
-
         btnOpenManualFc: document.getElementById('btn-open-manual-fc'),
         modalManualFc: document.getElementById('manual-fc-modal'),
         inputFcFront: document.getElementById('manual-fc-front'),
@@ -134,12 +133,9 @@ function initElements() {
         inputFcContext: document.getElementById('manual-fc-context'),
         btnCancelManualFc: document.getElementById('btn-manual-fc-cancel'),
         btnSaveManualFc: document.getElementById('btn-manual-fc-save'),
-        
-        // Novos seletores de Matéria para FC
         selectManualFcSubject: document.getElementById('manual-fc-subject'),
         selectIaFcSubject: document.getElementById('ia-fc-subject'),
         filterFcSubject: document.getElementById('filter-fc-subject'),
-        
         btnRefreshRep: document.getElementById('btn-refresh-repertorio')
     };
 }
@@ -261,18 +257,24 @@ function loadLocalDataOnly() {
     if (!appData.history[today]) appData.history[today] = { time: 0, sessions: 0 };
 }
 
+// NOVA FUNÇÃO: Carrega dados do GitHub Gist
 async function loadCloudDataInBackground(isInitial = false) {
-    if (!JSONBIN_API_KEY || localStorage.getItem('is_app_logged_in') !== 'true') return;
+    if (!GITHUB_TOKEN || !GIST_ID || localStorage.getItem('is_app_logged_in') !== 'true') return;
     try {
-        const response = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}/latest?t=${Date.now()}`, {
-            headers: { 'X-Master-Key': JSONBIN_API_KEY, 'X-Bin-Meta': 'false' }
+        const response = await fetch(`https://api.github.com/gists/${GIST_ID}`, {
+            headers: {
+                'Authorization': `Bearer ${GITHUB_TOKEN}`,
+                'Accept': 'application/vnd.github.v3+json',
+                'Cache-Control': 'no-cache'
+            }
         });
         
         if (response.ok) {
-            const remoteData = await response.json();
-            const actualData = remoteData.record || remoteData;
+            const gistData = await response.json();
+            const fileContent = gistData.files[GIST_FILENAME].content;
+            const actualData = JSON.parse(fileContent);
             
-            if (actualData && !actualData.iniciando) {
+            if (actualData && actualData.updatedAt !== undefined) {
                 const remoteTime = actualData.updatedAt || 0;
                 const localTime = appData.updatedAt || 0;
 
@@ -291,35 +293,45 @@ async function loadCloudDataInBackground(isInitial = false) {
                 }
             }
         }
-    } catch (error) {}
+    } catch (error) {
+        console.error("Erro ao carregar dados do Gist", error);
+    }
 }
 
-setInterval(() => {
-    if (!document.hidden && localStorage.getItem('is_app_logged_in') === 'true' && isAppReady) {
-        loadCloudDataInBackground(false);
-    }
-}, 20000);
-
+// Sincronização inteligente ao focar na aba
 document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible' && localStorage.getItem('is_app_logged_in') === 'true' && isAppReady) {
         loadCloudDataInBackground(false);
     }
 });
 
+// NOVA FUNÇÃO: Salva dados no GitHub Gist
 async function saveData() {
     if (localStorage.getItem('is_app_logged_in') !== 'true' || !isAppReady) return; 
     
     appData.updatedAt = Date.now();
     localStorage.setItem('studyAppData', JSON.stringify(appData));
     
-    if (JSONBIN_API_KEY) {
+    if (GITHUB_TOKEN && GIST_ID) {
         try {
-            await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json', 'X-Master-Key': JSONBIN_API_KEY },
-                body: JSON.stringify(appData)
+            await fetch(`https://api.github.com/gists/${GIST_ID}`, {
+                method: 'PATCH',
+                headers: {
+                    'Authorization': `Bearer ${GITHUB_TOKEN}`,
+                    'Accept': 'application/vnd.github.v3+json',
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    files: {
+                        [GIST_FILENAME]: {
+                            content: JSON.stringify(appData)
+                        }
+                    }
+                })
             });
-        } catch (error) {}
+        } catch (error) {
+            console.error("Erro ao salvar dados no Gist", error);
+        }
     }
 }
 
@@ -486,12 +498,10 @@ function createGoogleCalendarLink(rev) {
 }
 
 function updateAppSubjects() {
-    // Para Revisões
     if(elements.selectManualRevSubject) { elements.selectManualRevSubject.innerHTML = '<option value="">Selecione a matéria...</option>'; appData.savedSubjects.forEach(subj => elements.selectManualRevSubject.appendChild(new Option(subj, subj))); }
     if(elements.filterReviewSubject) { const currentFilter = elements.filterReviewSubject.value; elements.filterReviewSubject.innerHTML = '<option value="all">Todas as Matérias</option>'; appData.savedSubjects.forEach(subj => elements.filterReviewSubject.appendChild(new Option(subj, subj))); elements.filterReviewSubject.value = currentFilter || 'all'; }
     if(elements.editRevSubject) { elements.editRevSubject.innerHTML = ''; appData.savedSubjects.forEach(subj => elements.editRevSubject.appendChild(new Option(subj, subj))); }
     
-    // Para Flashcards
     if(elements.selectManualFcSubject) { elements.selectManualFcSubject.innerHTML = '<option value="">Selecione a matéria (Obrigatório)...</option>'; appData.savedSubjects.forEach(subj => elements.selectManualFcSubject.appendChild(new Option(subj, subj))); }
     if(elements.selectIaFcSubject) { elements.selectIaFcSubject.innerHTML = '<option value="">Selecione a matéria (Obrigatório)...</option>'; appData.savedSubjects.forEach(subj => elements.selectIaFcSubject.appendChild(new Option(subj, subj))); }
     if(elements.filterFcSubject) { const currentFilter = elements.filterFcSubject.value; elements.filterFcSubject.innerHTML = '<option value="all">Todas as Matérias</option>'; appData.savedSubjects.forEach(subj => elements.filterFcSubject.appendChild(new Option(subj, subj))); elements.filterFcSubject.value = currentFilter || 'all'; }
@@ -1234,7 +1244,6 @@ function setupFlashcardsEConectivos() {
         });
     }
     
-    // --- LÓGICA DO MODAL MANUAL DE FLASHCARD ---
     if(elements.btnOpenManualFc) {
         elements.btnOpenManualFc.addEventListener('click', () => {
             if (elements.selectManualFcSubject) elements.selectManualFcSubject.value = '';
@@ -1271,7 +1280,7 @@ function setupFlashcardsEConectivos() {
                     palavra: front,
                     significado: back,
                     sinonimos: keywords,
-                    aplicacao: context, // Fica vazio se o usuário não digitar nada
+                    aplicacao: context, 
                     interval: 0,
                     ease: 2.5,
                     nextReview: getTodayDate()
@@ -1361,7 +1370,6 @@ function loadNextAnkiCard() {
     const statusEl = document.getElementById('anki-status');
     if(statusEl) statusEl.textContent = `REVISÕES PENDENTES (${currentFcType === 'lexical' ? 'LEXICAL' : 'TEORIA'}): ${ankiStudyQueue.length}`;
     
-    // Tratamento visual da matéria na carta
     const subjBadgeFront = document.getElementById('anki-card-subject-front');
     const subjBadgeBack = document.getElementById('anki-card-subject-back');
     if(subjBadgeFront) {
@@ -1390,7 +1398,6 @@ function loadNextAnkiCard() {
     const meanEl = document.getElementById('anki-meaning');
     if(meanEl) meanEl.textContent = currentAnkiCard.significado;
     
-    // Mostra ou esconde o contexto se ele existir
     const exWrapper = document.getElementById('anki-example-wrapper');
     const exEl = document.getElementById('anki-example');
     if(exWrapper && exEl) {
@@ -1498,7 +1505,6 @@ function renderGerenciadorFlashcards() {
 
     let fcList = (appData.flashcards || []).filter(f => (f.type || 'lexical') === currentFcType);
     
-    // Aplica o filtro por matéria se estiver na aba teoria
     if (currentFcType === 'theory' && filterValue !== 'all') {
         fcList = fcList.filter(f => f.subject === filterValue);
     }
