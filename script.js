@@ -902,18 +902,12 @@ async function carregarVocabularioDiario(forceRefresh = false) {
     const hoje = getTodayDate();
     let palavraSalva = null;
     let dataSalva = null;
-    let historicoPalavras = [];
     
     try {
         const palStr = localStorage.getItem('palavra_concurso');
         if (palStr) palavraSalva = JSON.parse(palStr);
         dataSalva = localStorage.getItem('data_palavra');
-        
-        const histStr = localStorage.getItem('historico_palavras');
-        if (histStr) historicoPalavras = JSON.parse(histStr);
-        if (!Array.isArray(historicoPalavras)) historicoPalavras = [];
     } catch(e) {
-        historicoPalavras = [];
         palavraSalva = null;
     }
 
@@ -921,7 +915,6 @@ async function carregarVocabularioDiario(forceRefresh = false) {
     const vocabLoading = document.getElementById('vocab-loading');
 
     const renderizarPalavra = (dados) => {
-        if(!vocabContent || !vocabLoading) return;
         currentPalavraObj = dados; 
         
         const wordEl = document.getElementById('vocab-word');
@@ -944,8 +937,8 @@ async function carregarVocabularioDiario(forceRefresh = false) {
         const exampleEl = document.getElementById('vocab-example');
         if(exampleEl) exampleEl.textContent = `"${dados.aplicacao}"`;
         
-        vocabLoading.style.display = 'none';
-        vocabContent.style.display = 'flex';
+        if(vocabLoading) vocabLoading.style.display = 'none';
+        if(vocabContent) vocabContent.style.display = 'flex';
     };
 
     if (!forceRefresh && palavraSalva && dataSalva === hoje) {
@@ -954,66 +947,41 @@ async function carregarVocabularioDiario(forceRefresh = false) {
     }
 
     if (!API_KEY) {
-        try {
-            API_KEY = prompt("Segurança ativada! 🛡️\n\nCole sua NOVA chave de API do Gemini aqui.");
-        } catch(e) { 
-            API_KEY = null;
-        }
-        
-        if (API_KEY && API_KEY.trim() !== "") {
-            localStorage.setItem('gemini_api_key', API_KEY.trim());
-        } else {
-            renderizarPalavra({ 
-                palavra: "Desídia", 
-                significado: "Disposição para evitar esforço físico ou moral; indolência, negligência.", 
-                sinonimos: ["Omissão", "Inércia"], 
-                aplicacao: "A impunidade é corolário da desídia estatal na estruturação de forças de segurança." 
-            });
-            return;
-        }
+        renderizarPalavra({ 
+            palavra: "Desídia", 
+            significado: "Disposição para evitar esforço físico ou moral; indolência, negligência.", 
+            sinonimos: ["Omissão", "Inércia"], 
+            aplicacao: "A impunidade é corolário da desídia estatal na estruturação de forças de segurança." 
+        });
+        return;
     }
 
-    if (forceRefresh && vocabContent && vocabLoading) {
-        vocabContent.style.display = 'none';
+    if (forceRefresh && vocabLoading) {
+        if(vocabContent) vocabContent.style.display = 'none';
         vocabLoading.style.display = 'block';
         vocabLoading.innerHTML = `<div class="modern-spinner"></div><br>Gerando nova palavra...`;
     }
 
-    if (currentPalavraObj && !historicoPalavras.includes(currentPalavraObj.palavra)) {
-        historicoPalavras.push(currentPalavraObj.palavra);
-    }
-    if (historicoPalavras.length > 10) historicoPalavras.shift();
-    localStorage.setItem('historico_palavras', JSON.stringify(historicoPalavras));
-
     try {
-        const promptText = "Atue como um avaliador rigoroso de redação de concursos (foco em tribunais e carreiras policiais). Semente de aleatoriedade: " + Date.now() + ". Forneça UMA palavra de vocabulário avançado e formal útil para uma dissertação. REGRAS CRUCIAIS: 1. A palavra DEVE ser inédita. 2. É EXPRESSAMENTE PROIBIDO retornar qualquer uma destas palavras: " + historicoPalavras.join(', ') + ". O retorno deve ser EXATAMENTE E APENAS um objeto JSON neste formato, sem crases: {\"palavra\": \"Exemplo\", \"significado\": \"Significado\", \"sinonimos\": [\"SinônimoA\"], \"aplicacao\": \"Frase\"}";
+        const promptText = "Atue como um avaliador rigoroso de redação de concursos. Forneça UMA palavra de vocabulário avançado e formal útil para uma dissertação. O retorno deve ser EXATAMENTE E APENAS um objeto JSON neste formato, sem crases: {\"palavra\": \"Exemplo\", \"significado\": \"Significado\", \"sinonimos\": [\"SinônimoA\"], \"aplicacao\": \"Frase\"}";
 
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${API_KEY}`, {
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`, {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
                 contents: [{ parts: [{ text: promptText }] }],
-                generationConfig: { temperature: 1.2, topP: 0.95 }
+                generationConfig: { temperature: 1.2 }
             })
         });
 
-        if (!response.ok) {
-            if(response.status === 403 || response.status === 400) localStorage.removeItem('gemini_api_key');
-            throw new Error(`Erro na API (${response.status})`);
-        }
+        if (!response.ok) throw new Error(`Erro na API (${response.status})`);
 
         const data = await response.json();
         const respostaTexto = data.candidates[0].content.parts[0].text;
-        const jsonLimpo = respostaTexto.replace(/```json/g, '').replace(/```/g, '').trim();
+        const jsonLimpo = respostaTexto.replaceAll("```json", "").replaceAll("```", "").trim();
         
         const palavraObj = JSON.parse(jsonLimpo);
         localStorage.setItem('palavra_concurso', JSON.stringify(palavraObj));
         localStorage.setItem('data_palavra', hoje);
-
-        if (!historicoPalavras.includes(palavraObj.palavra)) {
-            historicoPalavras.push(palavraObj.palavra);
-            if (historicoPalavras.length > 10) historicoPalavras.shift();
-            localStorage.setItem('historico_palavras', JSON.stringify(historicoPalavras));
-        }
 
         renderizarPalavra(palavraObj);
     } catch (error) {
@@ -1117,7 +1085,7 @@ async function carregarRepertorioDiario() {
     try {
         const promptText = "Atue como um professor especialista em redação para concursos públicos. Forneça UM repertório sociocultural curinga e de alto nível. NÃO repita nenhum destes: " + nomesExistentes + ". O retorno deve ser estritamente um objeto JSON válido sem crases: {\"eixo\": \"Cultura, Comportamento e Cidadania\", \"nome\": \"Título\", \"autor\": \"Autor\", \"explicacao\": \"Explicação\", \"gatilho\": \"Gatilho\"}";
 
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${API_KEY}`, {
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`, {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
                 contents: [{ parts: [{ text: promptText }] }],
@@ -1130,4 +1098,581 @@ async function carregarRepertorioDiario() {
         const data = await response.json();
         const respostaTexto = data.candidates[0].content.parts[0].text;
         
-        const jsonLimpo = respostaTexto.replace(/```json/g, '').replace(/
+        const jsonLimpo = respostaTexto.replaceAll("```json", "").replaceAll("```", "").trim();
+        const repObj = JSON.parse(jsonLimpo);
+        
+        repObj.id = 'rep_' + Date.now();
+        
+        if (!PREDEFINED_EIXOS.includes(repObj.eixo)) {
+            repObj.eixo = "Cultura, Comportamento e Cidadania"; 
+        }
+        
+        appData.repertorios.push(repObj);
+        saveData();
+        
+        const filterSelect = document.getElementById('filter-repertorio-eixo');
+        if(filterSelect) filterSelect.value = 'all';
+        
+        renderRepertorioList();
+        
+    } catch (error) {
+        alert("Ocorreu um erro ao gerar o repertório. Tente novamente em alguns segundos.");
+    } finally {
+        loadingDiv.style.display = 'none';
+        containerMain.style.display = 'block';
+    }
+}
+
+function setupRepertorio() {
+    renderRepertorioList();
+    if(elements.btnRefreshRep) {
+        elements.btnRefreshRep.addEventListener('click', () => {
+            carregarRepertorioDiario();
+        });
+    }
+    const filterSelect = document.getElementById('filter-repertorio-eixo');
+    if (filterSelect) {
+        filterSelect.addEventListener('change', renderRepertorioList);
+    }
+}
+
+function setupFlashcardsEConectivos() {
+    if(elements.btnNavConectivos) {
+        elements.btnNavConectivos.addEventListener('click', () => {
+            if(elements.modalConectivos) elements.modalConectivos.classList.add('active');
+        });
+    }
+    if(elements.btnCloseConectivos) {
+        elements.btnCloseConectivos.addEventListener('click', () => {
+            if(elements.modalConectivos) elements.modalConectivos.classList.remove('active');
+        });
+    }
+
+    if(elements.btnRefreshWord) {
+        elements.btnRefreshWord.addEventListener('click', () => {
+            carregarVocabularioDiario(true);
+        });
+    }
+
+    if(elements.btnSaveFlashcard) {
+        elements.btnSaveFlashcard.addEventListener('click', () => {
+            if(currentPalavraObj) {
+                const jaExiste = appData.flashcards.some(f => f.palavra === currentPalavraObj.palavra);
+                if(jaExiste) {
+                    alert(`A palavra "${currentPalavraObj.palavra}" já está no seu baralho!`);
+                } else {
+                    const newCard = {
+                        id: 'fc_' + Date.now(),
+                        type: 'lexical', 
+                        palavra: currentPalavraObj.palavra,
+                        significado: currentPalavraObj.significado,
+                        sinonimos: currentPalavraObj.sinonimos,
+                        aplicacao: currentPalavraObj.aplicacao,
+                        interval: 0,
+                        ease: 2.5,
+                        nextReview: getTodayDate()
+                    };
+                    appData.flashcards.push(newCard);
+                    saveData();
+                    initAnkiSession(); 
+                    renderGerenciadorFlashcards();
+                    alert(`"${currentPalavraObj.palavra}" adicionada ao Arsenal Lexical!`);
+                }
+            }
+        });
+    }
+    
+    if(elements.btnOpenManualFc) {
+        elements.btnOpenManualFc.addEventListener('click', () => {
+            if (elements.selectManualFcSubject) elements.selectManualFcSubject.value = '';
+            if (elements.inputFcFront) elements.inputFcFront.value = '';
+            if (elements.inputFcBack) elements.inputFcBack.value = '';
+            if (elements.inputFcKeywords) elements.inputFcKeywords.value = '';
+            if (elements.inputFcContext) elements.inputFcContext.value = '';
+            if (elements.modalManualFc) elements.modalManualFc.classList.add('active');
+        });
+    }
+
+    if(elements.btnCancelManualFc) {
+        elements.btnCancelManualFc.addEventListener('click', () => {
+            if (elements.modalManualFc) elements.modalManualFc.classList.remove('active');
+        });
+    }
+
+    if(elements.btnSaveManualFc) {
+        elements.btnSaveManualFc.addEventListener('click', () => {
+            const subject = elements.selectManualFcSubject.value;
+            const front = elements.inputFcFront.value.trim();
+            const back = elements.inputFcBack.value.trim();
+            
+            const keywordsRaw = elements.inputFcKeywords.value;
+            const keywords = keywordsRaw ? keywordsRaw.split(',').map(k => k.trim()).filter(k => k) : [];
+            
+            const context = elements.inputFcContext.value.trim();
+
+            if(subject && front && back) {
+                const newCard = {
+                    id: 'fc_manual_' + Date.now() + Math.floor(Math.random() * 10000),
+                    type: 'theory', 
+                    subject: subject,
+                    palavra: front,
+                    significado: back,
+                    sinonimos: keywords,
+                    aplicacao: context, 
+                    interval: 0,
+                    ease: 2.5,
+                    nextReview: getTodayDate()
+                };
+                
+                appData.flashcards.push(newCard);
+                saveData();
+                
+                document.querySelectorAll('.fc-tab').forEach(b => b.classList.remove('active'));
+                const theoryTab = document.querySelector('.fc-tab[data-fctype="theory"]');
+                if(theoryTab) theoryTab.classList.add('active');
+                currentFcType = 'theory';
+
+                initAnkiSession();
+                try { renderGerenciadorFlashcards(); } catch(e) {}
+                
+                elements.modalManualFc.classList.remove('active');
+                alert(`✅ Flashcard adicionado com sucesso à sua Sabatina Teórica!`);
+            } else {
+                alert("⚠️ A Matéria, a Frente (pergunta) e o Verso (resposta) são obrigatórios!");
+            }
+        });
+    }
+    
+    if(elements.btnManageFlashcards) {
+        elements.btnManageFlashcards.addEventListener('click', () => {
+            if(elements.filterFcSubject) elements.filterFcSubject.value = 'all';
+            renderGerenciadorFlashcards();
+            elements.modalManageFlashcards.classList.add('active');
+        });
+    }
+    if(elements.btnCloseManageFc) {
+        elements.btnCloseManageFc.addEventListener('click', () => {
+            elements.modalManageFlashcards.classList.remove('active');
+        });
+    }
+    if(elements.filterFcSubject) {
+        elements.filterFcSubject.addEventListener('change', renderGerenciadorFlashcards);
+    }
+    if(document.getElementById('btn-close-view-fc')) {
+        document.getElementById('btn-close-view-fc').addEventListener('click', () => {
+            document.getElementById('view-fc-modal').classList.remove('active');
+        });
+    }
+}
+
+function initAnkiSession() {
+    const today = getTodayDate();
+    
+    ankiStudyQueue = appData.flashcards.filter(f => {
+        const isDue = f.nextReview <= today;
+        const cardType = f.type || 'lexical';
+        return isDue && cardType === currentFcType;
+    });
+    
+    const ankiSess = document.getElementById('anki-study-session');
+    const ankiDone = document.getElementById('anki-done-msg');
+    
+    if(!ankiSess || !ankiDone) return;
+
+    if (ankiStudyQueue.length > 0) {
+        ankiSess.style.display = 'flex';
+        ankiDone.style.display = 'none';
+        loadNextAnkiCard();
+    } else {
+        ankiSess.style.display = 'none';
+        ankiDone.style.display = 'block';
+    }
+}
+
+function loadNextAnkiCard() {
+    if (ankiStudyQueue.length === 0) {
+        initAnkiSession(); 
+        return;
+    }
+    
+    currentAnkiCard = ankiStudyQueue[0];
+    
+    const ankiCard = document.getElementById('anki-card');
+    const btnAnkiShow = document.getElementById('btn-anki-show');
+    const ankiControls = document.getElementById('anki-controls');
+    
+    if(ankiCard) ankiCard.classList.remove('is-flipped');
+    if(btnAnkiShow) btnAnkiShow.style.display = 'block';
+    if(ankiControls) ankiControls.style.display = 'none';
+    
+    const statusEl = document.getElementById('anki-status');
+    if(statusEl) statusEl.textContent = `REVISÕES PENDENTES (${currentFcType === 'lexical' ? 'LEXICAL' : 'TEORIA'}): ${ankiStudyQueue.length}`;
+    
+    const subjBadgeFront = document.getElementById('anki-card-subject-front');
+    const subjBadgeBack = document.getElementById('anki-card-subject-back');
+    if(subjBadgeFront) {
+        if(currentAnkiCard.subject) {
+            subjBadgeFront.style.display = 'inline-block';
+            subjBadgeFront.textContent = currentAnkiCard.subject;
+        } else {
+            subjBadgeFront.style.display = 'none';
+        }
+    }
+    if(subjBadgeBack) {
+        if(currentAnkiCard.subject) {
+            subjBadgeBack.style.display = 'inline-block';
+            subjBadgeBack.textContent = currentAnkiCard.subject;
+        } else {
+            subjBadgeBack.style.display = 'none';
+        }
+    }
+
+    const wordEl = document.getElementById('anki-word');
+    if(wordEl) wordEl.textContent = currentAnkiCard.palavra;
+    
+    const wordBackEl = document.getElementById('anki-word-back');
+    if(wordBackEl) wordBackEl.textContent = currentAnkiCard.palavra;
+    
+    const meanEl = document.getElementById('anki-meaning');
+    if(meanEl) meanEl.textContent = currentAnkiCard.significado;
+    
+    const exWrapper = document.getElementById('anki-example-wrapper');
+    const exEl = document.getElementById('anki-example');
+    if(exWrapper && exEl) {
+        if(currentAnkiCard.aplicacao && currentAnkiCard.aplicacao.trim() !== "") {
+            exWrapper.style.display = 'block';
+            exEl.textContent = `"${currentAnkiCard.aplicacao}"`;
+        } else {
+            exWrapper.style.display = 'none';
+        }
+    }
+    
+    const synContainer = document.getElementById('anki-synonyms');
+    if(synContainer) {
+        synContainer.innerHTML = '';
+        if(Array.isArray(currentAnkiCard.sinonimos)) {
+            currentAnkiCard.sinonimos.forEach(syn => {
+                const span = document.createElement('span');
+                span.style.cssText = "font-size: 0.8rem; background: var(--border-color); color: var(--text-main); padding: 4px 10px; border-radius: 12px; font-weight: 500;";
+                span.textContent = syn;
+                synContainer.appendChild(span);
+            });
+        }
+    }
+    
+    const ival = currentAnkiCard.interval || 0;
+    const e = currentAnkiCard.ease || 2.5;
+    
+    const iHard = ival === 0 ? 1 : Math.ceil(ival * 1.2);
+    const iGood = ival === 0 ? 1 : Math.ceil(ival * 2.5);
+    const iEasy = ival === 0 ? 4 : Math.ceil(ival * e * 1.3);
+    
+    const t2 = document.getElementById('anki-time-2'); if(t2) t2.textContent = `${iHard} d`;
+    const t3 = document.getElementById('anki-time-3'); if(t3) t3.textContent = `${iGood} d`;
+    const t4 = document.getElementById('anki-time-4'); if(t4) t4.textContent = `${iEasy} d`;
+}
+
+const cardContainer = document.getElementById('anki-card-container');
+if(cardContainer) {
+    cardContainer.addEventListener('click', () => {
+        if (!currentAnkiCard) return;
+        const ankiCard = document.getElementById('anki-card');
+        const btnAnkiShow = document.getElementById('btn-anki-show');
+        const ankiControls = document.getElementById('anki-controls');
+        if(ankiCard) ankiCard.classList.add('is-flipped');
+        if(btnAnkiShow) btnAnkiShow.style.display = 'none';
+        if(ankiControls) ankiControls.style.display = 'flex';
+    });
+}
+
+const btnShow = document.getElementById('btn-anki-show');
+if(btnShow) {
+    btnShow.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const cc = document.getElementById('anki-card-container');
+        if(cc) cc.click();
+    });
+}
+
+document.querySelectorAll('.btn-anki-rate').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const rating = parseInt(btn.getAttribute('data-rate'));
+        
+        let ival = currentAnkiCard.interval || 0;
+        let ease = currentAnkiCard.ease || 2.5;
+        
+        if (rating === 1) { 
+            ival = 0; ease = Math.max(1.3, ease - 0.2);
+        } else if (rating === 2) { 
+            ival = ival === 0 ? 1 : Math.ceil(ival * 1.2); ease = Math.max(1.3, ease - 0.15);
+        } else if (rating === 3) { 
+            ival = ival === 0 ? 1 : Math.ceil(ival * 2.5);
+        } else if (rating === 4) { 
+            ival = ival === 0 ? 4 : Math.ceil(ival * ease * 1.3); ease += 0.15;
+        }
+        
+        currentAnkiCard.interval = ival;
+        currentAnkiCard.ease = ease;
+        
+        const nextDate = new Date();
+        if (rating === 1) {
+            currentAnkiCard.nextReview = getTodayDate();
+            ankiStudyQueue.push(ankiStudyQueue.shift()); 
+        } else {
+            nextDate.setDate(nextDate.getDate() + ival);
+            currentAnkiCard.nextReview = `${nextDate.getFullYear()}-${String(nextDate.getMonth() + 1).padStart(2, '0')}-${String(nextDate.getDate()).padStart(2, '0')}`;
+            ankiStudyQueue.shift(); 
+        }
+        
+        const idx = appData.flashcards.findIndex(f => f.id === currentAnkiCard.id);
+        if (idx !== -1) appData.flashcards[idx] = currentAnkiCard;
+        saveData();
+        loadNextAnkiCard();
+    });
+});
+
+function renderGerenciadorFlashcards() {
+    if(!elements.allFlashcardsList) return;
+    elements.allFlashcardsList.innerHTML = '';
+    
+    const filterContainer = document.getElementById('fc-filter-container');
+    if(filterContainer) filterContainer.style.display = currentFcType === 'theory' ? 'flex' : 'none';
+
+    const filterValue = elements.filterFcSubject ? elements.filterFcSubject.value : 'all';
+
+    let fcList = (appData.flashcards || []).filter(f => (f.type || 'lexical') === currentFcType);
+    
+    if (currentFcType === 'theory' && filterValue !== 'all') {
+        fcList = fcList.filter(f => f.subject === filterValue);
+    }
+    
+    const fcStat = document.getElementById('fc-stat-total');
+    if(fcStat) fcStat.textContent = fcList.length;
+
+    if(fcList.length === 0) {
+        elements.allFlashcardsList.innerHTML = `<div style="grid-column: 1 / -1; padding: 3rem; text-align: center; color: var(--text-muted);">Nenhum flashcard encontrado para este filtro.</div>`;
+        return;
+    }
+
+    fcList.forEach((card, index) => {
+        const div = document.createElement('div');
+        div.className = 'fc-manage-card';
+        
+        const subjectHtml = card.subject ? `<span style="font-size: 0.65rem; background: var(--border-color); color: var(--text-main); padding: 2px 6px; border-radius: 4px; margin-bottom: 0.5rem; display: inline-block;">${card.subject}</span>` : '';
+
+        div.innerHTML = `
+            <div style="position: relative; z-index: 5;">
+                ${subjectHtml}
+                <h4 style="margin: 0 0 0.5rem 0; font-size: 1.2rem; color: var(--text-main); font-weight: 700; word-wrap: break-word; padding-right: 40px;">${card.palavra}</h4>
+                <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0;">Próxima revisão: <strong>${formatDateBR(card.nextReview)}</strong></p>
+            </div>
+            
+            <div class="btn-del-fc-wrapper" style="position: absolute; top: 1.5rem; right: 1.5rem; z-index: 20;">
+                <button class="btn-del-fc" data-id="${card.id}" title="Apagar carta">
+                    <svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M16 9v10H8V9h8m-1.5-6h-5l-1 1H5v2h14V4h-3.5l-1-1zM18 7H6v12c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7z"/></svg>
+                </button>
+            </div>
+            
+            <div class="fc-view-overlay" style="z-index: 10;">
+                <button class="btn-view-content" data-index="${index}">
+                    <svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>
+                    Ver Conteúdo
+                </button>
+            </div>
+        `;
+        
+        div.querySelector('.btn-del-fc').addEventListener('click', (e) => {
+            e.stopPropagation();
+            if(confirm(`Tem certeza que deseja apagar a carta "${card.palavra}"?`)) {
+                appData.flashcards = appData.flashcards.filter(f => f.id !== card.id);
+                saveData();
+                renderGerenciadorFlashcards();
+                initAnkiSession();
+            }
+        });
+
+        div.querySelector('.btn-view-content').addEventListener('click', (e) => {
+            e.stopPropagation();
+            openViewFlashcardModal(card);
+        });
+
+        elements.allFlashcardsList.appendChild(div);
+    });
+}
+
+function openViewFlashcardModal(card) {
+    const modal = document.getElementById('view-fc-modal');
+    document.getElementById('view-fc-word').textContent = card.palavra;
+    document.getElementById('view-fc-meaning').textContent = card.significado;
+    
+    const exEl = document.getElementById('view-fc-example');
+    if(card.aplicacao && card.aplicacao.trim() !== "") {
+        exEl.parentElement.style.display = 'block';
+        exEl.textContent = `"${card.aplicacao}"`;
+    } else {
+        exEl.parentElement.style.display = 'none';
+    }
+    
+    const synContainer = document.getElementById('view-fc-synonyms');
+    synContainer.innerHTML = '';
+    if(Array.isArray(card.sinonimos)) {
+        card.sinonimos.forEach(syn => {
+            const span = document.createElement('span');
+            span.style.cssText = "font-size: 0.75rem; background: var(--border-color); color: var(--text-main); padding: 4px 10px; border-radius: 12px; font-weight: 500;";
+            span.textContent = syn;
+            synContainer.appendChild(span);
+        });
+    }
+    
+    modal.classList.add('active');
+}
+
+function setupIaGenerator() {
+    if (elements.btnOpenIaGenerator) {
+        elements.btnOpenIaGenerator.addEventListener('click', () => {
+            if (elements.selectIaFcSubject) elements.selectIaFcSubject.value = '';
+            if (elements.iaSourceText) elements.iaSourceText.value = '';
+            const fileInput = document.getElementById('ia-pdf-file');
+            if (fileInput) fileInput.value = '';
+            const fileLabel = document.getElementById('pdf-file-label');
+            if (fileLabel) fileLabel.textContent = "Clique para selecionar um PDF";
+            if (elements.modalIaGenerator) elements.modalIaGenerator.classList.add('active');
+        });
+    }
+
+    if (elements.btnCloseIaGenerator) {
+        elements.btnCloseIaGenerator.addEventListener('click', () => {
+            if (elements.modalIaGenerator) elements.modalIaGenerator.classList.remove('active');
+        });
+    }
+
+    const fileInput = document.getElementById('ia-pdf-file');
+    if (fileInput) {
+        fileInput.addEventListener('change', (e) => {
+            const fileLabel = document.getElementById('pdf-file-label');
+            if (e.target.files.length > 0) {
+                fileLabel.textContent = `📄 ${e.target.files[0].name}`;
+            } else {
+                fileLabel.textContent = "Clique para selecionar um PDF";
+            }
+        });
+    }
+
+    if (elements.btnGenerateAiCards) {
+        elements.btnGenerateAiCards.addEventListener('click', gerarFlashcardsComIA);
+    }
+}
+
+async function gerarFlashcardsComIA() {
+    const fileInput = document.getElementById('ia-pdf-file');
+    const texto = elements.iaSourceText.value.trim();
+    const hasFile = fileInput && fileInput.files.length > 0;
+    
+    const subject = elements.selectIaFcSubject ? elements.selectIaFcSubject.value : "";
+
+    if (!subject) {
+        alert("Por favor, selecione a matéria de destino primeiro.");
+        return;
+    }
+
+    if (!hasFile && !texto) {
+        alert("Por favor, selecione um arquivo PDF ou cole algum texto para a IA analisar.");
+        return;
+    }
+
+    elements.btnGenerateAiCards.style.display = 'none';
+    elements.iaGeneratorStatus.style.display = 'block';
+    elements.iaStatusText.textContent = hasFile ? "Enviando e analisando o PDF no servidor..." : "Analisando o texto...";
+
+    try {
+        let cardsGerados = [];
+
+        if (hasFile) {
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+
+            const response = await fetch('http://localhost:5000/gerar_flashcards_pdf', {
+                method: 'POST',
+                body: formData
+            });
+
+            if (!response.ok) throw new Error("Erro ao processar o PDF no servidor local.");
+            cardsGerados = await response.json();
+
+        } else {
+            let API_KEY = localStorage.getItem('gemini_api_key');
+            if (!API_KEY) {
+                alert("Chave da API do Gemini não encontrada.");
+                return;
+            }
+
+            const promptText = "Atue como um examinador de bancas de concurso público. Analise o texto e gere entre 3 e 5 flashcards em formato de array JSON puro, contendo estritamente as chaves: palavra, significado, sinonimos (como array de strings) e aplicacao. Retorne APENAS o JSON puro, sem blocos de código markdown.";
+
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`, {
+                method: 'POST', 
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    contents: [{ parts: [{ text: promptText + " TEXTO: " + texto }] }] 
+                })
+            });
+
+            if (!response.ok) throw new Error("Erro na API do Gemini.");
+            const data = await response.json();
+            const respostaTexto = data.candidates[0].content.parts[0].text;
+            
+            const jsonLimpo = respostaTexto.replaceAll("```json", "").replaceAll("```", "").trim();
+            cardsGerados = JSON.parse(jsonLimpo);
+        }
+
+        let cardsAdicionados = 0;
+        const hoje = getTodayDate();
+
+        cardsGerados.forEach(cardData => {
+            const jaExiste = appData.flashcards.some(f => f.palavra.toLowerCase() === cardData.palavra.toLowerCase());
+            if (!jaExiste) {
+                appData.flashcards.push({
+                    id: 'fc_ia_' + Date.now() + Math.floor(Math.random() * 10000),
+                    type: 'theory', 
+                    subject: subject,
+                    palavra: cardData.palavra || "Pergunta",
+                    significado: cardData.significado || "Resposta",
+                    sinonimos: Array.isArray(cardData.sinonimos) ? cardData.sinonimos : [],
+                    aplicacao: cardData.aplicacao || "",
+                    interval: 0,
+                    ease: 2.5,
+                    nextReview: hoje
+                });
+                cardsAdicionados++;
+            }
+        });
+
+        if (cardsAdicionados > 0) {
+            saveData();
+            document.querySelectorAll('.fc-tab').forEach(b => b.classList.remove('active'));
+            document.querySelector('.fc-tab[data-fctype="theory"]').classList.add('active');
+            currentFcType = 'theory';
+            
+            initAnkiSession();
+            try { renderGerenciadorFlashcards(); } catch(e) {}
+            
+            alert(`Sucesso! ${cardsAdicionados} flashcards foram enviados para a sua Sabatina Teórica!`);
+            elements.modalIaGenerator.classList.remove('active');
+        } else {
+            alert("Os flashcards gerados já existiam no seu baralho.");
+        }
+
+    } catch (error) {
+        console.error("Erro:", error);
+        alert(`Erro ao gerar flashcards: ${error.message}`);
+    } finally {
+        elements.btnGenerateAiCards.style.display = 'flex';
+        elements.iaGeneratorStatus.style.display = 'none';
+    }
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+} else {
+    init();
+}
