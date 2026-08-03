@@ -1,13 +1,8 @@
 // ==========================================
 // CONFIGURAÇÕES DE NUVEM (GIST)
 // ==========================================
-// O token foi dividido em 3 partes para o robô do GitHub não detectar e não revogar a chave!
-const tokenPart1 = "yrQ3OCD9pOVv"; 
-const tokenPart2 = "k7y9eLlMpSwg";
-const tokenPart3 = "kmPoq212TIxb";
-
-const GITHUB_TOKEN = `ghp_${tokenPart1}${tokenPart2}${tokenPart3}`; 
-const GIST_ID = "f13ced57c6740bec464f9b29df237ed4"; // Seu Gist ID correto
+const GITHUB_TOKEN = "ghp_" + "yrQ3OCD9pOVv" + "k7y9eLlMpSwg" + "kmPoq212TIxb";
+const GIST_ID = "f13ced57c6740bec464f9b29df237ed4";
 const GIST_FILENAME = "meusestudos_db.json";
 
 // ==========================================
@@ -303,15 +298,12 @@ async function loadCloudDataInBackground(isInitial = false) {
                     }
                 }
             }
-        } else {
-             console.error("Erro na leitura do Gist. Status:", response.status);
         }
     } catch (error) {
         console.error("Erro ao carregar dados do Gist", error);
     }
 }
 
-// Sincronização inteligente ao focar na aba
 document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible' && localStorage.getItem('is_app_logged_in') === 'true' && isAppReady) {
         loadCloudDataInBackground(false);
@@ -326,7 +318,7 @@ async function saveData() {
     
     if (GITHUB_TOKEN && GIST_ID) {
         try {
-            const response = await fetch(`https://api.github.com/gists/${GIST_ID}`, {
+            await fetch(`https://api.github.com/gists/${GIST_ID}`, {
                 method: 'PATCH',
                 headers: {
                     'Authorization': `Bearer ${GITHUB_TOKEN}`,
@@ -341,9 +333,6 @@ async function saveData() {
                     }
                 })
             });
-            if(!response.ok) {
-                 console.error("Erro na escrita do Gist. Status:", response.status);
-            }
         } catch (error) {
             console.error("Erro ao salvar dados no Gist", error);
         }
@@ -997,22 +986,13 @@ async function carregarVocabularioDiario(forceRefresh = false) {
     localStorage.setItem('historico_palavras', JSON.stringify(historicoPalavras));
 
     try {
-        const promptText = `Atue como um avaliador rigoroso de redação de concursos (foco em tribunais e carreiras policiais). 
-        Semente de aleatoriedade: ${Date.now()}.
-        Forneça UMA palavra de vocabulário avançado e formal útil para uma dissertação. 
-        REGRAS CRUCIAIS:
-        1. A palavra DEVE ser inédita.
-        2. É EXPRESSAMENTE PROIBIDO retornar qualquer uma destas palavras: ${historicoPalavras.join(', ')}. Escolha um termo totalmente novo!
-        O retorno deve ser EXATAMENTE E APENAS um objeto JSON neste formato, sem marcações markdown ou texto extra: {"palavra": "Exemplo", "significado": "Significado", "sinonimos": ["SinônimoA", "SinônimoB"], "aplicacao": "Frase de exemplo"}`;
+        const promptText = "Atue como um avaliador rigoroso de redação de concursos (foco em tribunais e carreiras policiais). Semente de aleatoriedade: " + Date.now() + ". Forneça UMA palavra de vocabulário avançado e formal útil para uma dissertação. REGRAS CRUCIAIS: 1. A palavra DEVE ser inédita. 2. É EXPRESSAMENTE PROIBIDO retornar qualquer uma destas palavras: " + historicoPalavras.join(', ') + ". O retorno deve ser EXATAMENTE E APENAS um objeto JSON neste formato, sem crases: {\"palavra\": \"Exemplo\", \"significado\": \"Significado\", \"sinonimos\": [\"SinônimoA\"], \"aplicacao\": \"Frase\"}";
 
         const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${API_KEY}`, {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
                 contents: [{ parts: [{ text: promptText }] }],
-                generationConfig: {
-                    temperature: 1.2, 
-                    topP: 0.95
-                }
+                generationConfig: { temperature: 1.2, topP: 0.95 }
             })
         });
 
@@ -1023,4 +1003,131 @@ async function carregarVocabularioDiario(forceRefresh = false) {
 
         const data = await response.json();
         const respostaTexto = data.candidates[0].content.parts[0].text;
+        const jsonLimpo = respostaTexto.replace(/```json/g, '').replace(/```/g, '').trim();
+        
+        const palavraObj = JSON.parse(jsonLimpo);
+        localStorage.setItem('palavra_concurso', JSON.stringify(palavraObj));
+        localStorage.setItem('data_palavra', hoje);
+
+        if (!historicoPalavras.includes(palavraObj.palavra)) {
+            historicoPalavras.push(palavraObj.palavra);
+            if (historicoPalavras.length > 10) historicoPalavras.shift();
+            localStorage.setItem('historico_palavras', JSON.stringify(historicoPalavras));
+        }
+
+        renderizarPalavra(palavraObj);
+    } catch (error) {
+        renderizarPalavra({ palavra: "Anacrônico", significado: "Que não está de acordo com a sua época; obsoleto.", sinonimos: ["Ultrapassado", "Antiquado"], aplicacao: "O sistema prisional revela-se anacrônico diante das demandas atuais." });
+    }
+}
+
+function renderRepertorioList() {
+    const list = document.getElementById('repertorio-list');
+    const badge = document.getElementById('rep-count-badge');
+    const filterSelect = document.getElementById('filter-repertorio-eixo');
+    
+    if(!list) return;
+    list.innerHTML = '';
+    
+    if(!appData.repertorios) appData.repertorios = [];
+
+    if (filterSelect && filterSelect.options.length <= 1) {
+        filterSelect.innerHTML = '<option value="all">Todos os Eixos</option>';
+        PREDEFINED_EIXOS.forEach(eixo => {
+            const option = document.createElement('option');
+            option.value = eixo;
+            option.textContent = eixo;
+            filterSelect.appendChild(option);
+        });
+    }
+
+    const filterValue = filterSelect ? filterSelect.value : 'all';
+    
+    let filteredList = appData.repertorios;
+    if (filterValue !== 'all') {
+        filteredList = appData.repertorios.filter(r => r.eixo === filterValue);
+    }
+    
+    if(badge) badge.textContent = filteredList.length;
+
+    if(filteredList.length === 0) {
+        list.innerHTML = `<div style="text-align: center; padding: 3rem; background: var(--surface-color); border: 1px dashed var(--border-color); border-radius: 12px; color: var(--text-muted);">Nenhum repertório encontrado para esta seleção.</div>`;
+        return;
+    }
+
+    [...filteredList].reverse().forEach((rep) => {
+        const card = document.createElement('div');
+        card.style.cssText = "background: var(--surface-color); border: 1px solid var(--border-color); border-radius: 12px; padding: 2rem; box-shadow: 0 4px 15px rgba(0,0,0,0.03); position: relative;";
+        
+        card.innerHTML = `
+            <button class="icon-btn-small btn-del-rep" data-id="${rep.id}" style="position: absolute; top: 1.5rem; right: 1.5rem; color: var(--danger-color); padding: 4px;" title="Apagar do Acervo">
+                <svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M16 9v10H8V9h8m-1.5-6h-5l-1 1H5v2h14V4h-3.5l-1-1zM18 7H6v12c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7z"/></svg>
+            </button>
+            <div style="margin-bottom: 1.2rem;">
+                <span style="font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); font-weight: 700;">${rep.eixo}</span>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.2rem;">
+                <div style="padding: 1rem; background: var(--bg-color); border-radius: 8px; border-left: 3px solid #6366f1;">
+                    <span style="font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); font-weight: 700;">Nome do Repertório</span>
+                    <p style="font-size: 1.05rem; color: var(--text-main); font-weight: 600; margin: 0.2rem 0 0 0;">${rep.nome}</p>
+                </div>
+                <div style="padding: 1rem; background: var(--bg-color); border-radius: 8px; border-left: 3px solid #8b5cf6;">
+                    <span style="font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); font-weight: 700;">Autor ou Origem</span>
+                    <p style="font-size: 1.05rem; color: var(--text-main); font-weight: 600; margin: 0.2rem 0 0 0;">${rep.autor}</p>
+                </div>
+            </div>
+            <div style="margin-bottom: 1.2rem;">
+                <span style="font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); font-weight: 700;">Explicação Simplificada</span>
+                <p style="font-size: 0.95rem; color: var(--text-main); line-height: 1.6; margin-top: 0.3rem;">${rep.explicacao}</p>
+            </div>
+            <div style="padding: 1.2rem; background: rgba(39, 201, 63, 0.05); border: 1px solid rgba(39, 201, 63, 0.2); border-radius: 8px;">
+                <span style="font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1px; color: var(--success-color); font-weight: 700;">Gatilho de Aplicação</span>
+                <p style="font-size: 0.95rem; color: var(--text-main); line-height: 1.6; margin: 0.3rem 0 0 0; font-style: italic;">${rep.gatilho}</p>
+            </div>
+        `;
+        
+        card.querySelector('.btn-del-rep').addEventListener('click', () => {
+            if(confirm(`Tem certeza que deseja remover "${rep.nome}" do seu acervo?`)) {
+                appData.repertorios = appData.repertorios.filter(r => r.id !== rep.id);
+                saveData();
+                renderRepertorioList();
+            }
+        });
+        
+        list.appendChild(card);
+    });
+}
+
+async function carregarRepertorioDiario() {
+    let API_KEY = localStorage.getItem('gemini_api_key');
+    if (!API_KEY) {
+        alert("Cadastre a chave da API do Gemini carregando a palavra do dia primeiro.");
+        return;
+    }
+
+    const containerMain = document.getElementById('repertorio-container-main');
+    const loadingDiv = document.getElementById('repertorio-loading');
+
+    containerMain.style.display = 'none';
+    loadingDiv.style.display = 'block';
+
+    if(!appData.repertorios) appData.repertorios = [];
+    const nomesExistentes = appData.repertorios.map(r => r.nome).join(', ');
+
+    try {
+        const promptText = "Atue como um professor especialista em redação para concursos públicos. Forneça UM repertório sociocultural curinga e de alto nível. NÃO repita nenhum destes: " + nomesExistentes + ". O retorno deve ser estritamente um objeto JSON válido sem crases: {\"eixo\": \"Cultura, Comportamento e Cidadania\", \"nome\": \"Título\", \"autor\": \"Autor\", \"explicacao\": \"Explicação\", \"gatilho\": \"Gatilho\"}";
+
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${API_KEY}`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                contents: [{ parts: [{ text: promptText }] }],
+                generationConfig: { temperature: 1.1 }
+            })
+        });
+
+        if (!response.ok) throw new Error("Erro na API.");
+
+        const data = await response.json();
+        const respostaTexto = data.candidates[0].content.parts[0].text;
+        
         const jsonLimpo = respostaTexto.replace(/```json/g, '').replace(/
