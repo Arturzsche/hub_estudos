@@ -29,8 +29,14 @@
             <button class="nav-btn" id="btn-nav-conectivos" style="color: var(--text-main); font-weight: bold;">Conectivos</button>
         </nav>
 
-        <div class="header-right">
-            <button id="theme-toggle" title="Alternar Tema">Tema</button>
+        <div class="header-right" style="display: flex; gap: 0.5rem; align-items: center;">
+            <button id="btn-sync-download" class="btn secondary" style="padding: 0.4rem 0.8rem; font-size: 0.8rem; display: flex; align-items: center; gap: 5px;" title="Puxar dados do Gist (Sobrescreve local)">
+                <svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg> Restaurar
+            </button>
+            <button id="btn-sync-upload" class="btn primary" style="padding: 0.4rem 0.8rem; font-size: 0.8rem; display: flex; align-items: center; gap: 5px;" title="Enviar dados locais para o Gist">
+                <svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z"/></svg> Salvar Nuvem
+            </button>
+            <button id="theme-toggle" title="Alternar Tema" style="margin-left: 10px;">Tema</button>
         </div>
     </header>
 
