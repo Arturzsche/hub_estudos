@@ -142,7 +142,11 @@ function initElements() {
         selectManualFcSubject: document.getElementById('manual-fc-subject'),
         selectIaFcSubject: document.getElementById('ia-fc-subject'),
         filterFcSubject: document.getElementById('filter-fc-subject'),
-        btnRefreshRep: document.getElementById('btn-refresh-repertorio')
+        btnRefreshRep: document.getElementById('btn-refresh-repertorio'),
+        
+        // Elementos de Sincronização em Nuvem
+        btnSyncUpload: document.getElementById('btn-sync-upload'),
+        btnSyncDownload: document.getElementById('btn-sync-download')
     };
 }
 
@@ -156,8 +160,9 @@ function init() {
 async function initAppFully() {
     initElements(); 
 
+    // Lê estritamente o local storage. Nada de Gist automático ao iniciar.
     try { loadLocalDataOnly(); } catch(e) {}
-    await loadCloudDataInBackground(true);
+    
     isAppReady = true;
 
     try { checkStreak(); } catch(e) {}
@@ -174,6 +179,14 @@ async function initAppFully() {
     try { setupRepertorio(); } catch(e) {}
     
     if (localStorage.getItem('theme') === 'light') document.body.classList.remove('dark-mode');
+
+    // Botões de Nuvem
+    if(elements.btnSyncUpload) {
+        elements.btnSyncUpload.addEventListener('click', uploadToCloud);
+    }
+    if(elements.btnSyncDownload) {
+        elements.btnSyncDownload.addEventListener('click', downloadFromCloud);
+    }
 
     document.querySelectorAll('.fc-tab').forEach(btn => {
         btn.addEventListener('click', (e) => {
@@ -263,8 +276,61 @@ function loadLocalDataOnly() {
     if (!appData.history[today]) appData.history[today] = { time: 0, sessions: 0 };
 }
 
-async function loadCloudDataInBackground(isInitial = false) {
+// ==========================================
+// FUNÇÕES DE NUVEM SOB DEMANDA
+// ==========================================
+async function uploadToCloud() {
     if (!GITHUB_TOKEN || !GIST_ID || localStorage.getItem('is_app_logged_in') !== 'true') return;
+    
+    const btn = elements.btnSyncUpload;
+    const originalText = btn.innerHTML;
+    btn.innerHTML = 'Salvando...';
+    btn.disabled = true;
+
+    appData.updatedAt = Date.now();
+    localStorage.setItem('studyAppData', JSON.stringify(appData));
+
+    try {
+        const response = await fetch(`https://api.github.com/gists/${GIST_ID}`, {
+            method: 'PATCH',
+            headers: {
+                'Authorization': `Bearer ${GITHUB_TOKEN}`,
+                'Accept': 'application/vnd.github.v3+json',
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                files: {
+                    [GIST_FILENAME]: {
+                        content: JSON.stringify(appData)
+                    }
+                }
+            })
+        });
+        
+        if (response.ok) {
+            alert('Dados salvos na nuvem com sucesso! ☁️');
+        } else {
+            throw new Error('Falha na resposta do Github');
+        }
+    } catch (error) {
+        console.error("Erro ao salvar dados no Gist", error);
+        alert('Erro ao salvar na nuvem. Verifique o console.');
+    } finally {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+    }
+}
+
+async function downloadFromCloud() {
+    if (!GITHUB_TOKEN || !GIST_ID || localStorage.getItem('is_app_logged_in') !== 'true') return;
+    
+    if(!confirm('Isso vai sobrescrever todos os seus dados locais atuais com a versão salva no Gist. Tem certeza?')) return;
+
+    const btn = elements.btnSyncDownload;
+    const originalText = btn.innerHTML;
+    btn.innerHTML = 'Baixando...';
+    btn.disabled = true;
+
     try {
         const response = await fetch(`https://api.github.com/gists/${GIST_ID}`, {
             headers: {
@@ -279,64 +345,36 @@ async function loadCloudDataInBackground(isInitial = false) {
                 const fileContent = gistData.files[GIST_FILENAME].content;
                 const actualData = JSON.parse(fileContent);
                 
-                if (actualData && actualData.updatedAt !== undefined) {
-                    const remoteTime = actualData.updatedAt || 0;
-                    const localTime = appData.updatedAt || 0;
-
-                    if (remoteTime > localTime) {
-                        const remoteStr = JSON.stringify(actualData);
-                        mergeData(actualData);
-                        localStorage.setItem('studyAppData', remoteStr);
-                        
-                        if (!isInitial) {
-                            updateUI(); 
-                            renderSchedule(); 
-                            renderSubjectBank();
-                            updateTimerDisplay(); 
-                            try { renderRepertorioList(); } catch(e) {}
-                        }
-                    }
-                }
+                const remoteStr = JSON.stringify(actualData);
+                mergeData(actualData);
+                localStorage.setItem('studyAppData', remoteStr);
+                
+                updateUI(); 
+                renderSchedule(); 
+                renderSubjectBank();
+                updateTimerDisplay(); 
+                try { renderRepertorioList(); } catch(e) {}
+                try { renderGerenciadorFlashcards(); initAnkiSession(); } catch(e) {}
+                
+                alert('Dados restaurados da nuvem com sucesso! ✅');
             }
+        } else {
+            throw new Error('Falha na resposta do Github');
         }
     } catch (error) {
         console.error("Erro ao carregar dados do Gist", error);
+        alert('Erro ao puxar dados da nuvem. Verifique o console.');
+    } finally {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
     }
 }
 
-document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible' && localStorage.getItem('is_app_logged_in') === 'true' && isAppReady) {
-        loadCloudDataInBackground(false);
-    }
-});
-
-async function saveData() {
+// Função saveData agora salva APENAS no Local Storage, resolvendo os limites de API do Github
+function saveData() {
     if (localStorage.getItem('is_app_logged_in') !== 'true' || !isAppReady) return; 
-    
     appData.updatedAt = Date.now();
     localStorage.setItem('studyAppData', JSON.stringify(appData));
-    
-    if (GITHUB_TOKEN && GIST_ID) {
-        try {
-            await fetch(`https://api.github.com/gists/${GIST_ID}`, {
-                method: 'PATCH',
-                headers: {
-                    'Authorization': `Bearer ${GITHUB_TOKEN}`,
-                    'Accept': 'application/vnd.github.v3+json',
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    files: {
-                        [GIST_FILENAME]: {
-                            content: JSON.stringify(appData)
-                        }
-                    }
-                })
-            });
-        } catch (error) {
-            console.error("Erro ao salvar dados no Gist", error);
-        }
-    }
 }
 
 function getTodayDate() {
