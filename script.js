@@ -135,6 +135,11 @@ function initElements() {
         btnCancelManualFc: document.getElementById('btn-manual-fc-cancel'),
         btnSaveManualFc: document.getElementById('btn-manual-fc-save'),
         
+        // Novos seletores de Matéria para FC
+        selectManualFcSubject: document.getElementById('manual-fc-subject'),
+        selectIaFcSubject: document.getElementById('ia-fc-subject'),
+        filterFcSubject: document.getElementById('filter-fc-subject'),
+        
         btnRefreshRep: document.getElementById('btn-refresh-repertorio')
     };
 }
@@ -184,7 +189,7 @@ async function initAppFully() {
             if (val && !appData.savedSubjects.includes(val)) { 
                 appData.savedSubjects.push(val); 
                 elements.newSubjectInput.value = ''; 
-                saveData(); renderSubjectBank(); updateReviewSubjects(); 
+                saveData(); renderSubjectBank(); updateAppSubjects(); 
             }
         });
     }
@@ -480,15 +485,21 @@ function createGoogleCalendarLink(rev) {
     return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${text}&dates=${nextDateStr}T110000Z/${nextDateStr}T120000Z&details=${details}`;
 }
 
-function updateReviewSubjects() {
+function updateAppSubjects() {
+    // Para Revisões
     if(elements.selectManualRevSubject) { elements.selectManualRevSubject.innerHTML = '<option value="">Selecione a matéria...</option>'; appData.savedSubjects.forEach(subj => elements.selectManualRevSubject.appendChild(new Option(subj, subj))); }
     if(elements.filterReviewSubject) { const currentFilter = elements.filterReviewSubject.value; elements.filterReviewSubject.innerHTML = '<option value="all">Todas as Matérias</option>'; appData.savedSubjects.forEach(subj => elements.filterReviewSubject.appendChild(new Option(subj, subj))); elements.filterReviewSubject.value = currentFilter || 'all'; }
     if(elements.editRevSubject) { elements.editRevSubject.innerHTML = ''; appData.savedSubjects.forEach(subj => elements.editRevSubject.appendChild(new Option(subj, subj))); }
+    
+    // Para Flashcards
+    if(elements.selectManualFcSubject) { elements.selectManualFcSubject.innerHTML = '<option value="">Selecione a matéria (Obrigatório)...</option>'; appData.savedSubjects.forEach(subj => elements.selectManualFcSubject.appendChild(new Option(subj, subj))); }
+    if(elements.selectIaFcSubject) { elements.selectIaFcSubject.innerHTML = '<option value="">Selecione a matéria (Obrigatório)...</option>'; appData.savedSubjects.forEach(subj => elements.selectIaFcSubject.appendChild(new Option(subj, subj))); }
+    if(elements.filterFcSubject) { const currentFilter = elements.filterFcSubject.value; elements.filterFcSubject.innerHTML = '<option value="all">Todas as Matérias</option>'; appData.savedSubjects.forEach(subj => elements.filterFcSubject.appendChild(new Option(subj, subj))); elements.filterFcSubject.value = currentFilter || 'all'; }
 }
 
 function initManualReviews() {
     if (!elements.btnOpenManualRev) return;
-    updateReviewSubjects();
+    updateAppSubjects();
 
     elements.btnOpenManualRev.addEventListener('click', () => {
         elements.inputManualRevName.value = ''; elements.selectManualRevSubject.value = ''; elements.inputManualRevNotes.value = '';
@@ -827,7 +838,7 @@ function renderSubjectBank() {
         pill.innerHTML = `<span>${subject}</span><span class="delete-subject" title="Remover matéria">&times;</span>`;
         pill.addEventListener('dragstart', (e) => { e.dataTransfer.setData('text/plain', subject); setTimeout(() => pill.classList.add('dragging'), 0); });
         pill.addEventListener('dragend', () => pill.classList.remove('dragging'));
-        pill.querySelector('.delete-subject').addEventListener('click', () => { appData.savedSubjects.splice(index, 1); saveData(); renderSubjectBank(); updateReviewSubjects(); });
+        pill.querySelector('.delete-subject').addEventListener('click', () => { appData.savedSubjects.splice(index, 1); saveData(); renderSubjectBank(); updateAppSubjects(); });
         elements.subjectBank.appendChild(pill);
     });
 }
@@ -1223,9 +1234,10 @@ function setupFlashcardsEConectivos() {
         });
     }
     
-    // --- LÓGICA DO NOVO MODAL MANUAL ---
+    // --- LÓGICA DO MODAL MANUAL DE FLASHCARD ---
     if(elements.btnOpenManualFc) {
         elements.btnOpenManualFc.addEventListener('click', () => {
+            if (elements.selectManualFcSubject) elements.selectManualFcSubject.value = '';
             if (elements.inputFcFront) elements.inputFcFront.value = '';
             if (elements.inputFcBack) elements.inputFcBack.value = '';
             if (elements.inputFcKeywords) elements.inputFcKeywords.value = '';
@@ -1242,6 +1254,7 @@ function setupFlashcardsEConectivos() {
 
     if(elements.btnSaveManualFc) {
         elements.btnSaveManualFc.addEventListener('click', () => {
+            const subject = elements.selectManualFcSubject.value;
             const front = elements.inputFcFront.value.trim();
             const back = elements.inputFcBack.value.trim();
             
@@ -1250,14 +1263,15 @@ function setupFlashcardsEConectivos() {
             
             const context = elements.inputFcContext.value.trim();
 
-            if(front && back) {
+            if(subject && front && back) {
                 const newCard = {
                     id: 'fc_manual_' + Date.now() + Math.floor(Math.random() * 10000),
-                    type: 'theory', // Forçado para Sabatina Teórica conforme pedido
+                    type: 'theory', 
+                    subject: subject,
                     palavra: front,
                     significado: back,
                     sinonimos: keywords,
-                    aplicacao: context || "Adicionado manualmente",
+                    aplicacao: context, // Fica vazio se o usuário não digitar nada
                     interval: 0,
                     ease: 2.5,
                     nextReview: getTodayDate()
@@ -1266,7 +1280,6 @@ function setupFlashcardsEConectivos() {
                 appData.flashcards.push(newCard);
                 saveData();
                 
-                // Muda a aba ativa para Sabatina Teórica
                 document.querySelectorAll('.fc-tab').forEach(b => b.classList.remove('active'));
                 const theoryTab = document.querySelector('.fc-tab[data-fctype="theory"]');
                 if(theoryTab) theoryTab.classList.add('active');
@@ -1278,13 +1291,14 @@ function setupFlashcardsEConectivos() {
                 elements.modalManualFc.classList.remove('active');
                 alert(`✅ Flashcard adicionado com sucesso à sua Sabatina Teórica!`);
             } else {
-                alert("⚠️ A frente (pergunta) e o verso (resposta) são obrigatórios!");
+                alert("⚠️ A Matéria, a Frente (pergunta) e o Verso (resposta) são obrigatórios!");
             }
         });
     }
     
     if(elements.btnManageFlashcards) {
         elements.btnManageFlashcards.addEventListener('click', () => {
+            if(elements.filterFcSubject) elements.filterFcSubject.value = 'all';
             renderGerenciadorFlashcards();
             elements.modalManageFlashcards.classList.add('active');
         });
@@ -1293,6 +1307,9 @@ function setupFlashcardsEConectivos() {
         elements.btnCloseManageFc.addEventListener('click', () => {
             elements.modalManageFlashcards.classList.remove('active');
         });
+    }
+    if(elements.filterFcSubject) {
+        elements.filterFcSubject.addEventListener('change', renderGerenciadorFlashcards);
     }
     if(document.getElementById('btn-close-view-fc')) {
         document.getElementById('btn-close-view-fc').addEventListener('click', () => {
@@ -1344,6 +1361,26 @@ function loadNextAnkiCard() {
     const statusEl = document.getElementById('anki-status');
     if(statusEl) statusEl.textContent = `REVISÕES PENDENTES (${currentFcType === 'lexical' ? 'LEXICAL' : 'TEORIA'}): ${ankiStudyQueue.length}`;
     
+    // Tratamento visual da matéria na carta
+    const subjBadgeFront = document.getElementById('anki-card-subject-front');
+    const subjBadgeBack = document.getElementById('anki-card-subject-back');
+    if(subjBadgeFront) {
+        if(currentAnkiCard.subject) {
+            subjBadgeFront.style.display = 'inline-block';
+            subjBadgeFront.textContent = currentAnkiCard.subject;
+        } else {
+            subjBadgeFront.style.display = 'none';
+        }
+    }
+    if(subjBadgeBack) {
+        if(currentAnkiCard.subject) {
+            subjBadgeBack.style.display = 'inline-block';
+            subjBadgeBack.textContent = currentAnkiCard.subject;
+        } else {
+            subjBadgeBack.style.display = 'none';
+        }
+    }
+
     const wordEl = document.getElementById('anki-word');
     if(wordEl) wordEl.textContent = currentAnkiCard.palavra;
     
@@ -1353,18 +1390,29 @@ function loadNextAnkiCard() {
     const meanEl = document.getElementById('anki-meaning');
     if(meanEl) meanEl.textContent = currentAnkiCard.significado;
     
+    // Mostra ou esconde o contexto se ele existir
+    const exWrapper = document.getElementById('anki-example-wrapper');
     const exEl = document.getElementById('anki-example');
-    if(exEl) exEl.textContent = `"${currentAnkiCard.aplicacao}"`;
+    if(exWrapper && exEl) {
+        if(currentAnkiCard.aplicacao && currentAnkiCard.aplicacao.trim() !== "") {
+            exWrapper.style.display = 'block';
+            exEl.textContent = `"${currentAnkiCard.aplicacao}"`;
+        } else {
+            exWrapper.style.display = 'none';
+        }
+    }
     
     const synContainer = document.getElementById('anki-synonyms');
     if(synContainer) {
         synContainer.innerHTML = '';
-        currentAnkiCard.sinonimos.forEach(syn => {
-            const span = document.createElement('span');
-            span.style.cssText = "font-size: 0.8rem; background: var(--border-color); color: var(--text-main); padding: 4px 10px; border-radius: 12px; font-weight: 500;";
-            span.textContent = syn;
-            synContainer.appendChild(span);
-        });
+        if(Array.isArray(currentAnkiCard.sinonimos)) {
+            currentAnkiCard.sinonimos.forEach(syn => {
+                const span = document.createElement('span');
+                span.style.cssText = "font-size: 0.8rem; background: var(--border-color); color: var(--text-main); padding: 4px 10px; border-radius: 12px; font-weight: 500;";
+                span.textContent = syn;
+                synContainer.appendChild(span);
+            });
+        }
     }
     
     const ival = currentAnkiCard.interval || 0;
@@ -1443,13 +1491,23 @@ function renderGerenciadorFlashcards() {
     if(!elements.allFlashcardsList) return;
     elements.allFlashcardsList.innerHTML = '';
     
-    const fcList = (appData.flashcards || []).filter(f => (f.type || 'lexical') === currentFcType);
+    const filterContainer = document.getElementById('fc-filter-container');
+    if(filterContainer) filterContainer.style.display = currentFcType === 'theory' ? 'flex' : 'none';
+
+    const filterValue = elements.filterFcSubject ? elements.filterFcSubject.value : 'all';
+
+    let fcList = (appData.flashcards || []).filter(f => (f.type || 'lexical') === currentFcType);
+    
+    // Aplica o filtro por matéria se estiver na aba teoria
+    if (currentFcType === 'theory' && filterValue !== 'all') {
+        fcList = fcList.filter(f => f.subject === filterValue);
+    }
     
     const fcStat = document.getElementById('fc-stat-total');
     if(fcStat) fcStat.textContent = fcList.length;
 
     if(fcList.length === 0) {
-        elements.allFlashcardsList.innerHTML = `<div style="grid-column: 1 / -1; padding: 3rem; text-align: center; color: var(--text-muted);">Esta seção do seu baralho está vazia.</div>`;
+        elements.allFlashcardsList.innerHTML = `<div style="grid-column: 1 / -1; padding: 3rem; text-align: center; color: var(--text-muted);">Nenhum flashcard encontrado para este filtro.</div>`;
         return;
     }
 
@@ -1457,8 +1515,11 @@ function renderGerenciadorFlashcards() {
         const div = document.createElement('div');
         div.className = 'fc-manage-card';
         
+        const subjectHtml = card.subject ? `<span style="font-size: 0.65rem; background: var(--border-color); color: var(--text-main); padding: 2px 6px; border-radius: 4px; margin-bottom: 0.5rem; display: inline-block;">${card.subject}</span>` : '';
+
         div.innerHTML = `
             <div style="position: relative; z-index: 5;">
+                ${subjectHtml}
                 <h4 style="margin: 0 0 0.5rem 0; font-size: 1.2rem; color: var(--text-main); font-weight: 700; word-wrap: break-word; padding-right: 40px;">${card.palavra}</h4>
                 <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0;">Próxima revisão: <strong>${formatDateBR(card.nextReview)}</strong></p>
             </div>
@@ -1500,7 +1561,14 @@ function openViewFlashcardModal(card) {
     const modal = document.getElementById('view-fc-modal');
     document.getElementById('view-fc-word').textContent = card.palavra;
     document.getElementById('view-fc-meaning').textContent = card.significado;
-    document.getElementById('view-fc-example').textContent = `"${card.aplicacao}"`;
+    
+    const exEl = document.getElementById('view-fc-example');
+    if(card.aplicacao && card.aplicacao.trim() !== "") {
+        exEl.parentElement.style.display = 'block';
+        exEl.textContent = `"${card.aplicacao}"`;
+    } else {
+        exEl.parentElement.style.display = 'none';
+    }
     
     const synContainer = document.getElementById('view-fc-synonyms');
     synContainer.innerHTML = '';
@@ -1519,6 +1587,7 @@ function openViewFlashcardModal(card) {
 function setupIaGenerator() {
     if (elements.btnOpenIaGenerator) {
         elements.btnOpenIaGenerator.addEventListener('click', () => {
+            if (elements.selectIaFcSubject) elements.selectIaFcSubject.value = '';
             if (elements.iaSourceText) elements.iaSourceText.value = '';
             const fileInput = document.getElementById('ia-pdf-file');
             if (fileInput) fileInput.value = '';
@@ -1555,6 +1624,13 @@ async function gerarFlashcardsComIA() {
     const fileInput = document.getElementById('ia-pdf-file');
     const texto = elements.iaSourceText.value.trim();
     const hasFile = fileInput && fileInput.files.length > 0;
+    
+    const subject = elements.selectIaFcSubject ? elements.selectIaFcSubject.value : "";
+
+    if (!subject) {
+        alert("Por favor, selecione a matéria de destino primeiro.");
+        return;
+    }
 
     if (!hasFile && !texto) {
         alert("Por favor, selecione um arquivo PDF ou cole algum texto para a IA analisar.");
@@ -1612,10 +1688,11 @@ async function gerarFlashcardsComIA() {
                 appData.flashcards.push({
                     id: 'fc_ia_' + Date.now() + Math.floor(Math.random() * 10000),
                     type: 'theory', 
+                    subject: subject,
                     palavra: cardData.palavra || "Pergunta",
                     significado: cardData.significado || "Resposta",
                     sinonimos: Array.isArray(cardData.sinonimos) ? cardData.sinonimos : [],
-                    aplicacao: cardData.aplicacao || "Gerado por IA",
+                    aplicacao: cardData.aplicacao || "",
                     interval: 0,
                     ease: 2.5,
                     nextReview: hoje
