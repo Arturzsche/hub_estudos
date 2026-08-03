@@ -234,14 +234,16 @@
                     <div class="flashcard-container" id="anki-card-container" style="width: 100%; max-width: 650px; height: 380px;">
                         <div class="flashcard" id="anki-card">
                             <div class="flashcard-face flashcard-front" style="display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; padding: 2rem;">
+                                <span id="anki-card-subject-front" style="font-size: 0.75rem; background: var(--border-color); color: var(--text-main); padding: 4px 10px; border-radius: 6px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 1.5rem; display: none;"></span>
                                 <h2 id="anki-word" style="font-size: clamp(1.2rem, 3vw, 2.5rem); line-height: 1.4; text-align: center; color: var(--text-main); margin: 0; font-weight: 700; width: 100%; word-wrap: break-word;">Palavra</h2>
                                 <span style="font-size: 0.85rem; color: var(--text-muted); margin-top: 1.5rem; opacity: 0.6; text-transform: uppercase; letter-spacing: 1px; text-align: center;">(Clique para revelar a resposta)</span>
                             </div>
                             <div class="flashcard-face flashcard-back" style="align-items: flex-start; text-align: left; padding: 2.5rem; overflow-y: auto;">
+                                <span id="anki-card-subject-back" style="font-size: 0.7rem; background: var(--border-color); color: var(--text-main); padding: 3px 8px; border-radius: 4px; font-weight: 600; text-transform: uppercase; margin-bottom: 1rem; display: none;"></span>
                                 <h3 id="anki-word-back" style="font-size: 1.4rem; line-height: 1.4; color: var(--text-main); margin-bottom: 1rem; font-weight: 700;">Palavra</h3>
                                 <p id="anki-meaning" style="font-size: 1.1rem; color: var(--text-main); font-weight: 500; margin-bottom: 1.5rem; line-height: 1.5;"></p>
                                 <div id="anki-synonyms" style="display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 2rem;"></div>
-                                <div style="padding: 1rem 1.5rem; background: var(--bg-color); border-left: 4px solid var(--text-main); border-radius: 4px; width: 100%;">
+                                <div id="anki-example-wrapper" style="padding: 1rem 1.5rem; background: var(--bg-color); border-left: 4px solid var(--text-main); border-radius: 4px; width: 100%; display: none;">
                                     <p id="anki-example" style="font-size: 1rem; font-family: serif; color: var(--text-muted); line-height: 1.6; margin: 0;"></p>
                                 </div>
                             </div>
@@ -316,19 +318,74 @@
     
     <div id="edit-rev-modal" class="modal-overlay"><div class="modal-content" style="max-width: 500px; text-align: left;"><h2 style="margin-bottom: 1.5rem; font-size: 1.3rem; color: var(--text-main);">Editar Revisão</h2><div style="display: grid; grid-template-columns: 1fr; gap: 1rem; margin-bottom: 1rem;"><div><label style="display: block; margin-bottom: 0.5rem; font-size: 0.85rem; color: var(--text-muted); font-weight: 600;">Matéria da Revisão</label><select id="edit-rev-subject" class="sort-select" style="width: 100%; border-radius: 6px; padding: 0.8rem; border-color: var(--border-color);"></select></div><div><label style="display: block; margin-bottom: 0.5rem; font-size: 0.85rem; color: var(--text-muted); font-weight: 600;">Nome do Conteúdo</label><input type="text" id="edit-rev-name" style="width: 100%; border-radius: 6px; padding: 0.8rem; border: 1px solid var(--border-color); background: var(--bg-color); color: var(--text-main);"></div><div><label style="display: block; margin-bottom: 0.5rem; font-size: 0.85rem; color: var(--text-muted); font-weight: 600;">Observações</label><textarea id="edit-rev-notes" rows="2" style="width: 100%; padding: 0.8rem; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-color); color: var(--text-main); resize: vertical;"></textarea></div></div><div style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: 1.5rem;"><button id="btn-edit-rev-cancel" class="btn secondary">Cancelar</button><button id="btn-edit-rev-save" class="btn primary">Salvar Alterações</button></div></div></div>
     
-    <div id="manage-flashcards-modal" class="modal-overlay"><div class="modal-content" style="max-width: 1000px; width: 95%; max-height: 90vh; overflow-y: auto; text-align: left; padding: 2rem; background: var(--bg-color);"><div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; border-bottom: 1px solid var(--border-color); padding-bottom: 1rem;"><h2 style="font-size: 1.3rem; color: var(--text-main); margin: 0;">Baralho (<span id="fc-stat-total">0</span> cartas)</h2><button id="btn-close-manage-fc" class="icon-btn-small" style="font-size: 1.5rem; font-weight: bold;">&times;</button></div><div id="all-flashcards-list" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1.5rem;"></div></div></div>
+    <div id="manage-flashcards-modal" class="modal-overlay">
+        <div class="modal-content" style="max-width: 1000px; width: 95%; max-height: 90vh; overflow-y: auto; text-align: left; padding: 2rem; background: var(--bg-color);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; border-bottom: 1px solid var(--border-color); padding-bottom: 1rem;">
+                <h2 style="font-size: 1.3rem; color: var(--text-main); margin: 0;">Baralho (<span id="fc-stat-total">0</span> cartas)</h2>
+                <div style="display: flex; align-items: center; gap: 1rem;">
+                    <div id="fc-filter-container" style="display: flex; align-items: center; gap: 0.5rem; display: none;">
+                        <span style="font-size: 0.85rem; color: var(--text-muted);">Filtrar Matéria:</span>
+                        <select id="filter-fc-subject" class="sort-select" style="padding: 0.4rem 0.8rem; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-color); color: var(--text-main);">
+                        </select>
+                    </div>
+                    <button id="btn-close-manage-fc" class="icon-btn-small" style="font-size: 1.5rem; font-weight: bold;">&times;</button>
+                </div>
+            </div>
+            <div id="all-flashcards-list" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1.5rem;"></div>
+        </div>
+    </div>
     
     <div id="view-fc-modal" class="modal-overlay"><div class="modal-content" style="max-width: 500px; padding: 0; overflow: hidden; border: 1px solid var(--border-color); border-radius: 12px; background: var(--surface-color);"><div style="padding: 2.5rem; position: relative;"><button id="btn-close-view-fc" class="icon-btn-small" style="position: absolute; top: 15px; right: 15px; font-size: 1.2rem; font-weight: bold;">&times;</button><h4 id="view-fc-word" style="font-size: 2.2rem; color: var(--text-main); margin: 0 0 10px 0; font-weight: 700; text-align: center;">Palavra</h4><p id="view-fc-meaning" style="font-size: 1rem; color: var(--text-muted); font-style: italic; margin: 0 0 15px 0; line-height: 1.5; text-align: center;"></p><div id="view-fc-synonyms" style="display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 20px; justify-content: center;"></div><div style="padding: 15px; background: var(--bg-color); border-left: 4px solid var(--text-main); border-radius: 6px; text-align: left;"><p id="view-fc-example" style="font-size: 0.95rem; font-family: serif; color: var(--text-main); margin: 0; line-height: 1.6;"></p></div></div></div></div>
     
     <div id="conectivos-modal" class="modal-overlay"><div class="modal-content" style="max-width: 800px; width: 95%; max-height: 90vh; overflow-y: auto; text-align: left; padding: 2rem;"><div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; border-bottom: 1px solid var(--border-color); padding-bottom: 1rem;"><h2 style="font-size: 1.3rem; color: var(--text-main); margin: 0;">Arsenal de Coesão (Conectivos)</h2><button id="btn-close-conectivos" class="icon-btn-small" style="font-size: 1.5rem; font-weight: bold;">&times;</button></div><table class="conectivos-table"><thead><tr><th>Função / Momento</th><th>Conectivos Estratégicos</th></tr></thead><tbody><tr><td>Introdução / D1</td><td>Sob um primeiro prisma, Nesse viés, É imperioso notar que, Em primeira análise</td></tr><tr><td>Adição / D2</td><td>Ademais, Outrossim, Soma-se a isso, Por conseguinte, Paralelo a isso</td></tr><tr><td>Oposição / Ressalva</td><td>Conquanto, Não obstante, Em que pese, A despeito de, Embora</td></tr><tr><td>Causa e Consequência</td><td>Haja vista que, Posto que, Por conseguinte, De tal modo que, Corolário disso</td></tr><tr><td>Conclusão</td><td>Infere-se, portanto, Fica evidente, logo, Dessarte, Destarte, Em suma</td></tr><tr><td>Citação de Lei/Autoridade</td><td>À luz de, Segundo preconiza, Sob a ótica de, Consoante o artigo</td></tr></tbody></table><p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 1rem; font-style: italic;">Dica de Ouro: Use-os com precisão e moderação. O excesso de conectivos rebuscados sem base de conteúdo retira a fluidez e a naturalidade do seu texto.</p></div></div>
     
-    <div id="ia-generator-modal" class="modal-overlay"><div class="modal-content" style="max-width: 600px; padding: 2rem; text-align: left;"><div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;"><h2 style="color: var(--text-main); font-size: 1.5rem; margin: 0; display: flex; align-items: center; gap: 8px;">Gerador de Flashcards por IA 🧠</h2><button class="icon-btn-small" id="btn-close-ia-generator" style="font-size: 1.5rem; font-weight: bold;">&times;</button></div><div style="display: flex; flex-direction: column; gap: 1.2rem;"><p style="color: var(--text-muted); font-size: 0.9rem; margin: 0; line-height: 1.5;">Envie um arquivo PDF ou cole um trecho de texto. A IA fará a leitura e os enviará diretamente para a sua <b>Sabatina Teórica</b>.</p><div style="border: 2px dashed var(--border-color); padding: 1.2rem; border-radius: 8px; text-align: center; background: var(--bg-color);"><input type="file" id="ia-pdf-file" accept=".pdf" style="display: none;"><label for="ia-pdf-file" style="cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 6px;"><svg viewBox="0 0 24 24" width="28" height="28" style="color: var(--text-muted);"><path fill="currentColor" d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z"/></svg><span id="pdf-file-label" style="font-size: 0.9rem; font-weight: 600; color: var(--text-main);">Clique para selecionar um PDF</span></label></div><div style="text-align: center; color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px;">Ou cole o texto manualmente</div><textarea id="ia-source-text" rows="5" placeholder="Cole o texto aqui se preferir não enviar o arquivo..." style="width: 100%; padding: 1rem; background: var(--bg-color); border: 1px solid var(--border-color); border-radius: 8px; color: var(--text-main); font-family: inherit; font-size: 0.95rem; resize: vertical; outline: none;"></textarea><div id="ia-generator-status" style="display: none; text-align: center; padding: 1.5rem; color: var(--text-main); font-weight: 600; font-size: 0.95rem; background: var(--bg-color); border-radius: 8px; border: 1px dashed var(--border-color);"><div class="modern-spinner" style="margin: 0 auto 15px;"></div><span id="ia-status-text">Lendo documento e estruturando flashcards...</span></div><button id="btn-generate-ai-cards" class="btn-ia-magic" style="width: 100%; justify-content: center; padding: 1rem; font-size: 1rem; display: flex; align-items: center; gap: 8px;">Gerar Flashcards do Arquivo ✨</button></div></div></div>
+    <div id="ia-generator-modal" class="modal-overlay">
+        <div class="modal-content" style="max-width: 600px; padding: 2rem; text-align: left;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                <h2 style="color: var(--text-main); font-size: 1.5rem; margin: 0; display: flex; align-items: center; gap: 8px;">Gerador de Flashcards por IA 🧠</h2>
+                <button class="icon-btn-small" id="btn-close-ia-generator" style="font-size: 1.5rem; font-weight: bold;">&times;</button>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 1.2rem;">
+                <p style="color: var(--text-muted); font-size: 0.9rem; margin: 0; line-height: 1.5;">Envie um arquivo PDF ou cole um trecho de texto. A IA fará a leitura e os enviará diretamente para a sua <b>Sabatina Teórica</b>.</p>
+                
+                <div>
+                    <label style="display: block; margin-bottom: 0.5rem; font-size: 0.85rem; color: var(--text-muted); font-weight: 600;">Matéria de Destino <span style="color: var(--danger-color);">*</span></label>
+                    <select id="ia-fc-subject" class="sort-select" style="width: 100%; border-radius: 6px; padding: 0.8rem; border-color: var(--border-color); background: var(--bg-color); color: var(--text-main);">
+                        <option value="">Selecione a matéria (Obrigatório)...</option>
+                    </select>
+                </div>
 
-    <!-- NOVO MODAL: CRIAR FLASHCARD MANUALMENTE -->
+                <div style="border: 2px dashed var(--border-color); padding: 1.2rem; border-radius: 8px; text-align: center; background: var(--bg-color);">
+                    <input type="file" id="ia-pdf-file" accept=".pdf" style="display: none;">
+                    <label for="ia-pdf-file" style="cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 6px;">
+                        <svg viewBox="0 0 24 24" width="28" height="28" style="color: var(--text-muted);"><path fill="currentColor" d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z"/></svg>
+                        <span id="pdf-file-label" style="font-size: 0.9rem; font-weight: 600; color: var(--text-main);">Clique para selecionar um PDF</span>
+                    </label>
+                </div>
+                
+                <div style="text-align: center; color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px;">Ou cole o texto manualmente</div>
+                <textarea id="ia-source-text" rows="5" placeholder="Cole o texto aqui se preferir não enviar o arquivo..." style="width: 100%; padding: 1rem; background: var(--bg-color); border: 1px solid var(--border-color); border-radius: 8px; color: var(--text-main); font-family: inherit; font-size: 0.95rem; resize: vertical; outline: none;"></textarea>
+                
+                <div id="ia-generator-status" style="display: none; text-align: center; padding: 1.5rem; color: var(--text-main); font-weight: 600; font-size: 0.95rem; background: var(--bg-color); border-radius: 8px; border: 1px dashed var(--border-color);">
+                    <div class="modern-spinner" style="margin: 0 auto 15px;"></div>
+                    <span id="ia-status-text">Lendo documento e estruturando flashcards...</span>
+                </div>
+                <button id="btn-generate-ai-cards" class="btn-ia-magic" style="width: 100%; justify-content: center; padding: 1rem; font-size: 1rem; display: flex; align-items: center; gap: 8px;">Gerar Flashcards do Arquivo ✨</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: CRIAR FLASHCARD MANUALMENTE -->
     <div id="manual-fc-modal" class="modal-overlay">
         <div class="modal-content" style="max-width: 500px; text-align: left;">
             <h2 style="margin-bottom: 1.5rem; font-size: 1.3rem; color: var(--text-main);">Criar Flashcard Manual</h2>
             <div style="display: grid; grid-template-columns: 1fr; gap: 1rem; margin-bottom: 1rem;">
+                <div>
+                    <label style="display: block; margin-bottom: 0.5rem; font-size: 0.85rem; color: var(--text-muted); font-weight: 600;">Matéria <span style="color: var(--danger-color);">*</span></label>
+                    <select id="manual-fc-subject" class="sort-select" style="width: 100%; border-radius: 6px; padding: 0.8rem; border-color: var(--border-color); background: var(--bg-color); color: var(--text-main);">
+                        <option value="">Selecione a matéria (Obrigatório)...</option>
+                    </select>
+                </div>
                 <div>
                     <label style="display: block; margin-bottom: 0.5rem; font-size: 0.85rem; color: var(--text-muted); font-weight: 600;">Frente (Pergunta / Termo) <span style="color: var(--danger-color);">*</span></label>
                     <input type="text" id="manual-fc-front" style="width: 100%; border-radius: 6px; padding: 0.8rem; border: 1px solid var(--border-color); background: var(--bg-color); color: var(--text-main); font-family: inherit;">
@@ -343,7 +400,7 @@
                 </div>
                 <div>
                     <label style="display: block; margin-bottom: 0.5rem; font-size: 0.85rem; color: var(--text-muted); font-weight: 600;">Contexto / Exemplo de Aplicação (Opcional)</label>
-                    <textarea id="manual-fc-context" rows="2" style="width: 100%; padding: 0.8rem; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-color); color: var(--text-main); resize: vertical; font-family: inherit;"></textarea>
+                    <textarea id="manual-fc-context" rows="2" style="width: 100%; padding: 0.8rem; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-color); color: var(--text-main); resize: vertical; font-family: inherit;" placeholder="Se deixar vazio, nenhum bloco de contexto aparecerá na carta."></textarea>
                 </div>
             </div>
             <div style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: 1.5rem;">
