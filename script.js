@@ -257,38 +257,38 @@ function loadLocalDataOnly() {
     if (!appData.history[today]) appData.history[today] = { time: 0, sessions: 0 };
 }
 
-// NOVA FUNÇÃO: Carrega dados do GitHub Gist
 async function loadCloudDataInBackground(isInitial = false) {
     if (!GITHUB_TOKEN || !GIST_ID || localStorage.getItem('is_app_logged_in') !== 'true') return;
     try {
         const response = await fetch(`https://api.github.com/gists/${GIST_ID}`, {
             headers: {
                 'Authorization': `Bearer ${GITHUB_TOKEN}`,
-                'Accept': 'application/vnd.github.v3+json',
-                'Cache-Control': 'no-cache'
+                'Accept': 'application/vnd.github.v3+json'
             }
         });
         
         if (response.ok) {
             const gistData = await response.json();
-            const fileContent = gistData.files[GIST_FILENAME].content;
-            const actualData = JSON.parse(fileContent);
-            
-            if (actualData && actualData.updatedAt !== undefined) {
-                const remoteTime = actualData.updatedAt || 0;
-                const localTime = appData.updatedAt || 0;
+            if (gistData.files && gistData.files[GIST_FILENAME]) {
+                const fileContent = gistData.files[GIST_FILENAME].content;
+                const actualData = JSON.parse(fileContent);
+                
+                if (actualData && actualData.updatedAt !== undefined) {
+                    const remoteTime = actualData.updatedAt || 0;
+                    const localTime = appData.updatedAt || 0;
 
-                if (remoteTime > localTime) {
-                    const remoteStr = JSON.stringify(actualData);
-                    mergeData(actualData);
-                    localStorage.setItem('studyAppData', remoteStr);
-                    
-                    if (!isInitial) {
-                        updateUI(); 
-                        renderSchedule(); 
-                        renderSubjectBank();
-                        updateTimerDisplay(); 
-                        try { renderRepertorioList(); } catch(e) {}
+                    if (remoteTime > localTime) {
+                        const remoteStr = JSON.stringify(actualData);
+                        mergeData(actualData);
+                        localStorage.setItem('studyAppData', remoteStr);
+                        
+                        if (!isInitial) {
+                            updateUI(); 
+                            renderSchedule(); 
+                            renderSubjectBank();
+                            updateTimerDisplay(); 
+                            try { renderRepertorioList(); } catch(e) {}
+                        }
                     }
                 }
             }
