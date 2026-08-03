@@ -22,7 +22,6 @@ const CYCLE_PHASES = [
 
 const REVIEW_INTERVALS = [1, 7, 15, 30, 60];
 
-// Define rigidamente os eixos temáticos aceitos
 const PREDEFINED_EIXOS = [
     "Tecnologia e Sociedade",
     "Trabalho e Modernidade",
@@ -126,6 +125,15 @@ function initElements() {
         iaSourceText: document.getElementById('ia-source-text'),
         iaGeneratorStatus: document.getElementById('ia-generator-status'),
         iaStatusText: document.getElementById('ia-status-text'),
+
+        btnOpenManualFc: document.getElementById('btn-open-manual-fc'),
+        modalManualFc: document.getElementById('manual-fc-modal'),
+        inputFcFront: document.getElementById('manual-fc-front'),
+        inputFcBack: document.getElementById('manual-fc-back'),
+        inputFcKeywords: document.getElementById('manual-fc-keywords'),
+        inputFcContext: document.getElementById('manual-fc-context'),
+        btnCancelManualFc: document.getElementById('btn-manual-fc-cancel'),
+        btnSaveManualFc: document.getElementById('btn-manual-fc-save'),
         
         btnRefreshRep: document.getElementById('btn-refresh-repertorio')
     };
@@ -997,7 +1005,6 @@ async function carregarVocabularioDiario(forceRefresh = false) {
     }
 }
 
-// --- SISTEMA DE REPERTÓRIO SOCIOCULTURAL AUTOMATIZADO E SALVO ---
 function renderRepertorioList() {
     const list = document.getElementById('repertorio-list');
     const badge = document.getElementById('rep-count-badge');
@@ -1008,7 +1015,6 @@ function renderRepertorioList() {
     
     if(!appData.repertorios) appData.repertorios = [];
 
-    // Preenche o Select apenas com os eixos permitidos estritamente
     if (filterSelect && filterSelect.options.length <= 1) {
         filterSelect.innerHTML = '<option value="all">Todos os Eixos</option>';
         PREDEFINED_EIXOS.forEach(eixo => {
@@ -1138,9 +1144,8 @@ async function carregarRepertorioDiario() {
         
         repObj.id = 'rep_' + Date.now();
         
-        // Garante que o eixo seja um dos 4 permitidos, por segurança adicional.
         if (!PREDEFINED_EIXOS.includes(repObj.eixo)) {
-            repObj.eixo = "Cultura, Comportamento e Cidadania"; // Fallback de segurança
+            repObj.eixo = "Cultura, Comportamento e Cidadania"; 
         }
         
         appData.repertorios.push(repObj);
@@ -1214,6 +1219,66 @@ function setupFlashcardsEConectivos() {
                     renderGerenciadorFlashcards();
                     alert(`"${currentPalavraObj.palavra}" adicionada ao Arsenal Lexical!`);
                 }
+            }
+        });
+    }
+    
+    // --- LÓGICA DO NOVO MODAL MANUAL ---
+    if(elements.btnOpenManualFc) {
+        elements.btnOpenManualFc.addEventListener('click', () => {
+            if (elements.inputFcFront) elements.inputFcFront.value = '';
+            if (elements.inputFcBack) elements.inputFcBack.value = '';
+            if (elements.inputFcKeywords) elements.inputFcKeywords.value = '';
+            if (elements.inputFcContext) elements.inputFcContext.value = '';
+            if (elements.modalManualFc) elements.modalManualFc.classList.add('active');
+        });
+    }
+
+    if(elements.btnCancelManualFc) {
+        elements.btnCancelManualFc.addEventListener('click', () => {
+            if (elements.modalManualFc) elements.modalManualFc.classList.remove('active');
+        });
+    }
+
+    if(elements.btnSaveManualFc) {
+        elements.btnSaveManualFc.addEventListener('click', () => {
+            const front = elements.inputFcFront.value.trim();
+            const back = elements.inputFcBack.value.trim();
+            
+            const keywordsRaw = elements.inputFcKeywords.value;
+            const keywords = keywordsRaw ? keywordsRaw.split(',').map(k => k.trim()).filter(k => k) : [];
+            
+            const context = elements.inputFcContext.value.trim();
+
+            if(front && back) {
+                const newCard = {
+                    id: 'fc_manual_' + Date.now() + Math.floor(Math.random() * 10000),
+                    type: 'theory', // Forçado para Sabatina Teórica conforme pedido
+                    palavra: front,
+                    significado: back,
+                    sinonimos: keywords,
+                    aplicacao: context || "Adicionado manualmente",
+                    interval: 0,
+                    ease: 2.5,
+                    nextReview: getTodayDate()
+                };
+                
+                appData.flashcards.push(newCard);
+                saveData();
+                
+                // Muda a aba ativa para Sabatina Teórica
+                document.querySelectorAll('.fc-tab').forEach(b => b.classList.remove('active'));
+                const theoryTab = document.querySelector('.fc-tab[data-fctype="theory"]');
+                if(theoryTab) theoryTab.classList.add('active');
+                currentFcType = 'theory';
+
+                initAnkiSession();
+                try { renderGerenciadorFlashcards(); } catch(e) {}
+                
+                elements.modalManualFc.classList.remove('active');
+                alert(`✅ Flashcard adicionado com sucesso à sua Sabatina Teórica!`);
+            } else {
+                alert("⚠️ A frente (pergunta) e o verso (resposta) são obrigatórios!");
             }
         });
     }
