@@ -1083,6 +1083,13 @@ function renderRepertorioList() {
                     <p style="font-size: 1.05rem; color: var(--text-main); font-weight: 600; margin: 0.2rem 0 0 0;">${rep.autor}</p>
                 </div>
             </div>
+
+            <!-- NOVO BLOCO: CONCEITO-CHAVE -->
+            <div style="padding: 1rem; background: rgba(99, 102, 241, 0.05); border: 1px solid rgba(99, 102, 241, 0.2); border-radius: 8px; margin-bottom: 1.2rem; border-left: 3px solid #6366f1;">
+                <span style="font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); font-weight: 700;">Conceito-Chave</span>
+                <p style="font-size: 1.05rem; color: var(--text-main); font-weight: 600; margin: 0.3rem 0 0 0;">${rep.conceito || 'Ideia principal do autor e da obra.'}</p>
+            </div>
+            
             <div style="margin-bottom: 1.2rem;">
                 <span style="font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); font-weight: 700;">Explicação Simplificada</span>
                 <p style="font-size: 0.95rem; color: var(--text-main); line-height: 1.6; margin-top: 0.3rem;">${rep.explicacao}</p>
@@ -1122,7 +1129,7 @@ async function carregarRepertorioDiario() {
     const nomesExistentes = appData.repertorios.map(r => r.nome).join(', ');
 
     try {
-        const promptText = "Atue como um professor especialista em redação para concursos públicos (com foco em segurança pública e cidadania). Forneça UM repertório sociocultural curinga e de alto nível. NÃO repita nenhum destes: " + nomesExistentes + ". O retorno deve ser estritamente um objeto JSON válido sem crases: {\"eixo\": \"Cultura, Comportamento e Cidadania\", \"nome\": \"Título\", \"autor\": \"Autor\", \"explicacao\": \"Explicação\", \"gatilho\": \"Gatilho\"}";
+        const promptText = "Atue como um professor especialista em redação para concursos públicos (com foco em segurança pública e cidadania). Forneça UM repertório sociocultural curinga e de alto nível. NÃO repita nenhum destes: " + nomesExistentes + ". O retorno deve ser estritamente um objeto JSON válido sem crases: {\"eixo\": \"Cultura, Comportamento e Cidadania\", \"nome\": \"Título\", \"autor\": \"Autor\", \"conceito\": \"Conceito-chave resumido em uma frase forte e direta\", \"explicacao\": \"Explicação detalhada\", \"gatilho\": \"Gatilho prático\"}";
 
         const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${API_KEY}`, {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -1145,13 +1152,38 @@ async function carregarRepertorioDiario() {
             repObj.eixo = "Cultura, Comportamento e Cidadania"; 
         }
         
+        // 1. Salva o repertório no acervo
         appData.repertorios.push(repObj);
+        
+        // 2. CRIAÇÃO AUTOMÁTICA DO FLASHCARD PARA A SABATINA TEÓRICA
+        const fcSubject = appData.savedSubjects.includes("Prova Discursiva") ? "Prova Discursiva" : (appData.savedSubjects[0] || "Geral");
+        
+        const newCard = {
+            id: 'fc_rep_' + Date.now() + Math.floor(Math.random() * 10000),
+            type: 'theory', 
+            subject: fcSubject,
+            palavra: `Qual a ideia central de "${repObj.nome}" (${repObj.autor}) e qual o gatilho principal para uso na redação?`,
+            significado: `🎯 **CONCEITO-CHAVE:**\n${repObj.conceito}\n\n💡 **GATILHO:**\n${repObj.gatilho}`,
+            sinonimos: [repObj.nome, repObj.autor, "Repertório"],
+            aplicacao: repObj.explicacao, 
+            interval: 0,
+            ease: 2.5,
+            nextReview: getTodayDate()
+        };
+        
+        appData.flashcards.push(newCard);
         saveData();
         
         const filterSelect = document.getElementById('filter-repertorio-eixo');
         if(filterSelect) filterSelect.value = 'all';
         
         renderRepertorioList();
+        
+        // Atualiza a sabatina nos bastidores caso a aba "Teoria" esteja aberta
+        initAnkiSession(); 
+        try { renderGerenciadorFlashcards(); } catch(e) {}
+        
+        alert(`Repertório gerado e Flashcard criado automaticamente na sua Sabatina Teórica (${fcSubject})! 🚀`);
         
     } catch (error) {
         console.error("Falha ao gerar repertório:", error);
