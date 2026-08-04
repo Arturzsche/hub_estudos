@@ -1003,7 +1003,7 @@ async function carregarVocabularioDiario(forceRefresh = false) {
     try {
         const promptText = "Atue como um avaliador rigoroso de redação de concursos. Forneça UMA palavra de vocabulário avançado e formal útil para uma dissertação sobre temas sociais ou de cidadania. O retorno deve ser EXATAMENTE E APENAS um objeto JSON neste formato, sem crases: {\"palavra\": \"Exemplo\", \"significado\": \"Significado\", \"sinonimos\": [\"SinônimoA\"], \"aplicacao\": \"Frase\"}";
 
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${API_KEY}`, {
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${API_KEY}`, {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
                 contents: [{ parts: [{ text: promptText }] }],
@@ -1124,7 +1124,7 @@ async function carregarRepertorioDiario() {
     try {
         const promptText = "Atue como um professor especialista em redação para concursos públicos (com foco em segurança pública e cidadania). Forneça UM repertório sociocultural curinga e de alto nível. NÃO repita nenhum destes: " + nomesExistentes + ". O retorno deve ser estritamente um objeto JSON válido sem crases: {\"eixo\": \"Cultura, Comportamento e Cidadania\", \"nome\": \"Título\", \"autor\": \"Autor\", \"explicacao\": \"Explicação\", \"gatilho\": \"Gatilho\"}";
 
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${API_KEY}`, {
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${API_KEY}`, {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
                 contents: [{ parts: [{ text: promptText }] }],
@@ -1648,7 +1648,7 @@ async function gerarFlashcardsComIA() {
 
             const promptText = "Atue como um examinador de bancas de concurso público. Analise o texto e gere entre 3 e 5 flashcards em formato de array JSON puro, contendo estritamente as chaves: palavra, significado, sinonimos (como array de strings) e aplicacao. Retorne APENAS o JSON puro, sem blocos de código markdown.";
 
-            const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${API_KEY}`, {
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${API_KEY}`, {
                 method: 'POST', 
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ 
