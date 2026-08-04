@@ -6,7 +6,7 @@ const GIST_ID = "f13ced57c6740bec464f9b29df237ed4";
 const GIST_FILENAME = "meusestudos_db.json";
 
 // ==========================================
-// VARIÁVEIS GLOBAIS
+// VARIÁVEIS GLOBAIS E ESTADO
 // ==========================================
 let timerInterval;
 let isRunning = false;
@@ -16,9 +16,7 @@ let currentPalavraObj = null;
 
 let ankiStudyQueue = [];
 let currentAnkiCard = null;
-
 let isAppReady = false; 
-
 let currentFcType = 'lexical';
 
 const CYCLE_PHASES = [
@@ -33,7 +31,8 @@ const PREDEFINED_EIXOS = [
     "Tecnologia e Sociedade",
     "Trabalho e Modernidade",
     "Cultura, Comportamento e Cidadania",
-    "Meio Ambiente e Sustentabilidade"
+    "Meio Ambiente e Sustentabilidade",
+    "Segurança Pública e Justiça"
 ];
 
 let appData = {
@@ -52,6 +51,29 @@ let todaysSubjects = [];
 let currentEditingRevId = null;
 let elements = {};
 
+// ==========================================
+// FUNÇÕES UTILITÁRIAS PARA IA (BLINDAGEM)
+// ==========================================
+/**
+ * Extrai estritamente o objeto ou array JSON de uma string, 
+ * ignorando saudações ou formatações Markdown da IA.
+ */
+function extrairJSONdaString(texto) {
+    try {
+        const jsonMatch = texto.match(/\{[\s\S]*\}|\[[\s\S]*\]/);
+        if (jsonMatch) {
+            return JSON.parse(jsonMatch[0]);
+        }
+        throw new Error("Nenhum padrão JSON encontrado na resposta da IA.");
+    } catch (e) {
+        console.error("Erro ao analisar a resposta da IA:", texto);
+        throw e;
+    }
+}
+
+// ==========================================
+// INICIALIZAÇÃO E UI
+// ==========================================
 function injectLoginUI() {
     if (document.getElementById('custom-login-overlay')) return;
 
@@ -160,8 +182,8 @@ function init() {
 async function initAppFully() {
     initElements(); 
 
-    // Lê estritamente o local storage. Nada de Gist automático ao iniciar.
-    try { loadLocalDataOnly(); } catch(e) {}
+    // Lê estritamente o local storage.
+    try { loadLocalDataOnly(); } catch(e) { console.error("Erro ao carregar dados locais", e); }
     
     isAppReady = true;
 
@@ -180,13 +202,8 @@ async function initAppFully() {
     
     if (localStorage.getItem('theme') === 'light') document.body.classList.remove('dark-mode');
 
-    // Botões de Nuvem
-    if(elements.btnSyncUpload) {
-        elements.btnSyncUpload.addEventListener('click', uploadToCloud);
-    }
-    if(elements.btnSyncDownload) {
-        elements.btnSyncDownload.addEventListener('click', downloadFromCloud);
-    }
+    if(elements.btnSyncUpload) elements.btnSyncUpload.addEventListener('click', uploadToCloud);
+    if(elements.btnSyncDownload) elements.btnSyncDownload.addEventListener('click', downloadFromCloud);
 
     document.querySelectorAll('.fc-tab').forEach(btn => {
         btn.addEventListener('click', (e) => {
@@ -298,20 +315,11 @@ async function uploadToCloud() {
                 'Accept': 'application/vnd.github.v3+json',
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({
-                files: {
-                    [GIST_FILENAME]: {
-                        content: JSON.stringify(appData)
-                    }
-                }
-            })
+            body: JSON.stringify({ files: { [GIST_FILENAME]: { content: JSON.stringify(appData) } } })
         });
         
-        if (response.ok) {
-            alert('Dados salvos na nuvem com sucesso! ☁️');
-        } else {
-            throw new Error('Falha na resposta do Github');
-        }
+        if (response.ok) alert('Dados salvos na nuvem com sucesso! ☁️');
+        else throw new Error('Falha na resposta do Github');
     } catch (error) {
         console.error("Erro ao salvar dados no Gist", error);
         alert('Erro ao salvar na nuvem. Verifique o console.');
@@ -323,7 +331,6 @@ async function uploadToCloud() {
 
 async function downloadFromCloud() {
     if (!GITHUB_TOKEN || !GIST_ID || localStorage.getItem('is_app_logged_in') !== 'true') return;
-    
     if(!confirm('Isso vai sobrescrever todos os seus dados locais atuais com a versão salva no Gist. Tem certeza?')) return;
 
     const btn = elements.btnSyncDownload;
@@ -333,10 +340,7 @@ async function downloadFromCloud() {
 
     try {
         const response = await fetch(`https://api.github.com/gists/${GIST_ID}`, {
-            headers: {
-                'Authorization': `Bearer ${GITHUB_TOKEN}`,
-                'Accept': 'application/vnd.github.v3+json'
-            }
+            headers: { 'Authorization': `Bearer ${GITHUB_TOKEN}`, 'Accept': 'application/vnd.github.v3+json' }
         });
         
         if (response.ok) {
@@ -344,18 +348,12 @@ async function downloadFromCloud() {
             if (gistData.files && gistData.files[GIST_FILENAME]) {
                 const fileContent = gistData.files[GIST_FILENAME].content;
                 const actualData = JSON.parse(fileContent);
-                
                 const remoteStr = JSON.stringify(actualData);
                 mergeData(actualData);
                 localStorage.setItem('studyAppData', remoteStr);
-                
-                updateUI(); 
-                renderSchedule(); 
-                renderSubjectBank();
-                updateTimerDisplay(); 
+                updateUI(); renderSchedule(); renderSubjectBank(); updateTimerDisplay(); 
                 try { renderRepertorioList(); } catch(e) {}
                 try { renderGerenciadorFlashcards(); initAnkiSession(); } catch(e) {}
-                
                 alert('Dados restaurados da nuvem com sucesso! ✅');
             }
         } else {
@@ -370,7 +368,6 @@ async function downloadFromCloud() {
     }
 }
 
-// Função saveData agora salva APENAS no Local Storage, resolvendo os limites de API do Github
 function saveData() {
     if (localStorage.getItem('is_app_logged_in') !== 'true' || !isAppReady) return; 
     appData.updatedAt = Date.now();
@@ -935,6 +932,9 @@ document.addEventListener('keydown', (e) => {
 window.addEventListener('beforeunload', () => { if (isRunning) pauseTimer(); });
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden' && isRunning) localStorage.setItem('lastTick', Date.now().toString()); });
 
+// ==========================================
+// FUNÇÕES DE IA COM PARSER SEGURO
+// ==========================================
 async function carregarVocabularioDiario(forceRefresh = false) {
     let API_KEY = localStorage.getItem('gemini_api_key');
     const hoje = getTodayDate();
@@ -1001,7 +1001,7 @@ async function carregarVocabularioDiario(forceRefresh = false) {
     }
 
     try {
-        const promptText = "Atue como um avaliador rigoroso de redação de concursos. Forneça UMA palavra de vocabulário avançado e formal útil para uma dissertação. O retorno deve ser EXATAMENTE E APENAS um objeto JSON neste formato, sem crases: {\"palavra\": \"Exemplo\", \"significado\": \"Significado\", \"sinonimos\": [\"SinônimoA\"], \"aplicacao\": \"Frase\"}";
+        const promptText = "Atue como um avaliador rigoroso de redação de concursos. Forneça UMA palavra de vocabulário avançado e formal útil para uma dissertação sobre temas sociais ou de cidadania. O retorno deve ser EXATAMENTE E APENAS um objeto JSON neste formato, sem crases: {\"palavra\": \"Exemplo\", \"significado\": \"Significado\", \"sinonimos\": [\"SinônimoA\"], \"aplicacao\": \"Frase\"}";
 
         const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`, {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -1015,14 +1015,16 @@ async function carregarVocabularioDiario(forceRefresh = false) {
 
         const data = await response.json();
         const respostaTexto = data.candidates[0].content.parts[0].text;
-        const jsonLimpo = respostaTexto.replaceAll("```json", "").replaceAll("```", "").trim();
         
-        const palavraObj = JSON.parse(jsonLimpo);
+        // Uso da função blindada para evitar erros de parse
+        const palavraObj = extrairJSONdaString(respostaTexto);
+        
         localStorage.setItem('palavra_concurso', JSON.stringify(palavraObj));
         localStorage.setItem('data_palavra', hoje);
 
         renderizarPalavra(palavraObj);
     } catch (error) {
+        console.error("Falha ao gerar vocabulário:", error);
         renderizarPalavra({ palavra: "Anacrônico", significado: "Que não está de acordo com a sua época; obsoleto.", sinonimos: ["Ultrapassado", "Antiquado"], aplicacao: "O sistema prisional revela-se anacrônico diante das demandas atuais." });
     }
 }
@@ -1121,7 +1123,7 @@ async function carregarRepertorioDiario() {
     const nomesExistentes = appData.repertorios.map(r => r.nome).join(', ');
 
     try {
-        const promptText = "Atue como um professor especialista em redação para concursos públicos. Forneça UM repertório sociocultural curinga e de alto nível. NÃO repita nenhum destes: " + nomesExistentes + ". O retorno deve ser estritamente um objeto JSON válido sem crases: {\"eixo\": \"Cultura, Comportamento e Cidadania\", \"nome\": \"Título\", \"autor\": \"Autor\", \"explicacao\": \"Explicação\", \"gatilho\": \"Gatilho\"}";
+        const promptText = "Atue como um professor especialista em redação para concursos públicos (com foco em segurança pública e cidadania). Forneça UM repertório sociocultural curinga e de alto nível. NÃO repita nenhum destes: " + nomesExistentes + ". O retorno deve ser estritamente um objeto JSON válido sem crases: {\"eixo\": \"Cultura, Comportamento e Cidadania\", \"nome\": \"Título\", \"autor\": \"Autor\", \"explicacao\": \"Explicação\", \"gatilho\": \"Gatilho\"}";
 
         const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`, {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -1131,13 +1133,13 @@ async function carregarRepertorioDiario() {
             })
         });
 
-        if (!response.ok) throw new Error("Erro na API.");
+        if (!response.ok) throw new Error(`Erro na API (${response.status})`);
 
         const data = await response.json();
         const respostaTexto = data.candidates[0].content.parts[0].text;
         
-        const jsonLimpo = respostaTexto.replaceAll("```json", "").replaceAll("```", "").trim();
-        const repObj = JSON.parse(jsonLimpo);
+        // Uso da função blindada para evitar erros de parse
+        const repObj = extrairJSONdaString(respostaTexto);
         
         repObj.id = 'rep_' + Date.now();
         
@@ -1154,7 +1156,8 @@ async function carregarRepertorioDiario() {
         renderRepertorioList();
         
     } catch (error) {
-        alert("Ocorreu um erro ao gerar o repertório. Tente novamente em alguns segundos.");
+        console.error("Falha ao gerar repertório:", error);
+        alert("Ocorreu um erro ao gerar o repertório (Verifique o console para detalhes). Tente novamente.");
     } finally {
         loadingDiv.style.display = 'none';
         containerMain.style.display = 'block';
@@ -1655,12 +1658,12 @@ async function gerarFlashcardsComIA() {
                 })
             });
 
-            if (!response.ok) throw new Error("Erro na API do Gemini.");
+            if (!response.ok) throw new Error(`Erro na API (${response.status})`);
             const data = await response.json();
             const respostaTexto = data.candidates[0].content.parts[0].text;
             
-            const jsonLimpo = respostaTexto.replaceAll("```json", "").replaceAll("```", "").trim();
-            cardsGerados = JSON.parse(jsonLimpo);
+            // Uso da função blindada para evitar erros de parse
+            cardsGerados = extrairJSONdaString(respostaTexto);
         }
 
         let cardsAdicionados = 0;
@@ -1702,7 +1705,7 @@ async function gerarFlashcardsComIA() {
 
     } catch (error) {
         console.error("Erro:", error);
-        alert(`Erro ao gerar flashcards: ${error.message}`);
+        alert(`Erro ao gerar flashcards (verifique o console para detalhes).`);
     } finally {
         elements.btnGenerateAiCards.style.display = 'flex';
         elements.iaGeneratorStatus.style.display = 'none';
