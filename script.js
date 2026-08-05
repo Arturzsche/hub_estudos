@@ -922,22 +922,6 @@ function setupAnkiAdvancedControls() {
     const cardContainer = document.getElementById('anki-card-container');
     if (!cardContainer || document.getElementById('anki-advanced-controls')) return;
 
-    if (!document.getElementById('anki-custom-styles')) {
-        const style = document.createElement('style');
-        style.id = 'anki-custom-styles';
-        style.innerHTML = `
-            .shuffle-animation { animation: shuffle-deck 0.6s cubic-bezier(0.4, 0, 0.2, 1); }
-            @keyframes shuffle-deck {
-                0% { transform: translateY(0) rotate(0) scale(1); }
-                25% { transform: translateY(-30px) rotate(-5deg) scale(0.95); opacity: 0.7; }
-                50% { transform: translateY(0) rotate(5deg) scale(0.9); opacity: 0.5; }
-                75% { transform: translateY(-15px) rotate(-2deg) scale(0.95); opacity: 0.8; }
-                100% { transform: translateY(0) rotate(0) scale(1); opacity: 1; }
-            }
-        `;
-        document.head.appendChild(style);
-    }
-
     const controlsDiv = document.createElement('div');
     controlsDiv.id = 'anki-advanced-controls';
     controlsDiv.style.cssText = "display: flex; gap: 1rem; margin-bottom: 1rem; width: 100%; max-width: 600px; justify-content: space-between; align-items: center;";
@@ -965,29 +949,6 @@ function shuffleQueue() {
     }
     
     loadNextAnkiCard();
-}
-    
-    const cardContainer = document.getElementById('anki-card-container');
-    if (cardContainer) {
-        cardContainer.classList.add('shuffle-animation');
-        
-        try {
-            const AudioContext = window.AudioContext || window.webkitAudioContext;
-            const ctx = new AudioContext();
-            const osc = ctx.createOscillator(); const gainNode = ctx.createGain();
-            osc.connect(gainNode); gainNode.connect(ctx.destination);
-            osc.type = 'triangle'; osc.frequency.setValueAtTime(400, ctx.currentTime); 
-            osc.frequency.exponentialRampToValueAtTime(800, ctx.currentTime + 0.1);
-            gainNode.gain.setValueAtTime(0.05, ctx.currentTime);
-            gainNode.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.1);
-            osc.start(); osc.stop(ctx.currentTime + 0.1);
-        } catch(e) {}
-
-        setTimeout(() => {
-            cardContainer.classList.remove('shuffle-animation');
-            loadNextAnkiCard(); 
-        }, 600);
-    }
 }
 
 function initAnkiSession() {
