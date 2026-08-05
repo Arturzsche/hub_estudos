@@ -161,7 +161,6 @@ function initElements() {
         selectIaFcSubject: document.getElementById('ia-fc-subject'),
         filterFcSubject: document.getElementById('filter-fc-subject'),
         btnRefreshRep: document.getElementById('btn-refresh-repertorio'),
-        
         btnSyncUpload: document.getElementById('btn-sync-upload'),
         btnSyncDownload: document.getElementById('btn-sync-download')
     };
@@ -202,11 +201,8 @@ async function initAppFully() {
             document.querySelectorAll('.fc-tab').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
             currentFcType = btn.getAttribute('data-fctype');
-            
-            // Reseta o filtro de matéria ao trocar de aba para evitar confusão
             const fcFilter = document.getElementById('study-subject-filter');
             if(fcFilter) fcFilter.value = 'all';
-            
             initAnkiSession();
         });
     });
@@ -339,7 +335,8 @@ function formatDateBR(dateStr) {
 
 function playBeep() {
     try {
-        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        const ctx = new AudioContext();
         const osc = ctx.createOscillator(); const gainNode = ctx.createGain();
         osc.connect(gainNode); gainNode.connect(ctx.destination);
         osc.type = 'sine'; osc.frequency.setValueAtTime(600, ctx.currentTime); 
@@ -462,11 +459,10 @@ function updateAppSubjects() {
     if(elements.selectIaFcSubject) { elements.selectIaFcSubject.innerHTML = '<option value="">Selecione a matéria (Obrigatório)...</option>'; appData.savedSubjects.forEach(subj => elements.selectIaFcSubject.appendChild(new Option(subj, subj))); }
     if(elements.filterFcSubject) { const currentFilter = elements.filterFcSubject.value; elements.filterFcSubject.innerHTML = '<option value="all">Todas as Matérias</option>'; appData.savedSubjects.forEach(subj => elements.filterFcSubject.appendChild(new Option(subj, subj))); elements.filterFcSubject.value = currentFilter || 'all'; }
     
-    // Atualiza o dropdown dinâmico de sabatina teórica
     const fcFilter = document.getElementById('study-subject-filter');
     if (fcFilter) {
         const currentSelection = fcFilter.value;
-        fcFilter.innerHTML = '<option value="all">Todas as Matérias</option>';
+        fcFilter.innerHTML = '<option value="all">Foco: Todas as Matérias</option>';
         appData.savedSubjects.forEach(subj => fcFilter.appendChild(new Option(subj, subj)));
         fcFilter.value = currentSelection || 'all';
     }
@@ -786,7 +782,7 @@ document.addEventListener('keydown', (e) => {
 window.addEventListener('beforeunload', () => { if (isRunning) pauseTimer(); }); document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden' && isRunning) localStorage.setItem('lastTick', Date.now().toString()); });
 
 // ==========================================
-// FUNÇÕES DE IA COM PARSER SEGURO (Versão v1)
+// FUNÇÕES DE IA COM PARSER SEGURO
 // ==========================================
 async function carregarVocabularioDiario(forceRefresh = false) {
     let API_KEY = localStorage.getItem('gemini_api_key');
@@ -852,7 +848,6 @@ async function carregarRepertorioDiario() {
     if(!appData.repertorios) appData.repertorios = []; const nomesExistentes = appData.repertorios.map(r => r.nome).join(', ');
 
     try {
-        // Blindagem contra perda de acentos
         const promptText = "Atue como um professor especialista em redação para concursos públicos (com foco em segurança pública e cidadania). Forneça UM repertório sociocultural curinga e de alto nível. NÃO repita nenhum destes: " + nomesExistentes + ". O retorno deve ser estritamente um objeto JSON válido sem crases. ATENÇÃO: MANTENHA A ACENTUAÇÃO E A ORTOGRAFIA CORRETAS DO PORTUGUÊS EM TODOS OS CAMPOS: {\"eixo\": \"Cultura, Comportamento e Cidadania\", \"nome\": \"Título\", \"autor\": \"Autor\", \"conceito\": \"Conceito-chave resumido em uma frase forte e direta\", \"explicacao\": \"Explicação detalhada\", \"gatilho\": \"Gatilho prático\"}";
         const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${API_KEY}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contents: [{ parts: [{ text: promptText }] }], generationConfig: { temperature: 1.1 } }) });
         if (!response.ok) throw new Error(`Erro na API (${response.status})`);
@@ -920,12 +915,10 @@ function setupFlashcardsEConectivos() {
     if(document.getElementById('btn-close-view-fc')) document.getElementById('btn-close-view-fc').addEventListener('click', () => { document.getElementById('view-fc-modal').classList.remove('active'); });
 }
 
-// INJEÇÃO DOS NOVOS CONTROLES DE FILTRO E EMBARALHAMENTO
 function setupAnkiAdvancedControls() {
     const cardContainer = document.getElementById('anki-card-container');
     if (!cardContainer || document.getElementById('anki-advanced-controls')) return;
 
-    // Adiciona o CSS da animação de embaralhar
     if (!document.getElementById('anki-custom-styles')) {
         const style = document.createElement('style');
         style.id = 'anki-custom-styles';
@@ -963,7 +956,6 @@ function setupAnkiAdvancedControls() {
 function shuffleQueue() {
     if (ankiStudyQueue.length <= 1) return;
     
-    // Algoritmo de Embaralhamento Fisher-Yates
     for (let i = ankiStudyQueue.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
         [ankiStudyQueue[i], ankiStudyQueue[j]] = [ankiStudyQueue[j], ankiStudyQueue[i]];
@@ -973,9 +965,9 @@ function shuffleQueue() {
     if (cardContainer) {
         cardContainer.classList.add('shuffle-animation');
         
-        // Efeito sonoro sutil de carta de baralho
         try {
-            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            const ctx = new AudioContext();
             const osc = ctx.createOscillator(); const gainNode = ctx.createGain();
             osc.connect(gainNode); gainNode.connect(ctx.destination);
             osc.type = 'triangle'; osc.frequency.setValueAtTime(400, ctx.currentTime); 
