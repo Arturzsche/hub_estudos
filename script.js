@@ -806,8 +806,10 @@ async function carregarVocabularioDiario(forceRefresh = false) {
     if (forceRefresh && vocabLoading) { if(vocabContent) vocabContent.style.display = 'none'; vocabLoading.style.display = 'block'; vocabLoading.innerHTML = `<div class="modern-spinner"></div><br>Gerando nova palavra...`; }
 
     try {
-        const promptText = "Atue como um avaliador rigoroso de redação de concursos. Forneça UMA palavra de vocabulário avançado e formal útil para uma dissertação sobre temas sociais ou de cidadania. O retorno deve ser EXATAMENTE E APENAS um objeto JSON neste formato, sem crases, MANTENDO A ACENTUAÇÃO E ORTOGRAFIA CORRETAS DO PORTUGUÊS: {\"palavra\": \"Exemplo\", \"significado\": \"Significado\", \"sinonimos\": [\"SinônimoA\"], \"aplicacao\": \"Frase\"}";
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${API_KEY}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contents: [{ parts: [{ text: promptText }] }], generationConfig: { temperature: 1.2 } }) });
+        const palavrasExistentes = (appData.flashcards || []).map(f => f.palavra).join(', ');
+        const exclusaoTexto = palavrasExistentes ? ` NÃO repita nenhuma destas palavras que já estão no baralho: [${palavrasExistentes}].` : '';
+        const promptText = `Atue como um avaliador rigoroso de redação de concursos. Forneça UMA palavra de vocabulário avançado e formal útil para uma dissertação sobre temas sociais ou de cidadania.${exclusaoTexto} O retorno deve ser EXATAMENTE E APENAS um objeto JSON neste formato, sem crases, MANTENDO A ACENTUAÇÃO E ORTOGRAFIA CORRETAS DO PORTUGUÊS: {"palavra": "Exemplo", "significado": "Significado", "sinonimos": ["SinônimoA"], "aplicacao": "Frase"}`;
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${API_KEY}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contents: [{ parts: [{ text: promptText }] }], generationConfig: { temperature: 1.3 } }) });
         if (!response.ok) throw new Error(`Erro na API (${response.status})`);
         const data = await response.json(); const respostaTexto = data.candidates[0].content.parts[0].text;
         const palavraObj = extrairJSONdaString(respostaTexto);
@@ -961,6 +963,9 @@ function shuffleQueue() {
         const j = Math.floor(Math.random() * (i + 1));
         [ankiStudyQueue[i], ankiStudyQueue[j]] = [ankiStudyQueue[j], ankiStudyQueue[i]];
     }
+    
+    loadNextAnkiCard();
+}
     
     const cardContainer = document.getElementById('anki-card-container');
     if (cardContainer) {
