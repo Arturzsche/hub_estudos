@@ -32,7 +32,11 @@ const PREDEFINED_EIXOS = [
     "Trabalho e Modernidade",
     "Cultura, Comportamento e Cidadania",
     "Meio Ambiente e Sustentabilidade",
-    "Segurança Pública e Justiça"
+    "Segurança Pública e Justiça",
+    "Administração Pública e Políticas Públicas",
+    "Economia e Desenvolvimento Sustentável",
+    "Educação e Inclusão Social",
+    "Saúde Pública e Bem-Estar"
 ];
 
 let appData = {
@@ -831,7 +835,11 @@ function renderRepertorioList() {
         "Trabalho e Modernidade": "#f59e0b",
         "Cultura, Comportamento e Cidadania": "#8b5cf6",
         "Meio Ambiente e Sustentabilidade": "#10b981",
-        "Segurança Pública e Justiça": "#ef4444"
+        "Segurança Pública e Justiça": "#ef4444",
+        "Administração Pública e Políticas Públicas": "#64748b",
+        "Economia e Desenvolvimento Sustentável": "#06b6d4",
+        "Educação e Inclusão Social": "#f97316",
+        "Saúde Pública e Bem-Estar": "#ec4899"
     };
 
     [...filteredList].reverse().forEach((rep) => {
@@ -899,8 +907,8 @@ async function carregarRepertorioDiario() {
     const formatoSorteado = formatos[Math.floor(Math.random() * formatos.length)];
 
     try {
-        // 3. PROMPT MODIFICADO FOCADO EM SEGURANÇA PÚBLICA, COM EIXO E FORMATOS OBRIGATÓRIOS
-        const promptText = `Atue como um professor especialista em redação para concursos públicos (foco nas carreiras policiais e de segurança pública). Forneça UM repertório sociocultural curinga, diversificado e de alto nível, OBRIGATORIAMENTE focado no eixo temático: "${eixoSorteado}". O formato do repertório DEVE ser obrigatoriamente: ${formatoSorteado}. NÃO repita nenhum destes repertórios que o aluno já conhece: ${nomesExistentes ? nomesExistentes : 'Nenhum'}. O retorno deve ser estritamente um objeto JSON válido, sem blocos markdown ou crases, mantendo a acentuação correta do português. Formato exato: {"eixo": "${eixoSorteado}", "nome": "Título (Obra, Lei, Evento ou Teoria)", "autor": "Autor, Diretor ou Órgão", "conceito": "Conceito-chave resumido em uma frase forte e direta", "explicacao": "Explicação detalhada focando em como aplicar na redação", "gatilho": "Exemplo prático de como conectar isso na redação"}`;
+        // 3. PROMPT MODIFICADO FOCADO EM TRIBUNAIS DE CONTAS, CONTROLE EXTERNO E TEMAS GERAIS, COM EIXO E FORMATOS OBRIGATÓRIOS
+        const promptText = `Atue como um professor especialista em redação para concursos públicos (com foco em provas de Tribunais de Contas, Controle Externo, Administração Pública, Políticas Públicas e temas gerais de cidadania). Forneça UM repertório sociocultural curinga, diversificado e de alto nível, OBRIGATORIAMENTE focado no eixo temático: "${eixoSorteado}". O formato do repertório DEVE ser obrigatoriamente: ${formatoSorteado}. NÃO repita nenhum destes repertórios que o aluno já conhece: ${nomesExistentes ? nomesExistentes : 'Nenhum'}. O retorno deve ser estritamente um objeto JSON válido, sem blocos markdown ou crases, mantendo a acentuação correta do português. Formato exato: {"eixo": "${eixoSorteado}", "nome": "Título (Obra, Lei, Evento ou Teoria)", "autor": "Autor, Diretor ou Órgão", "conceito": "Conceito-chave resumido em uma frase forte e direta", "explicacao": "Explicação detalhada focando em como aplicar na redação", "gatilho": "Exemplo prático de como conectar isso na redação"}`;
         
         const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${API_KEY}`, { 
             method: 'POST', 
