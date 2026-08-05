@@ -716,8 +716,8 @@ function initChart() {
     const { labels, data } = getChartData();
     chartInstance = new Chart(ctx, {
         type: 'bar', data: { labels: labels, datasets: [{ label: 'Horas', data: data, backgroundColor: barColor, borderRadius: 6, barThickness: 45 }] },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: function(c) { const h = Math.floor(c.raw); const m = Math.round((c.raw - h) * 60); return `${h}h ${m}m`; } } } }, scales: { y: { beginAtZero: true, grid: { color: 'rgba(150, 150, 150, 0.05)', borderColor: 'transparent' }, ticks: { color: textColor, stepSize: 1, font: { size: 12 } } }, x: { grid: { display: false }, ticks: { color: textColor, font: { family: 'Inter', weight: 600, size: 12 } } } }
-    );
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: function(c) { const h = Math.floor(c.raw); const m = Math.round((c.raw - h) * 60); return `${h}h ${m}m`; } } } }, scales: { y: { beginAtZero: true, grid: { color: 'rgba(150, 150, 150, 0.05)', borderColor: 'transparent' }, ticks: { color: textColor, stepSize: 1, font: { size: 12 } } }, x: { grid: { display: false }, ticks: { color: textColor, font: { family: 'Inter', weight: 600, size: 12 } } } } }
+    });
 }
 
 function updateChartData() {
