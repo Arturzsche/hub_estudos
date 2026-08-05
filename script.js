@@ -168,7 +168,8 @@ function initElements() {
 
 function init() {
     if (localStorage.getItem('is_app_logged_in') !== 'true') {
-        injectLoginUI(); return;
+        injectLoginUI(); 
+        return;
     }
     initAppFully();
 }
@@ -342,7 +343,7 @@ function playBeep() {
         osc.type = 'sine'; osc.frequency.setValueAtTime(600, ctx.currentTime); 
         gainNode.gain.setValueAtTime(0.1, ctx.currentTime);
         osc.start(); osc.stop(ctx.currentTime + 0.8);
-    } catch(e) { }
+    } catch(e) {}
 }
 
 function formatHoursText(totalSeconds) {
