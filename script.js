@@ -826,18 +826,47 @@ function renderRepertorioList() {
     if(badge) badge.textContent = filteredList.length;
     if(filteredList.length === 0) { list.innerHTML = `<div style="text-align: center; padding: 3rem; background: var(--surface-color); border: 1px dashed var(--border-color); border-radius: 12px; color: var(--text-muted);">Nenhum repertório encontrado para esta seleção.</div>`; return; }
 
+    const eixoColors = {
+        "Tecnologia e Sociedade": "#3b82f6", 
+        "Trabalho e Modernidade": "#f59e0b",
+        "Cultura, Comportamento e Cidadania": "#8b5cf6",
+        "Meio Ambiente e Sustentabilidade": "#10b981",
+        "Segurança Pública e Justiça": "#ef4444"
+    };
+
     [...filteredList].reverse().forEach((rep) => {
-        const card = document.createElement('div'); card.style.cssText = "background: var(--surface-color); border: 1px solid var(--border-color); border-radius: 12px; padding: 2rem; box-shadow: 0 4px 15px rgba(0,0,0,0.03); position: relative;";
+        const mainColor = eixoColors[rep.eixo] || "#6366f1"; 
+        
+        const card = document.createElement('div'); 
+        card.style.cssText = `background: var(--surface-color); border: 1px solid var(--border-color); border-top: 4px solid ${mainColor}; border-radius: 12px; padding: 2rem; box-shadow: 0 4px 15px rgba(0,0,0,0.03); position: relative;`;
+        
         card.innerHTML = `
             <button class="icon-btn-small btn-del-rep" data-id="${rep.id}" style="position: absolute; top: 1.5rem; right: 1.5rem; color: var(--danger-color); padding: 4px;" title="Apagar do Acervo"><svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M16 9v10H8V9h8m-1.5-6h-5l-1 1H5v2h14V4h-3.5l-1-1zM18 7H6v12c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7z"/></svg></button>
-            <div style="margin-bottom: 1.2rem;"><span style="font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); font-weight: 700;">${rep.eixo}</span></div>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.2rem;">
-                <div style="padding: 1rem; background: var(--bg-color); border-radius: 8px; border-left: 3px solid #6366f1;"><span style="font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); font-weight: 700;">Nome do Repertório</span><p style="font-size: 1.05rem; color: var(--text-main); font-weight: 600; margin: 0.2rem 0 0 0;">${rep.nome}</p></div>
-                <div style="padding: 1rem; background: var(--bg-color); border-radius: 8px; border-left: 3px solid #8b5cf6;"><span style="font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); font-weight: 700;">Autor ou Origem</span><p style="font-size: 1.05rem; color: var(--text-main); font-weight: 600; margin: 0.2rem 0 0 0;">${rep.autor}</p></div>
+            <div style="margin-bottom: 1.2rem;">
+                <span style="font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1px; color: ${mainColor}; font-weight: 800; background: ${mainColor}15; padding: 4px 10px; border-radius: 12px;">${rep.eixo}</span>
             </div>
-            <div style="padding: 1rem; background: rgba(99, 102, 241, 0.05); border: 1px solid rgba(99, 102, 241, 0.2); border-radius: 8px; margin-bottom: 1.2rem; border-left: 3px solid #6366f1;"><span style="font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); font-weight: 700;">Conceito-Chave</span><p style="font-size: 1.05rem; color: var(--text-main); font-weight: 600; margin: 0.3rem 0 0 0;">${rep.conceito || 'Ideia principal do autor e da obra.'}</p></div>
-            <div style="margin-bottom: 1.2rem;"><span style="font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); font-weight: 700;">Explicação Simplificada</span><p style="font-size: 0.95rem; color: var(--text-main); line-height: 1.6; margin-top: 0.3rem;">${rep.explicacao}</p></div>
-            <div style="padding: 1.2rem; background: rgba(39, 201, 63, 0.05); border: 1px solid rgba(39, 201, 63, 0.2); border-radius: 8px;"><span style="font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1px; color: var(--success-color); font-weight: 700;">Gatilho de Aplicação</span><p style="font-size: 0.95rem; color: var(--text-main); line-height: 1.6; margin: 0.3rem 0 0 0; font-style: italic;">${rep.gatilho}</p></div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.2rem;">
+                <div style="padding: 1rem; background: var(--bg-color); border-radius: 8px; border-left: 3px solid ${mainColor};">
+                    <span style="font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); font-weight: 700;">Nome do Repertório (Obra, Lei, etc)</span>
+                    <p style="font-size: 1.05rem; color: var(--text-main); font-weight: 600; margin: 0.2rem 0 0 0;">${rep.nome}</p>
+                </div>
+                <div style="padding: 1rem; background: var(--bg-color); border-radius: 8px; border-left: 3px solid var(--border-color);">
+                    <span style="font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); font-weight: 700;">Autor ou Origem</span>
+                    <p style="font-size: 1.05rem; color: var(--text-main); font-weight: 600; margin: 0.2rem 0 0 0;">${rep.autor}</p>
+                </div>
+            </div>
+            <div style="padding: 1rem; background: ${mainColor}0A; border: 1px solid ${mainColor}30; border-radius: 8px; margin-bottom: 1.2rem; border-left: 3px solid ${mainColor};">
+                <span style="font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); font-weight: 700;">Conceito-Chave</span>
+                <p style="font-size: 1.05rem; color: var(--text-main); font-weight: 600; margin: 0.3rem 0 0 0;">${rep.conceito || 'Ideia principal do autor e da obra.'}</p>
+            </div>
+            <div style="margin-bottom: 1.2rem;">
+                <span style="font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); font-weight: 700;">Explicação Simplificada</span>
+                <p style="font-size: 0.95rem; color: var(--text-main); line-height: 1.6; margin-top: 0.3rem;">${rep.explicacao}</p>
+            </div>
+            <div style="padding: 1.2rem; background: rgba(39, 201, 63, 0.05); border: 1px solid rgba(39, 201, 63, 0.2); border-radius: 8px;">
+                <span style="font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1px; color: var(--success-color); font-weight: 700;">Gatilho de Aplicação / Conexão</span>
+                <p style="font-size: 0.95rem; color: var(--text-main); line-height: 1.6; margin: 0.3rem 0 0 0; font-style: italic;">${rep.gatilho}</p>
+            </div>
         `;
         card.querySelector('.btn-del-rep').addEventListener('click', () => { if(confirm(`Tem certeza que deseja remover "${rep.nome}" do seu acervo?`)) { appData.repertorios = appData.repertorios.filter(r => r.id !== rep.id); saveData(); renderRepertorioList(); } });
         list.appendChild(card);
@@ -846,29 +875,68 @@ function renderRepertorioList() {
 
 async function carregarRepertorioDiario() {
     let API_KEY = localStorage.getItem('gemini_api_key'); if (!API_KEY) { alert("Cadastre a chave da API do Gemini carregando a palavra do dia primeiro."); return; }
-    const containerMain = document.getElementById('repertorio-container-main'); const loadingDiv = document.getElementById('repertorio-loading');
+    
+    const containerMain = document.getElementById('repertorio-container-main'); 
+    const loadingDiv = document.getElementById('repertorio-loading');
     containerMain.style.display = 'none'; loadingDiv.style.display = 'block';
-    if(!appData.repertorios) appData.repertorios = []; const nomesExistentes = appData.repertorios.map(r => r.nome).join(', ');
+    
+    if(!appData.repertorios) appData.repertorios = []; 
+    const nomesExistentes = appData.repertorios.map(r => r.nome).join(', ');
+
+    // 1. SORTEIA UM EIXO ALEATÓRIO NO JAVASCRIPT ANTES DA REQUISIÇÃO
+    const eixos = PREDEFINED_EIXOS;
+    const eixoSorteado = eixos[Math.floor(Math.random() * eixos.length)];
+    
+    // 2. SORTEIA UM FORMATO PARA FORÇAR DIVERSIDADE NA IA
+    const formatos = [
+        "um Livro Clássico ou Contemporâneo", 
+        "um Filme, Série ou Documentário", 
+        "um Dado Estatístico de um Órgão Oficial (IBGE, IPEA, etc)", 
+        "uma Teoria Sociológica ou Filosófica", 
+        "um Evento Histórico Marcante", 
+        "uma Legislação, Princípio Constitucional ou Jurisprudência"
+    ];
+    const formatoSorteado = formatos[Math.floor(Math.random() * formatos.length)];
 
     try {
-        const promptText = "Atue como um professor especialista em redação para concursos públicos (com foco em segurança pública e cidadania). Forneça UM repertório sociocultural curinga e de alto nível. NÃO repita nenhum destes: " + nomesExistentes + ". O retorno deve ser estritamente um objeto JSON válido sem crases. ATENÇÃO: MANTENHA A ACENTUAÇÃO E A ORTOGRAFIA CORRETAS DO PORTUGUÊS EM TODOS OS CAMPOS: {\"eixo\": \"Cultura, Comportamento e Cidadania\", \"nome\": \"Título\", \"autor\": \"Autor\", \"conceito\": \"Conceito-chave resumido em uma frase forte e direta\", \"explicacao\": \"Explicação detalhada\", \"gatilho\": \"Gatilho prático\"}";
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${API_KEY}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contents: [{ parts: [{ text: promptText }] }], generationConfig: { temperature: 1.1 } }) });
+        // 3. PROMPT MODIFICADO FOCADO EM SEGURANÇA PÚBLICA, COM EIXO E FORMATOS OBRIGATÓRIOS
+        const promptText = `Atue como um professor especialista em redação para concursos públicos (foco nas carreiras policiais e de segurança pública). Forneça UM repertório sociocultural curinga, diversificado e de alto nível, OBRIGATORIAMENTE focado no eixo temático: "${eixoSorteado}". O formato do repertório DEVE ser obrigatoriamente: ${formatoSorteado}. NÃO repita nenhum destes repertórios que o aluno já conhece: ${nomesExistentes ? nomesExistentes : 'Nenhum'}. O retorno deve ser estritamente um objeto JSON válido, sem blocos markdown ou crases, mantendo a acentuação correta do português. Formato exato: {"eixo": "${eixoSorteado}", "nome": "Título (Obra, Lei, Evento ou Teoria)", "autor": "Autor, Diretor ou Órgão", "conceito": "Conceito-chave resumido em uma frase forte e direta", "explicacao": "Explicação detalhada focando em como aplicar na redação", "gatilho": "Exemplo prático de como conectar isso na redação"}`;
+        
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${API_KEY}`, { 
+            method: 'POST', 
+            headers: { 'Content-Type': 'application/json' }, 
+            body: JSON.stringify({ 
+                contents: [{ parts: [{ text: promptText }] }], 
+                generationConfig: { temperature: 1.1 } 
+            }) 
+        });
+        
         if (!response.ok) throw new Error(`Erro na API (${response.status})`);
-        const data = await response.json(); const respostaTexto = data.candidates[0].content.parts[0].text;
+        
+        const data = await response.json(); 
+        const respostaTexto = data.candidates[0].content.parts[0].text;
         
         const repObj = extrairJSONdaString(respostaTexto);
         repObj.id = 'rep_' + Date.now();
-        if (!PREDEFINED_EIXOS.includes(repObj.eixo)) repObj.eixo = "Cultura, Comportamento e Cidadania"; 
+        
+        // Garante que o eixo se mantenha no que foi sorteado, caso a IA tente inventar um novo
+        if (!PREDEFINED_EIXOS.includes(repObj.eixo)) repObj.eixo = eixoSorteado; 
         
         appData.repertorios.push(repObj);
         saveData();
         
-        const filterSelect = document.getElementById('filter-repertorio-eixo'); if(filterSelect) filterSelect.value = 'all';
+        const filterSelect = document.getElementById('filter-repertorio-eixo'); 
+        if(filterSelect) filterSelect.value = 'all';
+        
         renderRepertorioList();
         
     } catch (error) {
-        console.error("Falha ao gerar repertório:", error); alert("Ocorreu um erro ao gerar o repertório (Verifique o console para detalhes). Tente novamente.");
-    } finally { loadingDiv.style.display = 'none'; containerMain.style.display = 'block'; }
+        console.error("Falha ao gerar repertório:", error); 
+        alert("Ocorreu um erro ao gerar o repertório (Verifique o console para detalhes). Tente novamente.");
+    } finally { 
+        loadingDiv.style.display = 'none'; 
+        containerMain.style.display = 'block'; 
+    }
 }
 
 function setupRepertorio() {
