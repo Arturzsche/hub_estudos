@@ -53,6 +53,7 @@ let appData = {
 
 let todaysSubjects = [];
 let currentEditingRevId = null;
+let currentEditingFcId = null; // Variável global para rastrear edição de Flashcard
 let elements = {};
 
 // ==========================================
@@ -891,11 +892,9 @@ async function carregarRepertorioDiario() {
     if(!appData.repertorios) appData.repertorios = []; 
     const nomesExistentes = appData.repertorios.map(r => r.nome).join(', ');
 
-    // 1. SORTEIA UM EIXO ALEATÓRIO NO JAVASCRIPT ANTES DA REQUISIÇÃO
     const eixos = PREDEFINED_EIXOS;
     const eixoSorteado = eixos[Math.floor(Math.random() * eixos.length)];
     
-    // 2. SORTEIA UM FORMATO PARA FORÇAR DIVERSIDADE NA IA
     const formatos = [
         "um Livro Clássico ou Contemporâneo", 
         "um Filme, Série ou Documentário", 
@@ -907,7 +906,6 @@ async function carregarRepertorioDiario() {
     const formatoSorteado = formatos[Math.floor(Math.random() * formatos.length)];
 
     try {
-        // 3. PROMPT MODIFICADO FOCADO EM TRIBUNAIS DE CONTAS, CONTROLE EXTERNO E TEMAS GERAIS, COM EIXO E FORMATOS OBRIGATÓRIOS
         const promptText = `Atue como um professor especialista em redação para concursos públicos (com foco em provas de Tribunais de Contas, Controle Externo, Administração Pública, Políticas Públicas e temas gerais de cidadania). Forneça UM repertório sociocultural curinga, diversificado e de alto nível, OBRIGATORIAMENTE focado no eixo temático: "${eixoSorteado}". O formato do repertório DEVE ser obrigatoriamente: ${formatoSorteado}. NÃO repita nenhum destes repertórios que o aluno já conhece: ${nomesExistentes ? nomesExistentes : 'Nenhum'}. O retorno deve ser estritamente um objeto JSON válido, sem blocos markdown ou crases, mantendo a acentuação correta do português. Formato exato: {"eixo": "${eixoSorteado}", "nome": "Título (Obra, Lei, Evento ou Teoria)", "autor": "Autor, Diretor ou Órgão", "conceito": "Conceito-chave resumido em uma frase forte e direta", "explicacao": "Explicação detalhada focando em como aplicar na redação", "gatilho": "Exemplo prático de como conectar isso na redação"}`;
         
         const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${API_KEY}`, { 
@@ -927,7 +925,6 @@ async function carregarRepertorioDiario() {
         const repObj = extrairJSONdaString(respostaTexto);
         repObj.id = 'rep_' + Date.now();
         
-        // Garante que o eixo se mantenha no que foi sorteado, caso a IA tente inventar um novo
         if (!PREDEFINED_EIXOS.includes(repObj.eixo)) repObj.eixo = eixoSorteado; 
         
         appData.repertorios.push(repObj);
@@ -971,19 +968,74 @@ function setupFlashcardsEConectivos() {
         });
     }
     
-    if(elements.btnOpenManualFc) { elements.btnOpenManualFc.addEventListener('click', () => { if (elements.selectManualFcSubject) elements.selectManualFcSubject.value = ''; if (elements.inputFcFront) elements.inputFcFront.value = ''; if (elements.inputFcBack) elements.inputFcBack.value = ''; if (elements.inputFcKeywords) elements.inputFcKeywords.value = ''; if (elements.inputFcContext) elements.inputFcContext.value = ''; if (elements.modalManualFc) elements.modalManualFc.classList.add('active'); }); }
-    if(elements.btnCancelManualFc) elements.btnCancelManualFc.addEventListener('click', () => { if (elements.modalManualFc) elements.modalManualFc.classList.remove('active'); });
+    if(elements.btnOpenManualFc) { 
+        elements.btnOpenManualFc.addEventListener('click', () => { 
+            currentEditingFcId = null; // Reseta estado de edição
+            if (elements.selectManualFcSubject) elements.selectManualFcSubject.value = ''; 
+            if (elements.inputFcFront) elements.inputFcFront.value = ''; 
+            if (elements.inputFcBack) elements.inputFcBack.value = ''; 
+            if (elements.inputFcKeywords) elements.inputFcKeywords.value = ''; 
+            if (elements.inputFcContext) elements.inputFcContext.value = ''; 
+            if (elements.modalManualFc) elements.modalManualFc.classList.add('active'); 
+        }); 
+    }
+    
+    if(elements.btnCancelManualFc) elements.btnCancelManualFc.addEventListener('click', () => { 
+        currentEditingFcId = null;
+        if (elements.modalManualFc) elements.modalManualFc.classList.remove('active'); 
+    });
+    
     if(elements.btnSaveManualFc) {
         elements.btnSaveManualFc.addEventListener('click', () => {
-            const subject = elements.selectManualFcSubject.value; const front = elements.inputFcFront.value.trim(); const back = elements.inputFcBack.value.trim();
-            const keywordsRaw = elements.inputFcKeywords.value; const keywords = keywordsRaw ? keywordsRaw.split(',').map(k => k.trim()).filter(k => k) : [];
+            const subject = elements.selectManualFcSubject.value; 
+            const front = elements.inputFcFront.value.trim(); 
+            const back = elements.inputFcBack.value.trim();
+            const keywordsRaw = elements.inputFcKeywords.value; 
+            const keywords = keywordsRaw ? keywordsRaw.split(',').map(k => k.trim()).filter(k => k) : [];
             const context = elements.inputFcContext.value.trim();
+            
             if(subject && front && back) {
-                const newCard = { id: 'fc_manual_' + Date.now() + Math.floor(Math.random() * 10000), type: 'theory', subject: subject, palavra: front, significado: back, sinonimos: keywords, aplicacao: context, interval: 0, ease: 2.5, nextReview: getTodayDate() };
-                appData.flashcards.push(newCard); saveData(); document.querySelectorAll('.fc-tab').forEach(b => b.classList.remove('active'));
-                const theoryTab = document.querySelector('.fc-tab[data-fctype="theory"]'); if(theoryTab) theoryTab.classList.add('active'); currentFcType = 'theory';
-                initAnkiSession(); try { renderGerenciadorFlashcards(); } catch(e) {}
-                elements.modalManualFc.classList.remove('active'); alert(`✅ Flashcard adicionado com sucesso à sua Sabatina Teórica!`);
+                if (currentEditingFcId) {
+                    // MODO EDIÇÃO
+                    const cardIndex = appData.flashcards.findIndex(f => f.id === currentEditingFcId);
+                    if (cardIndex !== -1) {
+                        appData.flashcards[cardIndex].subject = subject;
+                        appData.flashcards[cardIndex].palavra = front;
+                        appData.flashcards[cardIndex].significado = back;
+                        appData.flashcards[cardIndex].sinonimos = keywords;
+                        appData.flashcards[cardIndex].aplicacao = context;
+                        
+                        saveData();
+                        initAnkiSession();
+                        try { renderGerenciadorFlashcards(); } catch(e) {}
+                        
+                        elements.modalManualFc.classList.remove('active');
+                        currentEditingFcId = null;
+                        alert(`✅ Flashcard atualizado com sucesso!`);
+                    }
+                } else {
+                    // MODO ADIÇÃO
+                    const newCard = { id: 'fc_manual_' + Date.now() + Math.floor(Math.random() * 10000), type: 'theory', subject: subject, palavra: front, significado: back, sinonimos: keywords, aplicacao: context, interval: 0, ease: 2.5, nextReview: getTodayDate() };
+                    appData.flashcards.push(newCard); 
+                    saveData(); 
+                    
+                    document.querySelectorAll('.fc-tab').forEach(b => b.classList.remove('active'));
+                    const theoryTab = document.querySelector('.fc-tab[data-fctype="theory"]'); 
+                    if(theoryTab) theoryTab.classList.add('active'); 
+                    currentFcType = 'theory';
+                    
+                    initAnkiSession(); 
+                    try { renderGerenciadorFlashcards(); } catch(e) {}
+                    
+                    // NÃO FECHA A JANELA. APENAS LIMPA OS TEXTOS (Mantendo a Matéria)
+                    if (elements.inputFcFront) elements.inputFcFront.value = '';
+                    if (elements.inputFcBack) elements.inputFcBack.value = '';
+                    if (elements.inputFcKeywords) elements.inputFcKeywords.value = '';
+                    if (elements.inputFcContext) elements.inputFcContext.value = '';
+                    if (elements.inputFcFront) elements.inputFcFront.focus(); // Retorna o foco pro titulo
+                    
+                    alert(`✅ Flashcard adicionado à Sabatina Teórica! Você pode continuar adicionando em "${subject}".`);
+                }
             } else alert("⚠️ A Matéria, a Frente (pergunta) e o Verso (resposta) são obrigatórios!");
         });
     }
@@ -1152,12 +1204,32 @@ function renderGerenciadorFlashcards() {
         const div = document.createElement('div'); div.className = 'fc-manage-card';
         const subjectHtml = card.subject ? `<span style="font-size: 0.65rem; background: var(--border-color); color: var(--text-main); padding: 2px 6px; border-radius: 4px; margin-bottom: 0.5rem; display: inline-block;">${card.subject}</span>` : '';
         div.innerHTML = `
-            <div style="position: relative; z-index: 5;">${subjectHtml}<h4 style="margin: 0 0 0.5rem 0; font-size: 1.2rem; color: var(--text-main); font-weight: 700; word-wrap: break-word; padding-right: 40px;">${card.palavra}</h4><p style="font-size: 0.8rem; color: var(--text-muted); margin: 0;">Próxima revisão: <strong>${formatDateBR(card.nextReview)}</strong></p></div>
-            <div class="btn-del-fc-wrapper" style="position: absolute; top: 1.5rem; right: 1.5rem; z-index: 20;"><button class="btn-del-fc" data-id="${card.id}" title="Apagar carta"><svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M16 9v10H8V9h8m-1.5-6h-5l-1 1H5v2h14V4h-3.5l-1-1zM18 7H6v12c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7z"/></svg></button></div>
+            <div style="position: relative; z-index: 5;">${subjectHtml}<h4 style="margin: 0 0 0.5rem 0; font-size: 1.2rem; color: var(--text-main); font-weight: 700; word-wrap: break-word; padding-right: 60px;">${card.palavra}</h4><p style="font-size: 0.8rem; color: var(--text-muted); margin: 0;">Próxima revisão: <strong>${formatDateBR(card.nextReview)}</strong></p></div>
+            <div class="fc-actions-wrapper" style="position: absolute; top: 1.5rem; right: 1.5rem; z-index: 20; display: flex; gap: 6px;">
+                <button class="btn-edit-fc" data-id="${card.id}" title="Editar carta" style="background: transparent; border: none; cursor: pointer; padding: 4px; color: var(--text-main);"><svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg></button>
+                <button class="btn-del-fc" data-id="${card.id}" title="Apagar carta" style="background: transparent; border: none; cursor: pointer; padding: 4px; color: var(--danger-color);"><svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M16 9v10H8V9h8m-1.5-6h-5l-1 1H5v2h14V4h-3.5l-1-1zM18 7H6v12c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7z"/></svg></button>
+            </div>
             <div class="fc-view-overlay" style="z-index: 10;"><button class="btn-view-content" data-index="${index}"><svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg> Ver Conteúdo</button></div>
         `;
+        
+        // Botão de Editar
+        div.querySelector('.btn-edit-fc').addEventListener('click', (e) => {
+            e.stopPropagation();
+            currentEditingFcId = card.id;
+            if (elements.selectManualFcSubject) elements.selectManualFcSubject.value = card.subject || '';
+            if (elements.inputFcFront) elements.inputFcFront.value = card.palavra || '';
+            if (elements.inputFcBack) elements.inputFcBack.value = card.significado || '';
+            if (elements.inputFcKeywords) elements.inputFcKeywords.value = (card.sinonimos || []).join(', ');
+            if (elements.inputFcContext) elements.inputFcContext.value = card.aplicacao || '';
+            if (elements.modalManualFc) elements.modalManualFc.classList.add('active');
+        });
+        
+        // Botão de Apagar
         div.querySelector('.btn-del-fc').addEventListener('click', (e) => { e.stopPropagation(); if(confirm(`Tem certeza que deseja apagar a carta "${card.palavra}"?`)) { appData.flashcards = appData.flashcards.filter(f => f.id !== card.id); saveData(); renderGerenciadorFlashcards(); initAnkiSession(); } });
+        
+        // Botão de Ver Conteúdo
         div.querySelector('.btn-view-content').addEventListener('click', (e) => { e.stopPropagation(); openViewFlashcardModal(card); });
+        
         elements.allFlashcardsList.appendChild(div);
     });
 }
