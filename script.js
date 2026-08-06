@@ -1203,16 +1203,18 @@ function renderGerenciadorFlashcards() {
     fcList.forEach((card, index) => {
         const div = document.createElement('div'); div.className = 'fc-manage-card';
         const subjectHtml = card.subject ? `<span style="font-size: 0.65rem; background: var(--border-color); color: var(--text-main); padding: 2px 6px; border-radius: 4px; margin-bottom: 0.5rem; display: inline-block;">${card.subject}</span>` : '';
+        
         div.innerHTML = `
-            <div style="position: relative; z-index: 5;">${subjectHtml}<h4 style="margin: 0 0 0.5rem 0; font-size: 1.2rem; color: var(--text-main); font-weight: 700; word-wrap: break-word; padding-right: 60px;">${card.palavra}</h4><p style="font-size: 0.8rem; color: var(--text-muted); margin: 0;">Próxima revisão: <strong>${formatDateBR(card.nextReview)}</strong></p></div>
-            <div class="fc-actions-wrapper" style="position: absolute; top: 1.5rem; right: 1.5rem; z-index: 20; display: flex; gap: 6px;">
-                <button class="btn-edit-fc" data-id="${card.id}" title="Editar carta" style="background: transparent; border: none; cursor: pointer; padding: 4px; color: var(--text-main);"><svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg></button>
-                <button class="btn-del-fc" data-id="${card.id}" title="Apagar carta" style="background: transparent; border: none; cursor: pointer; padding: 4px; color: var(--danger-color);"><svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M16 9v10H8V9h8m-1.5-6h-5l-1 1H5v2h14V4h-3.5l-1-1zM18 7H6v12c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7z"/></svg></button>
+            <div style="position: relative; z-index: 5;">${subjectHtml}<h4 style="margin: 0 0 0.5rem 0; font-size: 1.2rem; color: var(--text-main); font-weight: 700; word-wrap: break-word; padding-right: 70px;">${card.palavra}</h4><p style="font-size: 0.8rem; color: var(--text-muted); margin: 0;">Próxima revisão: <strong>${formatDateBR(card.nextReview)}</strong></p></div>
+            
+            <div class="btn-del-fc-wrapper" style="position: absolute; top: 1rem; right: 1rem; z-index: 999; display: flex; gap: 6px;">
+                <button class="btn-edit-fc" data-id="${card.id}" title="Editar carta" style="background: var(--bg-color); border: 1px solid var(--border-color); border-radius: 6px; cursor: pointer; padding: 6px; color: var(--text-main); display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1);"><svg viewBox="0 0 24 24" width="14" height="14"><path fill="currentColor" d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg></button>
+                <button class="btn-del-fc" data-id="${card.id}" title="Apagar carta" style="background: var(--bg-color); border: 1px solid var(--border-color); border-radius: 6px; cursor: pointer; padding: 6px; color: var(--danger-color); display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1);"><svg viewBox="0 0 24 24" width="14" height="14"><path fill="currentColor" d="M16 9v10H8V9h8m-1.5-6h-5l-1 1H5v2h14V4h-3.5l-1-1zM18 7H6v12c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7z"/></svg></button>
             </div>
+
             <div class="fc-view-overlay" style="z-index: 10;"><button class="btn-view-content" data-index="${index}"><svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg> Ver Conteúdo</button></div>
         `;
         
-        // Botão de Editar
         div.querySelector('.btn-edit-fc').addEventListener('click', (e) => {
             e.stopPropagation();
             currentEditingFcId = card.id;
@@ -1224,10 +1226,8 @@ function renderGerenciadorFlashcards() {
             if (elements.modalManualFc) elements.modalManualFc.classList.add('active');
         });
         
-        // Botão de Apagar
         div.querySelector('.btn-del-fc').addEventListener('click', (e) => { e.stopPropagation(); if(confirm(`Tem certeza que deseja apagar a carta "${card.palavra}"?`)) { appData.flashcards = appData.flashcards.filter(f => f.id !== card.id); saveData(); renderGerenciadorFlashcards(); initAnkiSession(); } });
         
-        // Botão de Ver Conteúdo
         div.querySelector('.btn-view-content').addEventListener('click', (e) => { e.stopPropagation(); openViewFlashcardModal(card); });
         
         elements.allFlashcardsList.appendChild(div);
