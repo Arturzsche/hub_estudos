@@ -77,12 +77,12 @@ body.focus-active header {
 #theme-toggle { background: transparent; border: 1px solid var(--border-color); color: var(--text-main); padding: 0.4rem 1rem; border-radius: var(--radius); font-size: 0.75rem; text-transform: uppercase; font-weight: 500; cursor: pointer; transition: var(--transition); }
 #theme-toggle:hover { background: var(--border-color); }
 
-main { flex: 1; padding: 2rem 1rem; display: flex; justify-content: center; transition: padding 0.5s ease; }
+main { flex: 1; padding: 2rem 1rem; display: flex; justify-content: center; transition: padding 0.5s ease; width: 100%; }
 body.focus-active main { padding: 0; } 
 
-.container { width: 100%; max-width: 1200px; }
+.container { width: 100%; max-width: 1200px; margin: 0 auto; }
 .container-small { max-width: 800px; width: 100%; }
-.view { display: none; }
+.view { display: none; width: 100%; }
 .view.active { display: block; animation: fadeIn 0.4s ease; }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
