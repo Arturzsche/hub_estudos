@@ -761,30 +761,95 @@ function setupNavigation() {
 function renderSubjectBank() {
     if(!elements.subjectBank) return; elements.subjectBank.innerHTML = '';
     appData.savedSubjects.forEach((subject, index) => {
-        const pill = document.createElement('div'); pill.className = 'subject-pill'; pill.draggable = true;
+        const pill = document.createElement('div'); 
+        pill.className = 'subject-pill'; 
+        pill.draggable = true;
+        
         pill.innerHTML = `<span>${subject}</span><span class="delete-subject" title="Remover matéria">&times;</span>`;
-        pill.addEventListener('dragstart', (e) => { e.dataTransfer.setData('text/plain', subject); setTimeout(() => pill.classList.add('dragging'), 0); });
-        pill.addEventListener('dragend', () => pill.classList.remove('dragging'));
-        pill.querySelector('.delete-subject').addEventListener('click', () => { appData.savedSubjects.splice(index, 1); saveData(); renderSubjectBank(); updateAppSubjects(); });
+        
+        // EVENTOS DE ARRASTO REFORÇADOS
+        pill.addEventListener('dragstart', (e) => { 
+            e.dataTransfer.effectAllowed = 'copyMove';
+            e.dataTransfer.setData('text/plain', subject); 
+            e.dataTransfer.setData('text', subject); // Fallback para navegadores rebeldes
+            setTimeout(() => pill.classList.add('dragging'), 0); 
+        });
+        
+        pill.addEventListener('dragend', () => {
+            pill.classList.remove('dragging');
+        });
+        
+        pill.querySelector('.delete-subject').addEventListener('click', () => { 
+            appData.savedSubjects.splice(index, 1); 
+            saveData(); 
+            renderSubjectBank(); 
+            updateAppSubjects(); 
+        });
+        
         elements.subjectBank.appendChild(pill);
     });
 }
 
 function renderSchedule() {
     if(!elements.scheduleTableBody) return; elements.scheduleTableBody.innerHTML = '';
+    
     appData.schedule.forEach((row, rowIndex) => {
-        const tr = document.createElement('tr'); const tdTime = document.createElement('td'); tdTime.className = 'time-cell';
+        const tr = document.createElement('tr'); 
+        const tdTime = document.createElement('td'); 
+        tdTime.className = 'time-cell';
+        
         const btnDeleteRow = document.createElement('button'); btnDeleteRow.className = 'btn-remove-row'; btnDeleteRow.innerHTML = '<svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M16 9v10H8V9h8m-1.5-6h-5l-1 1H5v2h14V4h-3.5l-1-1zM18 7H6v12c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7z"/></svg>';
         btnDeleteRow.addEventListener('click', (e) => { e.stopPropagation(); appData.schedule.splice(rowIndex, 1); saveData(); renderSchedule(); updateTodaysSubjects(); updateTimerDisplay(); });
+        
         const timeSpan = document.createElement('span'); timeSpan.className = 'time-text'; timeSpan.contentEditable = true; timeSpan.textContent = row.time;
         timeSpan.addEventListener('blur', (e) => { appData.schedule[rowIndex].time = e.target.textContent; saveData(); });
+        
         tdTime.appendChild(btnDeleteRow); tdTime.appendChild(timeSpan); tr.appendChild(tdTime);
 
         row.days.forEach((dayContent, dayIndex) => {
-            const tdDay = document.createElement('td'); tdDay.className = 'drop-zone'; tdDay.textContent = dayContent;
-            tdDay.addEventListener('dragover', (e) => { e.preventDefault(); tdDay.classList.add('drag-over'); }); tdDay.addEventListener('dragleave', () => tdDay.classList.remove('drag-over'));
-            tdDay.addEventListener('drop', (e) => { e.preventDefault(); tdDay.classList.remove('drag-over'); const data = e.dataTransfer.getData('text/plain'); if (data) { tdDay.textContent = data; appData.schedule[rowIndex].days[dayIndex] = data; saveData(); updateTodaysSubjects(); updateTimerDisplay(); } });
-            tdDay.addEventListener('dblclick', () => { tdDay.textContent = ''; appData.schedule[rowIndex].days[dayIndex] = ''; saveData(); updateTodaysSubjects(); updateTimerDisplay(); });
+            const tdDay = document.createElement('td'); 
+            tdDay.className = 'drop-zone'; 
+            tdDay.textContent = dayContent;
+            
+            // EVENTOS DE SOLTAR REFORÇADOS
+            tdDay.addEventListener('dragenter', (e) => {
+                e.preventDefault();
+                tdDay.classList.add('drag-over');
+            });
+
+            tdDay.addEventListener('dragover', (e) => { 
+                e.preventDefault(); 
+                e.dataTransfer.dropEffect = 'copy';
+                tdDay.classList.add('drag-over'); 
+            }); 
+            
+            tdDay.addEventListener('dragleave', () => tdDay.classList.remove('drag-over'));
+            
+            tdDay.addEventListener('drop', (e) => { 
+                e.preventDefault(); 
+                tdDay.classList.remove('drag-over'); 
+                
+                // Recupera os dados de forma resiliente
+                let data = e.dataTransfer.getData('text/plain');
+                if(!data) data = e.dataTransfer.getData('text');
+                
+                if (data) { 
+                    tdDay.textContent = data; 
+                    appData.schedule[rowIndex].days[dayIndex] = data; 
+                    saveData(); 
+                    updateTodaysSubjects(); 
+                    updateTimerDisplay(); 
+                } 
+            });
+            
+            tdDay.addEventListener('dblclick', () => { 
+                tdDay.textContent = ''; 
+                appData.schedule[rowIndex].days[dayIndex] = ''; 
+                saveData(); 
+                updateTodaysSubjects(); 
+                updateTimerDisplay(); 
+            });
+            
             tr.appendChild(tdDay);
         });
         elements.scheduleTableBody.appendChild(tr);
