@@ -423,10 +423,13 @@ body.dark-mode .fc-tab.active {
     .btn-remove-row { left: 0; }
     .conectivos-table td:first-child { white-space: normal; }
     
-    /* Correções responsivas novas */
+    /* Correções responsivas */
     .fc-header-top { flex-direction: column; justify-content: center; text-align: center; }
     .fc-tabs { width: 100%; display: grid; grid-template-columns: 1fr 1fr; }
     .fc-tab { padding: 0.6rem 1rem; }
+    
+    /* Adição para organizar os Post-its no celular */
+    #postit-grid { grid-template-columns: 1fr !important; }
 }
 
 #manage-rev-modal .modal-content, #manage-flashcards-modal .modal-content { background: var(--bg-color); }
