@@ -173,7 +173,21 @@ body.focus-active .controls { transform: translateY(20px); opacity: 0; pointer-e
 .add-subject-wrapper input:focus { border-color: var(--text-main); outline: none; }
 
 .subject-bank { display: flex; flex-wrap: wrap; gap: 0.8rem; }
-.subject-pill { background: var(--bg-color); border: 1px solid var(--border-color); padding: 0.5rem 1rem; border-radius: 20px; font-size: 0.85rem; font-weight: 500; display: flex; align-items: center; gap: 0.8rem; cursor: grab; user-select: none; transition: background 0.2s; -webkit-user-drag: element; }
+.subject-pill { 
+    background: var(--bg-color); 
+    border: 1px solid var(--border-color); 
+    padding: 0.5rem 1rem; 
+    border-radius: 20px; 
+    font-size: 0.85rem; 
+    font-weight: 500; 
+    display: flex; 
+    align-items: center; 
+    gap: 0.8rem; 
+    cursor: grab; 
+    user-select: none; 
+    transition: background 0.2s; 
+}
+
 .subject-pill:hover { background: rgba(150, 150, 150, 0.1); }
 .subject-pill:active { cursor: grabbing; }
 .subject-pill.dragging { opacity: 0.4; }
