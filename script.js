@@ -48,12 +48,13 @@ let appData = {
         { time: "15:30 - 17:00", days: ["", "", "", "", "", "", ""] }
     ],
     cycleState: { date: "", subjectIndex: 0, phaseIndex: 0, msRemaining: CYCLE_PHASES[0].ms },
-    reviews: [], flashcards: [], repertorios: [], timerMode: 'pomodoro', stopwatchMs: 0 
+    reviews: [], flashcards: [], repertorios: [], postits: [], timerMode: 'pomodoro', stopwatchMs: 0 
 };
 
 let todaysSubjects = [];
 let currentEditingRevId = null;
-let currentEditingFcId = null; // Variável global para rastrear edição de Flashcard
+let currentEditingFcId = null; 
+let currentEditingPostitId = null; // Rastrear edição do Post-it
 let elements = {};
 
 // ==========================================
@@ -167,7 +168,16 @@ function initElements() {
         filterFcSubject: document.getElementById('filter-fc-subject'),
         btnRefreshRep: document.getElementById('btn-refresh-repertorio'),
         btnSyncUpload: document.getElementById('btn-sync-upload'),
-        btnSyncDownload: document.getElementById('btn-sync-download')
+        btnSyncDownload: document.getElementById('btn-sync-download'),
+        
+        // Elementos Post-its
+        btnNewPostit: document.getElementById('btn-new-postit'),
+        postitGrid: document.getElementById('postit-grid'),
+        modalPostit: document.getElementById('postit-modal'),
+        inputPostitTitle: document.getElementById('postit-title'),
+        inputPostitContent: document.getElementById('postit-content'),
+        btnSavePostit: document.getElementById('btn-postit-save'),
+        btnCancelPostit: document.getElementById('btn-postit-cancel')
     };
 }
 
@@ -196,6 +206,7 @@ async function initAppFully() {
     try { initAnkiSession(); } catch(e) {}
     try { setupIaGenerator(); } catch(e) {}
     try { setupRepertorio(); } catch(e) {}
+    try { setupPostits(); } catch(e) {}
     
     if (localStorage.getItem('theme') === 'light') document.body.classList.remove('dark-mode');
 
@@ -287,6 +298,7 @@ function loadLocalDataOnly() {
     if (!appData.reviews) appData.reviews = [];
     if (!appData.flashcards) appData.flashcards = [];
     if (!appData.repertorios) appData.repertorios = [];
+    if (!appData.postits) appData.postits = [];
     if (!appData.timerMode) appData.timerMode = 'pomodoro';
     const today = getTodayDate();
     if (!appData.history[today]) appData.history[today] = { time: 0, sessions: 0 };
@@ -317,7 +329,7 @@ async function downloadFromCloud() {
                 const fileContent = gistData.files[GIST_FILENAME].content;
                 mergeData(JSON.parse(fileContent)); localStorage.setItem('studyAppData', JSON.stringify(appData));
                 updateUI(); renderSchedule(); renderSubjectBank(); updateTimerDisplay(); 
-                try { renderRepertorioList(); renderGerenciadorFlashcards(); initAnkiSession(); } catch(e) {}
+                try { renderRepertorioList(); renderGerenciadorFlashcards(); initAnkiSession(); renderPostits(); } catch(e) {}
                 alert('Dados restaurados da nuvem com sucesso! ✅');
             }
         } else throw new Error('Falha na resposta do Github');
@@ -410,6 +422,7 @@ function mergeData(parsedSaved) {
     if (parsedSaved.reviews) appData.reviews = parsedSaved.reviews;
     if (parsedSaved.flashcards) appData.flashcards = parsedSaved.flashcards; 
     if (parsedSaved.repertorios) appData.repertorios = parsedSaved.repertorios;
+    if (parsedSaved.postits) appData.postits = parsedSaved.postits;
     if (parsedSaved.timerMode) appData.timerMode = parsedSaved.timerMode;
     if (parsedSaved.stopwatchMs !== undefined) appData.stopwatchMs = parsedSaved.stopwatchMs;
 }
@@ -788,7 +801,7 @@ document.addEventListener('keydown', (e) => {
 window.addEventListener('beforeunload', () => { if (isRunning) pauseTimer(); }); document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden' && isRunning) localStorage.setItem('lastTick', Date.now().toString()); });
 
 // ==========================================
-// FUNÇÕES DE IA COM PARSER SEGURO
+// FUNÇÕES DE IA COM PARSER SEGURO E REPERTÓRIO
 // ==========================================
 async function carregarVocabularioDiario(forceRefresh = false) {
     let API_KEY = localStorage.getItem('gemini_api_key');
@@ -950,6 +963,9 @@ function setupRepertorio() {
     const filterSelect = document.getElementById('filter-repertorio-eixo'); if (filterSelect) filterSelect.addEventListener('change', renderRepertorioList);
 }
 
+// ==========================================
+// FUNÇÕES DOS FLASHCARDS E ANKI
+// ==========================================
 function setupFlashcardsEConectivos() {
     if(elements.btnNavConectivos) elements.btnNavConectivos.addEventListener('click', () => { if(elements.modalConectivos) elements.modalConectivos.classList.add('active'); });
     if(elements.btnCloseConectivos) elements.btnCloseConectivos.addEventListener('click', () => { if(elements.modalConectivos) elements.modalConectivos.classList.remove('active'); });
@@ -970,7 +986,7 @@ function setupFlashcardsEConectivos() {
     
     if(elements.btnOpenManualFc) { 
         elements.btnOpenManualFc.addEventListener('click', () => { 
-            currentEditingFcId = null; // Reseta estado de edição
+            currentEditingFcId = null;
             if (elements.selectManualFcSubject) elements.selectManualFcSubject.value = ''; 
             if (elements.inputFcFront) elements.inputFcFront.value = ''; 
             if (elements.inputFcBack) elements.inputFcBack.value = ''; 
@@ -996,7 +1012,6 @@ function setupFlashcardsEConectivos() {
             
             if(subject && front && back) {
                 if (currentEditingFcId) {
-                    // MODO EDIÇÃO
                     const cardIndex = appData.flashcards.findIndex(f => f.id === currentEditingFcId);
                     if (cardIndex !== -1) {
                         appData.flashcards[cardIndex].subject = subject;
@@ -1005,34 +1020,26 @@ function setupFlashcardsEConectivos() {
                         appData.flashcards[cardIndex].sinonimos = keywords;
                         appData.flashcards[cardIndex].aplicacao = context;
                         
-                        saveData();
-                        initAnkiSession();
-                        try { renderGerenciadorFlashcards(); } catch(e) {}
-                        
-                        elements.modalManualFc.classList.remove('active');
-                        currentEditingFcId = null;
+                        saveData(); initAnkiSession(); try { renderGerenciadorFlashcards(); } catch(e) {}
+                        elements.modalManualFc.classList.remove('active'); currentEditingFcId = null;
                         alert(`✅ Flashcard atualizado com sucesso!`);
                     }
                 } else {
-                    // MODO ADIÇÃO
                     const newCard = { id: 'fc_manual_' + Date.now() + Math.floor(Math.random() * 10000), type: 'theory', subject: subject, palavra: front, significado: back, sinonimos: keywords, aplicacao: context, interval: 0, ease: 2.5, nextReview: getTodayDate() };
-                    appData.flashcards.push(newCard); 
-                    saveData(); 
+                    appData.flashcards.push(newCard); saveData(); 
                     
                     document.querySelectorAll('.fc-tab').forEach(b => b.classList.remove('active'));
                     const theoryTab = document.querySelector('.fc-tab[data-fctype="theory"]'); 
                     if(theoryTab) theoryTab.classList.add('active'); 
                     currentFcType = 'theory';
                     
-                    initAnkiSession(); 
-                    try { renderGerenciadorFlashcards(); } catch(e) {}
+                    initAnkiSession(); try { renderGerenciadorFlashcards(); } catch(e) {}
                     
-                    // NÃO FECHA A JANELA. APENAS LIMPA OS TEXTOS (Mantendo a Matéria)
                     if (elements.inputFcFront) elements.inputFcFront.value = '';
                     if (elements.inputFcBack) elements.inputFcBack.value = '';
                     if (elements.inputFcKeywords) elements.inputFcKeywords.value = '';
                     if (elements.inputFcContext) elements.inputFcContext.value = '';
-                    if (elements.inputFcFront) elements.inputFcFront.focus(); // Retorna o foco pro titulo
+                    if (elements.inputFcFront) elements.inputFcFront.focus();
                     
                     alert(`✅ Flashcard adicionado à Sabatina Teórica! Você pode continuar adicionando em "${subject}".`);
                 }
@@ -1070,12 +1077,10 @@ function setupAnkiAdvancedControls() {
 
 function shuffleQueue() {
     if (ankiStudyQueue.length <= 1) return;
-    
     for (let i = ankiStudyQueue.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
         [ankiStudyQueue[i], ankiStudyQueue[j]] = [ankiStudyQueue[j], ankiStudyQueue[i]];
     }
-    
     loadNextAnkiCard();
 }
 
@@ -1100,11 +1105,8 @@ function initAnkiSession() {
     ankiStudyQueue = appData.flashcards.filter(f => {
         const isDue = f.nextReview <= today;
         const cardType = f.type || 'lexical';
-        
         let matchSubject = true;
-        if (currentFcType === 'theory' && selectedSubject !== 'all') {
-            matchSubject = f.subject === selectedSubject;
-        }
+        if (currentFcType === 'theory' && selectedSubject !== 'all') { matchSubject = f.subject === selectedSubject; }
         return isDue && cardType === currentFcType && matchSubject;
     });
     
@@ -1114,11 +1116,8 @@ function initAnkiSession() {
     const ankiSess = document.getElementById('anki-study-session'); const ankiDone = document.getElementById('anki-done-msg');
     if(!ankiSess || !ankiDone) return;
 
-    if (ankiStudyQueue.length > 0) {
-        ankiSess.style.display = 'flex'; ankiDone.style.display = 'none'; loadNextAnkiCard();
-    } else {
-        ankiSess.style.display = 'none'; ankiDone.style.display = 'block';
-    }
+    if (ankiStudyQueue.length > 0) { ankiSess.style.display = 'flex'; ankiDone.style.display = 'none'; loadNextAnkiCard(); } 
+    else { ankiSess.style.display = 'none'; ankiDone.style.display = 'block'; }
 }
 
 function loadNextAnkiCard() {
@@ -1131,9 +1130,7 @@ function loadNextAnkiCard() {
     const statusEl = document.getElementById('anki-status');
     const filterSelect = document.getElementById('study-subject-filter');
     let statusText = `REVISÕES PENDENTES (${currentFcType === 'lexical' ? 'LEXICAL' : 'TEORIA'}): ${ankiStudyQueue.length}`;
-    if (currentFcType === 'theory' && filterSelect && filterSelect.value !== 'all') {
-        statusText += ` [Foco: ${filterSelect.value}]`;
-    }
+    if (currentFcType === 'theory' && filterSelect && filterSelect.value !== 'all') { statusText += ` [Foco: ${filterSelect.value}]`; }
     if(statusEl) statusEl.textContent = statusText;
     
     const subjBadgeFront = document.getElementById('anki-card-subject-front'); const subjBadgeBack = document.getElementById('anki-card-subject-back');
@@ -1244,6 +1241,9 @@ function openViewFlashcardModal(card) {
     modal.classList.add('active');
 }
 
+// ==========================================
+// FUNÇÕES DE IA - GERADOR DE FLASHCARDS
+// ==========================================
 function setupIaGenerator() {
     if (elements.btnOpenIaGenerator) { elements.btnOpenIaGenerator.addEventListener('click', () => { if (elements.selectIaFcSubject) elements.selectIaFcSubject.value = ''; if (elements.iaSourceText) elements.iaSourceText.value = ''; const fileInput = document.getElementById('ia-pdf-file'); if (fileInput) fileInput.value = ''; const fileLabel = document.getElementById('pdf-file-label'); if (fileLabel) fileLabel.textContent = "Clique para selecionar um PDF"; if (elements.modalIaGenerator) elements.modalIaGenerator.classList.add('active'); }); }
     if (elements.btnCloseIaGenerator) { elements.btnCloseIaGenerator.addEventListener('click', () => { if (elements.modalIaGenerator) elements.modalIaGenerator.classList.remove('active'); }); }
@@ -1293,4 +1293,158 @@ async function gerarFlashcardsComIA() {
     } catch (error) { console.error("Erro:", error); alert(`Erro ao gerar flashcards (verifique o console para detalhes).`); } finally { elements.btnGenerateAiCards.style.display = 'flex'; elements.iaGeneratorStatus.style.display = 'none'; }
 }
 
+// ==========================================
+// FUNÇÕES DO MURAL DE POST-ITS
+// ==========================================
+function setupPostits() {
+    if(!elements.btnNewPostit) return;
+
+    elements.btnNewPostit.addEventListener('click', () => {
+        currentEditingPostitId = null;
+        document.getElementById('postit-modal-title').textContent = "Novo Post-it";
+        elements.inputPostitTitle.value = '';
+        elements.inputPostitContent.value = '';
+        elements.modalPostit.classList.add('active');
+    });
+
+    elements.btnCancelPostit.addEventListener('click', () => {
+        elements.modalPostit.classList.remove('active');
+    });
+
+    elements.btnSavePostit.addEventListener('click', () => {
+        const title = elements.inputPostitTitle.value.trim();
+        const content = elements.inputPostitContent.value.trim();
+
+        if(!content) {
+            alert("A sua anotação não pode estar vazia!");
+            return;
+        }
+
+        if(currentEditingPostitId) {
+            // Modo Edição
+            const idx = appData.postits.findIndex(p => p.id === currentEditingPostitId);
+            if(idx !== -1) {
+                appData.postits[idx].title = title;
+                appData.postits[idx].content = content;
+            }
+        } else {
+            // Modo Criação com Cores Pastel Sorteadas
+            const colors = ['yellow', 'green', 'pink', 'blue', 'purple', 'orange'];
+            const randomColor = colors[Math.floor(Math.random() * colors.length)];
+            
+            const newPostit = {
+                id: 'postit_' + Date.now(),
+                title: title,
+                content: content,
+                colorCode: randomColor,
+                createdAt: getTodayDate()
+            };
+            
+            if(!appData.postits) appData.postits = [];
+            appData.postits.push(newPostit);
+        }
+
+        saveData();
+        renderPostits();
+        elements.modalPostit.classList.remove('active');
+    });
+
+    renderPostits();
+}
+
+function renderPostits() {
+    if(!elements.postitGrid) return;
+    elements.postitGrid.innerHTML = '';
+
+    if(!appData.postits || appData.postits.length === 0) {
+        elements.postitGrid.innerHTML = `<div style="grid-column: 1 / -1; text-align: center; padding: 4rem; color: var(--text-muted); border: 1px dashed var(--border-color); border-radius: 12px; font-size: 0.95rem;">Você ainda não tem anotações no mural.<br>Clique em "Novo Post-it" para colar sua primeira nota!</div>`;
+        return;
+    }
+
+    // Mapeamento de cores (Fundo : Texto escuro correspondente)
+    const colorMap = {
+        'yellow': { bg: '#fef3c7', text: '#92400e' },
+        'green':  { bg: '#d1fae5', text: '#065f46' },
+        'pink':   { bg: '#fce7f3', text: '#9d174d' },
+        'blue':   { bg: '#dbeafe', text: '#1e40af' },
+        'purple': { bg: '#f3e8ff', text: '#6b21a8' },
+        'orange': { bg: '#ffedd5', text: '#9a3412' }
+    };
+
+    // Renderizando de trás pra frente (mais novos no topo)
+    [...appData.postits].reverse().forEach(postit => {
+        const theme = colorMap[postit.colorCode] || colorMap['yellow'];
+        const card = document.createElement('div');
+        
+        // Estilização realista via JS (Efeito dobra e durex)
+        card.style.cssText = `
+            background-color: ${theme.bg};
+            color: ${theme.text};
+            padding: 1.5rem 1.5rem 2rem 1.5rem;
+            border-radius: 2px 2px 24px 2px;
+            box-shadow: 2px 4px 10px rgba(0,0,0,0.1), inset 0 -15px 15px -15px rgba(0,0,0,0.1);
+            position: relative;
+            min-height: 180px;
+            display: flex;
+            flex-direction: column;
+            transition: transform 0.2s, box-shadow 0.2s;
+            font-family: 'Inter', sans-serif;
+        `;
+        
+        const titleHtml = postit.title ? `<h4 style="margin: 0 0 0.8rem 0; font-size: 1.05rem; font-weight: 800; border-bottom: 1px solid rgba(0,0,0,0.08); padding-bottom: 0.4rem;">${postit.title}</h4>` : '';
+        const contentHtml = postit.content.replace(/\n/g, '<br>'); // Formatar quebra de linhas
+
+        card.innerHTML = `
+            <!-- Durex falso no topo -->
+            <div style="position: absolute; top: -8px; left: 50%; transform: translateX(-50%); width: 45px; height: 16px; background: rgba(255,255,255,0.4); box-shadow: 0 1px 3px rgba(0,0,0,0.05); border-radius: 2px; z-index: 2;"></div> 
+            
+            <!-- Botões de ação (escondidos até o hover) -->
+            <div class="postit-actions" style="position: absolute; top: 12px; right: 12px; display: flex; gap: 4px; opacity: 0; transition: opacity 0.2s; z-index: 10;">
+                <button class="btn-edit-postit" data-id="${postit.id}" title="Editar" style="background: rgba(255,255,255,0.6); border: none; border-radius: 4px; padding: 5px; cursor: pointer; color: ${theme.text}; display: flex; align-items: center; justify-content: center; box-shadow: 0 1px 2px rgba(0,0,0,0.05);"><svg viewBox="0 0 24 24" width="14" height="14"><path fill="currentColor" d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg></button>
+                <button class="btn-del-postit" data-id="${postit.id}" title="Excluir" style="background: rgba(255,255,255,0.6); border: none; border-radius: 4px; padding: 5px; cursor: pointer; color: #dc2626; display: flex; align-items: center; justify-content: center; box-shadow: 0 1px 2px rgba(0,0,0,0.05);"><svg viewBox="0 0 24 24" width="14" height="14"><path fill="currentColor" d="M16 9v10H8V9h8m-1.5-6h-5l-1 1H5v2h14V4h-3.5l-1-1zM18 7H6v12c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7z"/></svg></button>
+            </div>
+            
+            ${titleHtml}
+            <p style="margin: 0; font-size: 0.95rem; line-height: 1.5; flex: 1; font-weight: 500;">${contentHtml}</p>
+            <span style="font-size: 0.7rem; opacity: 0.5; text-align: right; margin-top: 1.5rem; display: block; font-weight: 600;">Criado em: ${formatDateBR(postit.createdAt) || ''}</span>
+        `;
+
+        // Efeitos de Hover
+        card.addEventListener('mouseenter', () => {
+            card.style.transform = 'translateY(-2px)';
+            card.style.boxShadow = '4px 8px 15px rgba(0,0,0,0.1), inset 0 -15px 15px -15px rgba(0,0,0,0.1)';
+            card.querySelector('.postit-actions').style.opacity = '1';
+        });
+        card.addEventListener('mouseleave', () => {
+            card.style.transform = 'translateY(0)';
+            card.style.boxShadow = '2px 4px 10px rgba(0,0,0,0.1), inset 0 -15px 15px -15px rgba(0,0,0,0.1)';
+            card.querySelector('.postit-actions').style.opacity = '0';
+        });
+
+        // Eventos dos botões
+        card.querySelector('.btn-edit-postit').addEventListener('click', (e) => {
+            e.stopPropagation();
+            currentEditingPostitId = postit.id;
+            document.getElementById('postit-modal-title').textContent = "Editar Post-it";
+            elements.inputPostitTitle.value = postit.title || '';
+            elements.inputPostitContent.value = postit.content || '';
+            elements.modalPostit.classList.add('active');
+        });
+
+        card.querySelector('.btn-del-postit').addEventListener('click', (e) => {
+            e.stopPropagation();
+            if(confirm("Deseja mesmo rasgar e excluir este lembrete?")) {
+                appData.postits = appData.postits.filter(p => p.id !== postit.id);
+                saveData();
+                renderPostits();
+            }
+        });
+
+        elements.postitGrid.appendChild(card);
+    });
+}
+
+// ==========================================
+// INICIALIZAÇÃO PRINCIPAL DO DOCUMENTO
+// ==========================================
 if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', init); } else { init(); }
