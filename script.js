@@ -54,7 +54,7 @@ let appData = {
 let todaysSubjects = [];
 let currentEditingRevId = null;
 let currentEditingFcId = null; 
-let currentEditingPostitId = null; // Rastrear edição do Post-it
+let currentEditingPostitId = null;
 let elements = {};
 
 // ==========================================
@@ -1321,14 +1321,12 @@ function setupPostits() {
         }
 
         if(currentEditingPostitId) {
-            // Modo Edição
             const idx = appData.postits.findIndex(p => p.id === currentEditingPostitId);
             if(idx !== -1) {
                 appData.postits[idx].title = title;
                 appData.postits[idx].content = content;
             }
         } else {
-            // Modo Criação com Cores Pastel Sorteadas
             const colors = ['yellow', 'green', 'pink', 'blue', 'purple', 'orange'];
             const randomColor = colors[Math.floor(Math.random() * colors.length)];
             
@@ -1357,11 +1355,10 @@ function renderPostits() {
     elements.postitGrid.innerHTML = '';
 
     if(!appData.postits || appData.postits.length === 0) {
-        elements.postitGrid.innerHTML = `<div style="grid-column: 1 / -1; text-align: center; padding: 4rem; color: var(--text-muted); border: 1px dashed var(--border-color); border-radius: 12px; font-size: 0.95rem;">Você ainda não tem anotações no mural.<br>Clique em "Novo Post-it" para colar sua primeira nota!</div>`;
+        elements.postitGrid.innerHTML = `<div style="grid-column: 1 / -1; text-align: center; padding: 4rem; color: var(--text-muted); border: 1px dashed var(--border-color); border-radius: 12px; font-size: 0.95rem;">Você ainda não tem anotações no mural.<br>Clique no botão <b>+</b> acima para colar sua primeira nota!</div>`;
         return;
     }
 
-    // Mapeamento de cores (Fundo : Texto escuro correspondente)
     const colorMap = {
         'yellow': { bg: '#fef3c7', text: '#92400e' },
         'green':  { bg: '#d1fae5', text: '#065f46' },
@@ -1371,12 +1368,10 @@ function renderPostits() {
         'orange': { bg: '#ffedd5', text: '#9a3412' }
     };
 
-    // Renderizando de trás pra frente (mais novos no topo)
     [...appData.postits].reverse().forEach(postit => {
         const theme = colorMap[postit.colorCode] || colorMap['yellow'];
         const card = document.createElement('div');
         
-        // Estilização realista via JS (Efeito dobra e durex)
         card.style.cssText = `
             background-color: ${theme.bg};
             color: ${theme.text};
@@ -1392,13 +1387,11 @@ function renderPostits() {
         `;
         
         const titleHtml = postit.title ? `<h4 style="margin: 0 0 0.8rem 0; font-size: 1.05rem; font-weight: 800; border-bottom: 1px solid rgba(0,0,0,0.08); padding-bottom: 0.4rem;">${postit.title}</h4>` : '';
-        const contentHtml = postit.content.replace(/\n/g, '<br>'); // Formatar quebra de linhas
+        const contentHtml = postit.content.replace(/\n/g, '<br>');
 
         card.innerHTML = `
-            <!-- Durex falso no topo -->
             <div style="position: absolute; top: -8px; left: 50%; transform: translateX(-50%); width: 45px; height: 16px; background: rgba(255,255,255,0.4); box-shadow: 0 1px 3px rgba(0,0,0,0.05); border-radius: 2px; z-index: 2;"></div> 
             
-            <!-- Botões de ação (escondidos até o hover) -->
             <div class="postit-actions" style="position: absolute; top: 12px; right: 12px; display: flex; gap: 4px; opacity: 0; transition: opacity 0.2s; z-index: 10;">
                 <button class="btn-edit-postit" data-id="${postit.id}" title="Editar" style="background: rgba(255,255,255,0.6); border: none; border-radius: 4px; padding: 5px; cursor: pointer; color: ${theme.text}; display: flex; align-items: center; justify-content: center; box-shadow: 0 1px 2px rgba(0,0,0,0.05);"><svg viewBox="0 0 24 24" width="14" height="14"><path fill="currentColor" d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg></button>
                 <button class="btn-del-postit" data-id="${postit.id}" title="Excluir" style="background: rgba(255,255,255,0.6); border: none; border-radius: 4px; padding: 5px; cursor: pointer; color: #dc2626; display: flex; align-items: center; justify-content: center; box-shadow: 0 1px 2px rgba(0,0,0,0.05);"><svg viewBox="0 0 24 24" width="14" height="14"><path fill="currentColor" d="M16 9v10H8V9h8m-1.5-6h-5l-1 1H5v2h14V4h-3.5l-1-1zM18 7H6v12c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7z"/></svg></button>
@@ -1409,7 +1402,6 @@ function renderPostits() {
             <span style="font-size: 0.7rem; opacity: 0.5; text-align: right; margin-top: 1.5rem; display: block; font-weight: 600;">Criado em: ${formatDateBR(postit.createdAt) || ''}</span>
         `;
 
-        // Efeitos de Hover
         card.addEventListener('mouseenter', () => {
             card.style.transform = 'translateY(-2px)';
             card.style.boxShadow = '4px 8px 15px rgba(0,0,0,0.1), inset 0 -15px 15px -15px rgba(0,0,0,0.1)';
@@ -1421,7 +1413,6 @@ function renderPostits() {
             card.querySelector('.postit-actions').style.opacity = '0';
         });
 
-        // Eventos dos botões
         card.querySelector('.btn-edit-postit').addEventListener('click', (e) => {
             e.stopPropagation();
             currentEditingPostitId = postit.id;
