@@ -790,35 +790,104 @@ function renderSubjectBank() {
     });
 }
 
+// ==========================================
+// FUNÇÕES DE RENDERIZAÇÃO E ARRASTO (BLINDADAS)
+// ==========================================
+
+// Variável global para burlar bloqueios do navegador no DataTransfer
+window.draggedSubjectFallback = null;
+
+function renderSubjectBank() {
+    if(!elements.subjectBank) return; 
+    elements.subjectBank.innerHTML = '';
+    
+    appData.savedSubjects.forEach((subject, index) => {
+        const pill = document.createElement('div'); 
+        pill.className = 'subject-pill'; 
+        pill.draggable = true; // Essencial para HTML5 Drag
+        
+        pill.innerHTML = `<span>${subject}</span><span class="delete-subject" title="Remover matéria">&times;</span>`;
+        
+        // EVENTOS DE ARRASTO COM FALLBACK
+        pill.addEventListener('dragstart', (e) => { 
+            // 1. Salva na nossa variável global como plano B infalível
+            window.draggedSubjectFallback = subject; 
+            
+            // 2. Tenta salvar na API nativa do navegador
+            try {
+                e.dataTransfer.effectAllowed = 'copyMove';
+                e.dataTransfer.setData('text/plain', subject); 
+                e.dataTransfer.setData('text', subject); 
+            } catch(err) {
+                console.warn("Navegador bloqueou o dataTransfer. O fallback será usado.");
+            }
+            
+            setTimeout(() => pill.classList.add('dragging'), 0); 
+        });
+        
+        pill.addEventListener('dragend', () => {
+            pill.classList.remove('dragging');
+            window.draggedSubjectFallback = null; // Limpa a memória
+        });
+        
+        pill.querySelector('.delete-subject').addEventListener('click', () => { 
+            appData.savedSubjects.splice(index, 1); 
+            saveData(); 
+            renderSubjectBank(); 
+            updateAppSubjects(); 
+        });
+        
+        elements.subjectBank.appendChild(pill);
+    });
+}
+
 function renderSchedule() {
-    if(!elements.scheduleTableBody) return; elements.scheduleTableBody.innerHTML = '';
+    if(!elements.scheduleTableBody) return; 
+    elements.scheduleTableBody.innerHTML = '';
     
     appData.schedule.forEach((row, rowIndex) => {
         const tr = document.createElement('tr'); 
         const tdTime = document.createElement('td'); 
         tdTime.className = 'time-cell';
         
-        const btnDeleteRow = document.createElement('button'); btnDeleteRow.className = 'btn-remove-row'; btnDeleteRow.innerHTML = '<svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M16 9v10H8V9h8m-1.5-6h-5l-1 1H5v2h14V4h-3.5l-1-1zM18 7H6v12c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7z"/></svg>';
-        btnDeleteRow.addEventListener('click', (e) => { e.stopPropagation(); appData.schedule.splice(rowIndex, 1); saveData(); renderSchedule(); updateTodaysSubjects(); updateTimerDisplay(); });
+        const btnDeleteRow = document.createElement('button'); 
+        btnDeleteRow.className = 'btn-remove-row'; 
+        btnDeleteRow.innerHTML = '<svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M16 9v10H8V9h8m-1.5-6h-5l-1 1H5v2h14V4h-3.5l-1-1zM18 7H6v12c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7z"/></svg>';
+        btnDeleteRow.addEventListener('click', (e) => { 
+            e.stopPropagation(); 
+            appData.schedule.splice(rowIndex, 1); 
+            saveData(); 
+            renderSchedule(); 
+            updateTodaysSubjects(); 
+            updateTimerDisplay(); 
+        });
         
-        const timeSpan = document.createElement('span'); timeSpan.className = 'time-text'; timeSpan.contentEditable = true; timeSpan.textContent = row.time;
-        timeSpan.addEventListener('blur', (e) => { appData.schedule[rowIndex].time = e.target.textContent; saveData(); });
+        const timeSpan = document.createElement('span'); 
+        timeSpan.className = 'time-text'; 
+        timeSpan.contentEditable = true; 
+        timeSpan.textContent = row.time;
+        timeSpan.addEventListener('blur', (e) => { 
+            appData.schedule[rowIndex].time = e.target.textContent; 
+            saveData(); 
+        });
         
-        tdTime.appendChild(btnDeleteRow); tdTime.appendChild(timeSpan); tr.appendChild(tdTime);
+        tdTime.appendChild(btnDeleteRow); 
+        tdTime.appendChild(timeSpan); 
+        tr.appendChild(tdTime);
 
         row.days.forEach((dayContent, dayIndex) => {
             const tdDay = document.createElement('td'); 
             tdDay.className = 'drop-zone'; 
             tdDay.textContent = dayContent;
             
-            // EVENTOS DE SOLTAR REFORÇADOS
+            // EVENTOS DE SOLTAR REFORÇADOS E FORÇADOS
             tdDay.addEventListener('dragenter', (e) => {
-                e.preventDefault();
+                e.preventDefault(); // OBRIGATÓRIO
                 tdDay.classList.add('drag-over');
             });
 
             tdDay.addEventListener('dragover', (e) => { 
-                e.preventDefault(); 
+                e.preventDefault(); // OBRIGATÓRIO (se não tiver isso, o drop NUNCA dispara)
                 e.dataTransfer.dropEffect = 'copy';
                 tdDay.classList.add('drag-over'); 
             }); 
@@ -826,13 +895,23 @@ function renderSchedule() {
             tdDay.addEventListener('dragleave', () => tdDay.classList.remove('drag-over'));
             
             tdDay.addEventListener('drop', (e) => { 
-                e.preventDefault(); 
+                e.preventDefault(); // OBRIGATÓRIO
                 tdDay.classList.remove('drag-over'); 
                 
-                // Recupera os dados de forma resiliente
-                let data = e.dataTransfer.getData('text/plain');
-                if(!data) data = e.dataTransfer.getData('text');
+                let data = '';
+                // 1. Tenta pegar pela via oficial
+                try {
+                    data = e.dataTransfer.getData('text/plain') || e.dataTransfer.getData('text');
+                } catch(err) {
+                    console.warn("Erro ao ler dataTransfer no drop.");
+                }
                 
+                // 2. Se a via oficial falhar ou vier vazia, usa nossa via hackeada
+                if (!data && window.draggedSubjectFallback) {
+                    data = window.draggedSubjectFallback;
+                }
+                
+                // 3. Aplica o dado na célula
                 if (data) { 
                     tdDay.textContent = data; 
                     appData.schedule[rowIndex].days[dayIndex] = data; 
