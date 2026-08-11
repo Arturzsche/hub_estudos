@@ -314,16 +314,18 @@
             </div>
         </section>
         
-        <!-- ABA MURAL DE POST-ITS (CLEAN & FULL BACKGROUND) -->
-        <section id="mural" class="view" style="position: relative; min-height: 75vh;">
-            <div style="display: flex; justify-content: flex-end; margin-bottom: 1.5rem;">
-                <button id="btn-new-postit" title="Novo Post-it" style="width: 44px; height: 44px; border-radius: 50%; background: var(--text-main); color: var(--bg-color); border: none; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.15); transition: transform 0.2s, filter 0.2s;">
-                    <svg viewBox="0 0 24 24" width="22" height="22"><path fill="currentColor" d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
-                </button>
-            </div>
-            
-            <!-- Container espalhado por todo o fundo -->
-            <div id="postit-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 1.5rem; align-items: start; width: 100%;">
+        <!-- ABA MURAL DE POST-ITS (ALINHADA CORRETAMENTE) -->
+        <section id="mural" class="view">
+            <div class="container" style="min-height: 75vh;">
+                <div style="display: flex; justify-content: flex-end; margin-bottom: 1.5rem;">
+                    <button id="btn-new-postit" title="Novo Post-it" style="width: 44px; height: 44px; border-radius: 50%; background: var(--text-main); color: var(--bg-color); border: none; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.15); transition: transform 0.2s, filter 0.2s;">
+                        <svg viewBox="0 0 24 24" width="22" height="22"><path fill="currentColor" d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+                    </button>
+                </div>
+                
+                <!-- Container espalhado lado a lado (Grid) -->
+                <div id="postit-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 1.5rem; align-items: start; width: 100%;">
+                </div>
             </div>
         </section>
 
