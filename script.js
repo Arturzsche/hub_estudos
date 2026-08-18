@@ -48,8 +48,7 @@ let appData = {
         { time: "15:30 - 17:00", days: ["", "", "", "", "", "", ""] }
     ],
     cycleState: { date: "", subjectIndex: 0, phaseIndex: 0, msRemaining: CYCLE_PHASES[0].ms },
-    reviews: [], flashcards: [], repertorios: [], postits: [], timerMode: 'pomodoro', stopwatchMs: 0,
-    activeStudyDate: null // Armazena a data real em que a sessão ativa começou
+    reviews: [], flashcards: [], repertorios: [], postits: [], timerMode: 'pomodoro', stopwatchMs: 0 
 };
 
 let todaysSubjects = [];
@@ -57,7 +56,6 @@ let currentEditingRevId = null;
 let currentEditingFcId = null; 
 let currentEditingPostitId = null;
 let elements = {};
-window.draggedSubjectFallback = null;
 
 // ==========================================
 // FUNÇÕES UTILITÁRIAS PARA IA (BLINDAGEM)
@@ -172,6 +170,7 @@ function initElements() {
         btnSyncUpload: document.getElementById('btn-sync-upload'),
         btnSyncDownload: document.getElementById('btn-sync-download'),
         
+        // Elementos Post-its
         btnNewPostit: document.getElementById('btn-new-postit'),
         postitGrid: document.getElementById('postit-grid'),
         modalPostit: document.getElementById('postit-modal'),
@@ -274,7 +273,7 @@ async function initAppFully() {
     
     const btnClearToday = document.getElementById('btn-clear-today');
     if(btnClearToday) btnClearToday.addEventListener('click', () => {
-        const t = getTargetStudyDate();
+        const t = getTodayDate();
         if(appData.history[t]) { appData.history[t] = {time:0, sessions:0}; saveData(); calculateRecords(); updateUI(); resetTimer(); }
         document.getElementById('clear-modal').classList.remove('active');
     });
@@ -282,7 +281,7 @@ async function initAppFully() {
     const btnClearAll = document.getElementById('btn-clear-all');
     if(btnClearAll) btnClearAll.addEventListener('click', () => {
         appData.history={}; appData.streak=0; appData.lastStudyDate=null; appData.recordDay=0; appData.recordWeek=0;
-        appData.history[getRealTodayDate()] = {time:0, sessions:0};
+        appData.history[getTodayDate()] = {time:0, sessions:0};
         saveData(); calculateRecords(); updateUI(); resetTimer();
         document.getElementById('clear-modal').classList.remove('active');
     });
@@ -301,7 +300,7 @@ function loadLocalDataOnly() {
     if (!appData.repertorios) appData.repertorios = [];
     if (!appData.postits) appData.postits = [];
     if (!appData.timerMode) appData.timerMode = 'pomodoro';
-    const today = getRealTodayDate();
+    const today = getTodayDate();
     if (!appData.history[today]) appData.history[today] = { time: 0, sessions: 0 };
 }
 
@@ -343,22 +342,9 @@ function saveData() {
     localStorage.setItem('studyAppData', JSON.stringify(appData));
 }
 
-// Retorna a data real do relógio do sistema
-function getRealTodayDate() {
+function getTodayDate() {
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-}
-
-// LÓGICA INTELIGENTE: Retorna a data em que a sessão ativa começou (ou o dia real se estiver parado)
-function getTargetStudyDate() {
-    if (isRunning && appData.activeStudyDate) {
-        return appData.activeStudyDate;
-    }
-    const realToday = getRealTodayDate();
-    if (!appData.activeStudyDate) {
-        appData.activeStudyDate = realToday;
-    }
-    return appData.activeStudyDate;
 }
 
 function formatDateBR(dateStr) {
@@ -385,7 +371,7 @@ function updateTodaysSubjects() {
     const jsDay = new Date().getDay(); const tableDayIndex = jsDay === 0 ? 6 : jsDay - 1;
     todaysSubjects = [];
     appData.schedule.forEach(row => { const subject = row.days[tableDayIndex]; if (subject && subject.trim() !== '') todaysSubjects.push(subject.trim()); });
-    const today = getTargetStudyDate();
+    const today = getTodayDate();
     if (appData.cycleState.date !== today) { appData.cycleState = { date: today, subjectIndex: 0, phaseIndex: 0, msRemaining: CYCLE_PHASES[0].ms }; saveData(); }
 }
 
@@ -439,11 +425,10 @@ function mergeData(parsedSaved) {
     if (parsedSaved.postits) appData.postits = parsedSaved.postits;
     if (parsedSaved.timerMode) appData.timerMode = parsedSaved.timerMode;
     if (parsedSaved.stopwatchMs !== undefined) appData.stopwatchMs = parsedSaved.stopwatchMs;
-    if (parsedSaved.activeStudyDate) appData.activeStudyDate = parsedSaved.activeStudyDate;
 }
 
 function checkStreak() {
-    const today = getRealTodayDate(); const lastDateStr = appData.lastStudyDate; if (!lastDateStr) return;
+    const today = getTodayDate(); const lastDateStr = appData.lastStudyDate; if (!lastDateStr) return;
     const diffDays = Math.round(Math.abs(new Date(today) - new Date(lastDateStr)) / (1000 * 60 * 60 * 24));
     if (diffDays > 1) { appData.streak = 0; saveData(); }
 }
@@ -527,7 +512,7 @@ function initManualReviews() {
 
 function renderPendingReviews() {
     const badge = document.getElementById('review-count-badge'); const list = document.getElementById('pending-reviews-list'); const msg = document.getElementById('no-reviews-msg');
-    if(list) list.innerHTML = ''; const today = getRealTodayDate(); let pending = [];
+    if(list) list.innerHTML = ''; const today = getTodayDate(); let pending = [];
     appData.reviews.forEach(rev => { if (rev.nextReview <= today) pending.push(rev); });
     
     if(pending.length > 0) {
@@ -570,7 +555,7 @@ function renderAllReviews() {
     if(document.getElementById('rev-stat-total')) document.getElementById('rev-stat-total').textContent = filtered.length;
     if(filtered.length === 0) { list.innerHTML = `<div class="empty-msg" style="grid-column: 1 / -1; padding: 3rem 2rem; text-align: center; color: var(--text-muted); border: 1px dashed var(--border-color); border-radius: var(--radius); font-size: 0.9rem;">Nenhuma revisão encontrada.</div>`; return; }
 
-    const today = getRealTodayDate();
+    const today = getTodayDate();
     filtered.forEach(rev => {
         const stepText = rev.step < REVIEW_INTERVALS.length ? `${REVIEW_INTERVALS[rev.step]} dias` : 'Concluído';
         const notesHtml = rev.notes ? `<p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.3rem; border-left: 2px solid var(--border-color); padding-left: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${rev.notes}</p>` : '';
@@ -619,7 +604,7 @@ function renderAllReviews() {
 
 function updateUI() {
     try {
-        updateTodaysSubjects(); const today = getTargetStudyDate(); const todayData = appData.history[today] || { time: 0, sessions: 0 };
+        updateTodaysSubjects(); const today = getTodayDate(); const todayData = appData.history[today] || { time: 0, sessions: 0 };
         const h = String(Math.floor(todayData.time / 3600)).padStart(2, '0'); const m = String(Math.floor((todayData.time % 3600) / 60)).padStart(2, '0'); const s = String(todayData.time % 60).padStart(2, '0');
         
         if(elements.totalTimeDisplay) elements.totalTimeDisplay.textContent = `${h}:${m}:${s}`;
@@ -645,16 +630,11 @@ function loadTimerState() {
     if (wasRunning) {
         const missedMs = Date.now() - lastTick;
         if (missedMs > 0 && missedMs < 43200000) { 
-            const activeDate = getTargetStudyDate();
-            if (!appData.history[activeDate]) appData.history[activeDate] = { time: 0, sessions: 0 };
-
-            if (appData.timerMode === 'stopwatch') { 
-                appData.stopwatchMs += missedMs; 
-                appData.history[activeDate].time += Math.floor(missedMs / 1000); 
-            } else {
+            if (appData.timerMode === 'stopwatch') { appData.stopwatchMs += missedMs; appData.history[getTodayDate()].time += Math.floor(missedMs / 1000); } 
+            else {
                 appData.cycleState.msRemaining -= missedMs;
                 if (appData.cycleState.msRemaining < 0) appData.cycleState.msRemaining = 0;
-                else { const currentPhase = CYCLE_PHASES[appData.cycleState.phaseIndex]; if (currentPhase && currentPhase.isStudy) appData.history[activeDate].time += Math.floor(missedMs / 1000); }
+                else { const currentPhase = CYCLE_PHASES[appData.cycleState.phaseIndex]; if (currentPhase && currentPhase.isStudy) appData.history[getTodayDate()].time += Math.floor(missedMs / 1000); }
             }
             saveData();
         }
@@ -667,43 +647,29 @@ function startTimer() {
     if (isRunning) return;
     if (appData.timerMode === 'pomodoro' && todaysSubjects.length > 0 && appData.cycleState.subjectIndex >= todaysSubjects.length) return; 
 
-    // FIXA O DIA DE ESTUDO AO INICIAR A SESSÃO (Evita quebrar à meia-noite)
-    if (!appData.activeStudyDate) {
-        appData.activeStudyDate = getRealTodayDate();
-    }
-    const targetDate = appData.activeStudyDate;
-    if (!appData.history[targetDate]) {
-        appData.history[targetDate] = { time: 0, sessions: 0 };
-    }
-
-    isRunning = true; updateToggleBtn(); 
-
+    isRunning = true; updateToggleBtn(); const today = getTodayDate();
     if (localStorage.getItem('isTimerRunning') !== 'true') {
-        appData.history[targetDate].sessions++;
-        if (appData.lastStudyDate !== targetDate) {
-            if (appData.lastStudyDate) { const diff = Math.round((new Date(targetDate) - new Date(appData.lastStudyDate)) / (1000 * 60 * 60 * 24)); if (diff <= 1) appData.streak++; else appData.streak = 1; } 
+        appData.history[today].sessions++;
+        if (appData.lastStudyDate !== today) {
+            if (appData.lastStudyDate) { const diff = Math.round((new Date(today) - new Date(appData.lastStudyDate)) / (1000 * 60 * 60 * 24)); if (diff <= 1) appData.streak++; else appData.streak = 1; } 
             else appData.streak = 1;
-            appData.lastStudyDate = targetDate; saveData(); 
+            appData.lastStudyDate = today; saveData(); 
         }
     }
-    
     localStorage.setItem('isTimerRunning', 'true'); lastTickTime = Date.now(); let accumulatedMsToSave = 0; 
     timerInterval = setInterval(() => {
         const now = Date.now(); const delta = now - lastTickTime; lastTickTime = now; accumulatedMsToSave += delta;
         if (appData.timerMode === 'stopwatch') appData.stopwatchMs += delta; else { appData.cycleState.msRemaining -= delta; if (todaysSubjects.length === 0) appData.cycleState.msRemaining = 0; }
-        
         if (accumulatedMsToSave >= 1000) {
             const secondsPassed = Math.floor(accumulatedMsToSave / 1000); accumulatedMsToSave -= (secondsPassed * 1000); 
             const currentPhase = CYCLE_PHASES[appData.cycleState.phaseIndex];
-            
             if (appData.timerMode === 'stopwatch' || todaysSubjects.length === 0 || (currentPhase && currentPhase.isStudy)) {
-                appData.history[targetDate].time += secondsPassed;
-                if (appData.history[targetDate].time % 5 === 0) saveData(); 
-                if (appData.history[targetDate].time % 60 === 0) calculateRecords();
+                appData.history[today].time += secondsPassed;
+                if (appData.history[today].time % 5 === 0) saveData(); 
+                if (appData.history[today].time % 60 === 0) calculateRecords();
                 updateUI(); 
             }
         }
-        
         if (appData.timerMode === 'pomodoro' && appData.cycleState.msRemaining <= 0 && todaysSubjects.length > 0) {
             playBeep(); appData.cycleState.phaseIndex++;
             if (appData.cycleState.phaseIndex >= CYCLE_PHASES.length) { appData.cycleState.phaseIndex = 0; appData.cycleState.subjectIndex++; }
@@ -716,26 +682,14 @@ function startTimer() {
 }
 
 function pauseTimer() {
-    if (!isRunning) return; 
-    isRunning = false; 
-    clearInterval(timerInterval); 
-    updateToggleBtn();
-    
-    localStorage.setItem('isTimerRunning', 'false'); 
-    localStorage.setItem('lastTick', Date.now().toString());
-    
-    // Libera a data ativa para que na próxima sessão ele pegue o dia real corrente
-    appData.activeStudyDate = null; 
-
-    calculateRecords(); 
-    saveData(); 
-    updateUI();
+    if (!isRunning) return; isRunning = false; clearInterval(timerInterval); updateToggleBtn();
+    localStorage.setItem('isTimerRunning', 'false'); localStorage.setItem('lastTick', Date.now().toString());
+    calculateRecords(); saveData(); updateUI();
 }
 
 function resetTimer() {
     pauseTimer();
-    if (appData.timerMode === 'stopwatch') appData.stopwatchMs = 0; else appData.cycleState = { date: getRealTodayDate(), subjectIndex: 0, phaseIndex: 0, msRemaining: CYCLE_PHASES[0].ms };
-    appData.activeStudyDate = null;
+    if (appData.timerMode === 'stopwatch') appData.stopwatchMs = 0; else appData.cycleState = { date: getTodayDate(), subjectIndex: 0, phaseIndex: 0, msRemaining: CYCLE_PHASES[0].ms };
     localStorage.setItem('isTimerRunning', 'false'); saveData(); updateTimerDisplay();
 }
 
@@ -805,9 +759,7 @@ function setupNavigation() {
 }
 
 function renderSubjectBank() {
-    if(!elements.subjectBank) return; 
-    elements.subjectBank.innerHTML = '';
-    
+    if(!elements.subjectBank) return; elements.subjectBank.innerHTML = '';
     appData.savedSubjects.forEach((subject, index) => {
         const pill = document.createElement('div'); 
         pill.className = 'subject-pill'; 
@@ -815,19 +767,67 @@ function renderSubjectBank() {
         
         pill.innerHTML = `<span>${subject}</span><span class="delete-subject" title="Remover matéria">&times;</span>`;
         
+        // EVENTOS DE ARRASTO REFORÇADOS
         pill.addEventListener('dragstart', (e) => { 
-            window.draggedSubjectFallback = subject; 
-            try {
-                e.dataTransfer.effectAllowed = 'copyMove';
-                e.dataTransfer.setData('text/plain', subject); 
-                e.dataTransfer.setData('text', subject); 
-            } catch(err) {}
+            e.dataTransfer.effectAllowed = 'copyMove';
+            e.dataTransfer.setData('text/plain', subject); 
+            e.dataTransfer.setData('text', subject); // Fallback para navegadores rebeldes
             setTimeout(() => pill.classList.add('dragging'), 0); 
         });
         
         pill.addEventListener('dragend', () => {
             pill.classList.remove('dragging');
-            window.draggedSubjectFallback = null;
+        });
+        
+        pill.querySelector('.delete-subject').addEventListener('click', () => { 
+            appData.savedSubjects.splice(index, 1); 
+            saveData(); 
+            renderSubjectBank(); 
+            updateAppSubjects(); 
+        });
+        
+        elements.subjectBank.appendChild(pill);
+    });
+}
+
+// ==========================================
+// FUNÇÕES DE RENDERIZAÇÃO E ARRASTO (BLINDADAS)
+// ==========================================
+
+// Variável global para burlar bloqueios do navegador no DataTransfer
+window.draggedSubjectFallback = null;
+
+function renderSubjectBank() {
+    if(!elements.subjectBank) return; 
+    elements.subjectBank.innerHTML = '';
+    
+    appData.savedSubjects.forEach((subject, index) => {
+        const pill = document.createElement('div'); 
+        pill.className = 'subject-pill'; 
+        pill.draggable = true; // Essencial para HTML5 Drag
+        
+        pill.innerHTML = `<span>${subject}</span><span class="delete-subject" title="Remover matéria">&times;</span>`;
+        
+        // EVENTOS DE ARRASTO COM FALLBACK
+        pill.addEventListener('dragstart', (e) => { 
+            // 1. Salva na nossa variável global como plano B infalível
+            window.draggedSubjectFallback = subject; 
+            
+            // 2. Tenta salvar na API nativa do navegador
+            try {
+                e.dataTransfer.effectAllowed = 'copyMove';
+                e.dataTransfer.setData('text/plain', subject); 
+                e.dataTransfer.setData('text', subject); 
+            } catch(err) {
+                console.warn("Navegador bloqueou o dataTransfer. O fallback será usado.");
+            }
+            
+            setTimeout(() => pill.classList.add('dragging'), 0); 
+        });
+        
+        pill.addEventListener('dragend', () => {
+            pill.classList.remove('dragging');
+            window.draggedSubjectFallback = null; // Limpa a memória
         });
         
         pill.querySelector('.delete-subject').addEventListener('click', () => { 
@@ -880,13 +880,14 @@ function renderSchedule() {
             tdDay.className = 'drop-zone'; 
             tdDay.textContent = dayContent;
             
+            // EVENTOS DE SOLTAR REFORÇADOS E FORÇADOS
             tdDay.addEventListener('dragenter', (e) => {
-                e.preventDefault();
+                e.preventDefault(); // OBRIGATÓRIO
                 tdDay.classList.add('drag-over');
             });
 
             tdDay.addEventListener('dragover', (e) => { 
-                e.preventDefault(); 
+                e.preventDefault(); // OBRIGATÓRIO (se não tiver isso, o drop NUNCA dispara)
                 e.dataTransfer.dropEffect = 'copy';
                 tdDay.classList.add('drag-over'); 
             }); 
@@ -894,18 +895,23 @@ function renderSchedule() {
             tdDay.addEventListener('dragleave', () => tdDay.classList.remove('drag-over'));
             
             tdDay.addEventListener('drop', (e) => { 
-                e.preventDefault(); 
+                e.preventDefault(); // OBRIGATÓRIO
                 tdDay.classList.remove('drag-over'); 
                 
                 let data = '';
+                // 1. Tenta pegar pela via oficial
                 try {
                     data = e.dataTransfer.getData('text/plain') || e.dataTransfer.getData('text');
-                } catch(err) {}
+                } catch(err) {
+                    console.warn("Erro ao ler dataTransfer no drop.");
+                }
                 
+                // 2. Se a via oficial falhar ou vier vazia, usa nossa via hackeada
                 if (!data && window.draggedSubjectFallback) {
                     data = window.draggedSubjectFallback;
                 }
                 
+                // 3. Aplica o dado na célula
                 if (data) { 
                     tdDay.textContent = data; 
                     appData.schedule[rowIndex].days[dayIndex] = data; 
@@ -943,7 +949,7 @@ window.addEventListener('beforeunload', () => { if (isRunning) pauseTimer(); });
 // ==========================================
 async function carregarVocabularioDiario(forceRefresh = false) {
     let API_KEY = localStorage.getItem('gemini_api_key');
-    const hoje = getRealTodayDate(); let palavraSalva = null; let dataSalva = null;
+    const hoje = getTodayDate(); let palavraSalva = null; let dataSalva = null;
     try { const palStr = localStorage.getItem('palavra_concurso'); if (palStr) palavraSalva = JSON.parse(palStr); dataSalva = localStorage.getItem('data_palavra'); } catch(e) { palavraSalva = null; }
     const vocabContent = document.getElementById('vocab-content'); const vocabLoading = document.getElementById('vocab-loading');
 
@@ -1115,7 +1121,7 @@ function setupFlashcardsEConectivos() {
                 const jaExiste = appData.flashcards.some(f => f.palavra === currentPalavraObj.palavra);
                 if(jaExiste) { alert(`A palavra "${currentPalavraObj.palavra}" já está no seu baralho!`); } 
                 else {
-                    const newCard = { id: 'fc_' + Date.now(), type: 'lexical', palavra: currentPalavraObj.palavra, significado: currentPalavraObj.significado, sinonimos: currentPalavraObj.sinonimos, aplicacao: currentPalavraObj.aplicacao, interval: 0, ease: 2.5, nextReview: getRealTodayDate() };
+                    const newCard = { id: 'fc_' + Date.now(), type: 'lexical', palavra: currentPalavraObj.palavra, significado: currentPalavraObj.significado, sinonimos: currentPalavraObj.sinonimos, aplicacao: currentPalavraObj.aplicacao, interval: 0, ease: 2.5, nextReview: getTodayDate() };
                     appData.flashcards.push(newCard); saveData(); initAnkiSession(); renderGerenciadorFlashcards(); alert(`"${currentPalavraObj.palavra}" adicionada ao Arsenal Lexical!`);
                 }
             }
@@ -1163,7 +1169,7 @@ function setupFlashcardsEConectivos() {
                         alert(`✅ Flashcard atualizado com sucesso!`);
                     }
                 } else {
-                    const newCard = { id: 'fc_manual_' + Date.now() + Math.floor(Math.random() * 10000), type: 'theory', subject: subject, palavra: front, significado: back, sinonimos: keywords, aplicacao: context, interval: 0, ease: 2.5, nextReview: getRealTodayDate() };
+                    const newCard = { id: 'fc_manual_' + Date.now() + Math.floor(Math.random() * 10000), type: 'theory', subject: subject, palavra: front, significado: back, sinonimos: keywords, aplicacao: context, interval: 0, ease: 2.5, nextReview: getTodayDate() };
                     appData.flashcards.push(newCard); saveData(); 
                     
                     document.querySelectorAll('.fc-tab').forEach(b => b.classList.remove('active'));
@@ -1225,7 +1231,7 @@ function shuffleQueue() {
 function initAnkiSession() {
     setupAnkiAdvancedControls(); 
     
-    const today = getRealTodayDate();
+    const today = getTodayDate();
     const filterSelect = document.getElementById('study-subject-filter');
     const controlsWrapper = document.getElementById('anki-advanced-controls');
     
@@ -1316,7 +1322,7 @@ document.querySelectorAll('.btn-anki-rate').forEach(btn => {
         
         currentAnkiCard.interval = ival; currentAnkiCard.ease = ease;
         const nextDate = new Date();
-        if (rating === 1) { currentAnkiCard.nextReview = getRealTodayDate(); ankiStudyQueue.push(ankiStudyQueue.shift()); } 
+        if (rating === 1) { currentAnkiCard.nextReview = getTodayDate(); ankiStudyQueue.push(ankiStudyQueue.shift()); } 
         else { nextDate.setDate(nextDate.getDate() + ival); currentAnkiCard.nextReview = `${nextDate.getFullYear()}-${String(nextDate.getMonth() + 1).padStart(2, '0')}-${String(nextDate.getDate()).padStart(2, '0')}`; ankiStudyQueue.shift(); }
         
         const idx = appData.flashcards.findIndex(f => f.id === currentAnkiCard.id);
@@ -1414,7 +1420,7 @@ async function gerarFlashcardsComIA() {
             cardsGerados = extrairJSONdaString(respostaTexto);
         }
 
-        let cardsAdicionados = 0; const hoje = getRealTodayDate();
+        let cardsAdicionados = 0; const hoje = getTodayDate();
         cardsGerados.forEach(cardData => {
             const jaExiste = appData.flashcards.some(f => f.palavra.toLowerCase() === cardData.palavra.toLowerCase());
             if (!jaExiste) {
@@ -1473,7 +1479,7 @@ function setupPostits() {
                 title: title,
                 content: content,
                 colorCode: randomColor,
-                createdAt: getRealTodayDate()
+                createdAt: getTodayDate()
             };
             
             if(!appData.postits) appData.postits = [];
