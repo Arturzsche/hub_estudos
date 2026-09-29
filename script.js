@@ -11,6 +11,7 @@ const GIST_FILENAME = "meusestudos_db.json";
 let timerInterval;
 let isRunning = false;
 let lastTickTime = 0; 
+let accumulatedMsToSave = 0;
 let chartInstance = null;
 let currentPalavraObj = null;
 
@@ -170,6 +171,16 @@ function initElements() {
         btnSyncUpload: document.getElementById('btn-sync-upload'),
         btnSyncDownload: document.getElementById('btn-sync-download'),
         
+        // Elementos Lançamento Manual de Tempo
+        btnOpenManualTime: document.getElementById('btn-open-manual-time'),
+        modalManualTime: document.getElementById('manual-time-modal'),
+        inputManualTimeDate: document.getElementById('manual-time-date'),
+        inputManualTimeHours: document.getElementById('manual-time-hours'),
+        inputManualTimeMinutes: document.getElementById('manual-time-minutes'),
+        inputManualTimeSessions: document.getElementById('manual-time-sessions'),
+        btnCancelManualTime: document.getElementById('btn-manual-time-cancel'),
+        btnSaveManualTime: document.getElementById('btn-manual-time-save'),
+
         // Elementos Post-its
         btnNewPostit: document.getElementById('btn-new-postit'),
         postitGrid: document.getElementById('postit-grid'),
@@ -201,6 +212,7 @@ async function initAppFully() {
     try { setupNavigation(); } catch(e) {}
     try { initChart(); } catch(e) {}
     try { initManualReviews(); } catch(e) {}
+    try { setupManualTimeEntry(); } catch(e) {}
     try { carregarVocabularioDiario(false); } catch(e) {}
     try { setupFlashcardsEConectivos(); } catch(e) {}
     try { initAnkiSession(); } catch(e) {}
@@ -288,6 +300,68 @@ async function initAppFully() {
 
     try { loadTimerState(); } catch(e) {}
     try { updateUI(); } catch(e) {}
+}
+
+// ==========================================
+// LANÇAMENTO MANUAL DE TEMPO
+// ==========================================
+function setupManualTimeEntry() {
+    if (!elements.btnOpenManualTime) return;
+
+    elements.btnOpenManualTime.addEventListener('click', () => {
+        elements.inputManualTimeDate.value = getTodayDate();
+        elements.inputManualTimeHours.value = 0;
+        elements.inputManualTimeMinutes.value = 30;
+        elements.inputManualTimeSessions.value = 1;
+        elements.modalManualTime.classList.add('active');
+    });
+
+    elements.btnCancelManualTime.addEventListener('click', () => {
+        elements.modalManualTime.classList.remove('active');
+    });
+
+    elements.btnSaveManualTime.addEventListener('click', () => {
+        const dateVal = elements.inputManualTimeDate.value;
+        const hours = parseInt(elements.inputManualTimeHours.value) || 0;
+        const minutes = parseInt(elements.inputManualTimeMinutes.value) || 0;
+        const sessions = parseInt(elements.inputManualTimeSessions.value) || 0;
+
+        if (!dateVal) {
+            alert("Selecione uma data válida!");
+            return;
+        }
+
+        const totalSecondsToAdd = (hours * 3600) + (minutes * 60);
+        if (totalSecondsToAdd <= 0 && sessions <= 0) {
+            alert("Informe uma quantidade de tempo ou sessões maior que zero.");
+            return;
+        }
+
+        if (!appData.history[dateVal]) {
+            appData.history[dateVal] = { time: 0, sessions: 0 };
+        }
+
+        appData.history[dateVal].time += totalSecondsToAdd;
+        appData.history[dateVal].sessions += sessions;
+
+        const today = getTodayDate();
+        if (dateVal === today && appData.lastStudyDate !== today) {
+            if (appData.lastStudyDate) {
+                const diff = Math.round((new Date(today) - new Date(appData.lastStudyDate)) / (1000 * 60 * 60 * 24));
+                if (diff <= 1) appData.streak++;
+                else appData.streak = 1;
+            } else {
+                appData.streak = 1;
+            }
+            appData.lastStudyDate = today;
+        }
+
+        saveData();
+        calculateRecords();
+        updateUI();
+        elements.modalManualTime.classList.remove('active');
+        alert(`✅ +${hours}h ${minutes}m adicionados ao dia ${formatDateBR(dateVal)}!`);
+    });
 }
 
 function loadLocalDataOnly() {
@@ -624,6 +698,59 @@ function updateUI() {
     } catch(e) {}
 }
 
+// ==========================================
+// LÓGICA DO CRONÔMETRO BLINDADA (2º PLANO + 60 FPS)
+// ==========================================
+function processTimerTick() {
+    if (!isRunning) return;
+    const now = Date.now();
+    const delta = now - lastTickTime;
+    lastTickTime = now;
+    accumulatedMsToSave += delta;
+
+    const today = getTodayDate();
+    if (!appData.history[today]) appData.history[today] = { time: 0, sessions: 0 };
+
+    if (appData.timerMode === 'stopwatch') {
+        appData.stopwatchMs += delta;
+    } else {
+        appData.cycleState.msRemaining -= delta;
+        if (todaysSubjects.length === 0) appData.cycleState.msRemaining = 0;
+    }
+
+    if (accumulatedMsToSave >= 1000) {
+        const secondsPassed = Math.floor(accumulatedMsToSave / 1000);
+        accumulatedMsToSave -= (secondsPassed * 1000);
+        const currentPhase = CYCLE_PHASES[appData.cycleState.phaseIndex];
+        
+        if (appData.timerMode === 'stopwatch' || todaysSubjects.length === 0 || (currentPhase && currentPhase.isStudy)) {
+            appData.history[today].time += secondsPassed;
+            saveData();
+            if (appData.history[today].time % 60 === 0) calculateRecords();
+            updateUI();
+        }
+    }
+
+    if (appData.timerMode === 'pomodoro' && appData.cycleState.msRemaining <= 0 && todaysSubjects.length > 0) {
+        playBeep();
+        appData.cycleState.phaseIndex++;
+        if (appData.cycleState.phaseIndex >= CYCLE_PHASES.length) {
+            appData.cycleState.phaseIndex = 0;
+            appData.cycleState.subjectIndex++;
+        }
+        if (appData.cycleState.subjectIndex < todaysSubjects.length) {
+            appData.cycleState.msRemaining = CYCLE_PHASES[appData.cycleState.phaseIndex].ms;
+        } else {
+            appData.cycleState.msRemaining = 0;
+            pauseTimer();
+        }
+        saveData();
+    }
+    
+    updateTimerDisplay();
+    localStorage.setItem('lastTick', now.toString());
+}
+
 function loadTimerState() {
     updateTodaysSubjects();
     const wasRunning = localStorage.getItem('isTimerRunning') === 'true'; const lastTick = parseInt(localStorage.getItem('lastTick')) || Date.now();
@@ -649,6 +776,7 @@ function startTimer() {
 
     isRunning = true; updateToggleBtn(); const today = getTodayDate();
     if (localStorage.getItem('isTimerRunning') !== 'true') {
+        if (!appData.history[today]) appData.history[today] = { time: 0, sessions: 0 };
         appData.history[today].sessions++;
         if (appData.lastStudyDate !== today) {
             if (appData.lastStudyDate) { const diff = Math.round((new Date(today) - new Date(appData.lastStudyDate)) / (1000 * 60 * 60 * 24)); if (diff <= 1) appData.streak++; else appData.streak = 1; } 
@@ -656,34 +784,21 @@ function startTimer() {
             appData.lastStudyDate = today; saveData(); 
         }
     }
-    localStorage.setItem('isTimerRunning', 'true'); lastTickTime = Date.now(); let accumulatedMsToSave = 0; 
-    timerInterval = setInterval(() => {
-        const now = Date.now(); const delta = now - lastTickTime; lastTickTime = now; accumulatedMsToSave += delta;
-        if (appData.timerMode === 'stopwatch') appData.stopwatchMs += delta; else { appData.cycleState.msRemaining -= delta; if (todaysSubjects.length === 0) appData.cycleState.msRemaining = 0; }
-        if (accumulatedMsToSave >= 1000) {
-            const secondsPassed = Math.floor(accumulatedMsToSave / 1000); accumulatedMsToSave -= (secondsPassed * 1000); 
-            const currentPhase = CYCLE_PHASES[appData.cycleState.phaseIndex];
-            if (appData.timerMode === 'stopwatch' || todaysSubjects.length === 0 || (currentPhase && currentPhase.isStudy)) {
-                appData.history[today].time += secondsPassed;
-                if (appData.history[today].time % 5 === 0) saveData(); 
-                if (appData.history[today].time % 60 === 0) calculateRecords();
-                updateUI(); 
-            }
-        }
-        if (appData.timerMode === 'pomodoro' && appData.cycleState.msRemaining <= 0 && todaysSubjects.length > 0) {
-            playBeep(); appData.cycleState.phaseIndex++;
-            if (appData.cycleState.phaseIndex >= CYCLE_PHASES.length) { appData.cycleState.phaseIndex = 0; appData.cycleState.subjectIndex++; }
-            if (appData.cycleState.subjectIndex < todaysSubjects.length) appData.cycleState.msRemaining = CYCLE_PHASES[appData.cycleState.phaseIndex].ms;
-            else { appData.cycleState.msRemaining = 0; pauseTimer(); }
-            saveData();
-        }
-        updateTimerDisplay(); localStorage.setItem('lastTick', now.toString());
-    }, 16); 
+    localStorage.setItem('isTimerRunning', 'true'); 
+    lastTickTime = Date.now(); 
+    accumulatedMsToSave = 0; 
+    // Intervalo em 50ms: fluido para os centésimos e muito leve para a CPU
+    timerInterval = setInterval(processTimerTick, 50); 
 }
 
 function pauseTimer() {
-    if (!isRunning) return; isRunning = false; clearInterval(timerInterval); updateToggleBtn();
-    localStorage.setItem('isTimerRunning', 'false'); localStorage.setItem('lastTick', Date.now().toString());
+    if (!isRunning) return; 
+    processTimerTick(); // Garante contabilizar até o último milissegundo antes de parar
+    isRunning = false; 
+    clearInterval(timerInterval); 
+    updateToggleBtn();
+    localStorage.setItem('isTimerRunning', 'false'); 
+    localStorage.setItem('lastTick', Date.now().toString());
     calculateRecords(); saveData(); updateUI();
 }
 
@@ -715,6 +830,15 @@ document.addEventListener('click', (e) => {
     if (e.target.closest('#btn-skip-block')) { skipBlock(); }
     if (e.target.closest('#btn-timer-mode')) { pauseTimer(); appData.timerMode = appData.timerMode === 'pomodoro' ? 'stopwatch' : 'pomodoro'; saveData(); updateTimerDisplay(); }
 });
+
+// Sincronização imediata ao alternar abas (evita congelamento visual em 2º plano)
+document.addEventListener('visibilitychange', () => {
+    if (isRunning) {
+        processTimerTick();
+    }
+});
+
+window.addEventListener('beforeunload', () => { if (isRunning) pauseTimer(); });
 
 function getChartData() {
     const labels = []; const data = []; const today = new Date();
@@ -758,43 +882,9 @@ function setupNavigation() {
     let savedView = localStorage.getItem('activeView') || 'dashboard'; const btnToClick = document.querySelector(`.nav-btn[data-target="${savedView}"]`); if (btnToClick) btnToClick.click();
 }
 
-function renderSubjectBank() {
-    if(!elements.subjectBank) return; elements.subjectBank.innerHTML = '';
-    appData.savedSubjects.forEach((subject, index) => {
-        const pill = document.createElement('div'); 
-        pill.className = 'subject-pill'; 
-        pill.draggable = true;
-        
-        pill.innerHTML = `<span>${subject}</span><span class="delete-subject" title="Remover matéria">&times;</span>`;
-        
-        // EVENTOS DE ARRASTO REFORÇADOS
-        pill.addEventListener('dragstart', (e) => { 
-            e.dataTransfer.effectAllowed = 'copyMove';
-            e.dataTransfer.setData('text/plain', subject); 
-            e.dataTransfer.setData('text', subject); // Fallback para navegadores rebeldes
-            setTimeout(() => pill.classList.add('dragging'), 0); 
-        });
-        
-        pill.addEventListener('dragend', () => {
-            pill.classList.remove('dragging');
-        });
-        
-        pill.querySelector('.delete-subject').addEventListener('click', () => { 
-            appData.savedSubjects.splice(index, 1); 
-            saveData(); 
-            renderSubjectBank(); 
-            updateAppSubjects(); 
-        });
-        
-        elements.subjectBank.appendChild(pill);
-    });
-}
-
 // ==========================================
 // FUNÇÕES DE RENDERIZAÇÃO E ARRASTO (BLINDADAS)
 // ==========================================
-
-// Variável global para burlar bloqueios do navegador no DataTransfer
 window.draggedSubjectFallback = null;
 
 function renderSubjectBank() {
@@ -804,30 +894,23 @@ function renderSubjectBank() {
     appData.savedSubjects.forEach((subject, index) => {
         const pill = document.createElement('div'); 
         pill.className = 'subject-pill'; 
-        pill.draggable = true; // Essencial para HTML5 Drag
+        pill.draggable = true;
         
         pill.innerHTML = `<span>${subject}</span><span class="delete-subject" title="Remover matéria">&times;</span>`;
         
-        // EVENTOS DE ARRASTO COM FALLBACK
         pill.addEventListener('dragstart', (e) => { 
-            // 1. Salva na nossa variável global como plano B infalível
             window.draggedSubjectFallback = subject; 
-            
-            // 2. Tenta salvar na API nativa do navegador
             try {
                 e.dataTransfer.effectAllowed = 'copyMove';
                 e.dataTransfer.setData('text/plain', subject); 
                 e.dataTransfer.setData('text', subject); 
-            } catch(err) {
-                console.warn("Navegador bloqueou o dataTransfer. O fallback será usado.");
-            }
-            
+            } catch(err) {}
             setTimeout(() => pill.classList.add('dragging'), 0); 
         });
         
         pill.addEventListener('dragend', () => {
             pill.classList.remove('dragging');
-            window.draggedSubjectFallback = null; // Limpa a memória
+            window.draggedSubjectFallback = null;
         });
         
         pill.querySelector('.delete-subject').addEventListener('click', () => { 
@@ -880,14 +963,13 @@ function renderSchedule() {
             tdDay.className = 'drop-zone'; 
             tdDay.textContent = dayContent;
             
-            // EVENTOS DE SOLTAR REFORÇADOS E FORÇADOS
             tdDay.addEventListener('dragenter', (e) => {
-                e.preventDefault(); // OBRIGATÓRIO
+                e.preventDefault();
                 tdDay.classList.add('drag-over');
             });
 
             tdDay.addEventListener('dragover', (e) => { 
-                e.preventDefault(); // OBRIGATÓRIO (se não tiver isso, o drop NUNCA dispara)
+                e.preventDefault();
                 e.dataTransfer.dropEffect = 'copy';
                 tdDay.classList.add('drag-over'); 
             }); 
@@ -895,23 +977,18 @@ function renderSchedule() {
             tdDay.addEventListener('dragleave', () => tdDay.classList.remove('drag-over'));
             
             tdDay.addEventListener('drop', (e) => { 
-                e.preventDefault(); // OBRIGATÓRIO
+                e.preventDefault();
                 tdDay.classList.remove('drag-over'); 
                 
                 let data = '';
-                // 1. Tenta pegar pela via oficial
                 try {
                     data = e.dataTransfer.getData('text/plain') || e.dataTransfer.getData('text');
-                } catch(err) {
-                    console.warn("Erro ao ler dataTransfer no drop.");
-                }
+                } catch(err) {}
                 
-                // 2. Se a via oficial falhar ou vier vazia, usa nossa via hackeada
                 if (!data && window.draggedSubjectFallback) {
                     data = window.draggedSubjectFallback;
                 }
                 
-                // 3. Aplica o dado na célula
                 if (data) { 
                     tdDay.textContent = data; 
                     appData.schedule[rowIndex].days[dayIndex] = data; 
@@ -941,8 +1018,6 @@ document.addEventListener('keydown', (e) => {
     if (e.code === 'Space' && e.shiftKey && e.ctrlKey) { e.preventDefault(); skipBlock(); return; } else if (e.code === 'Space' && e.shiftKey) { e.preventDefault(); skipPhase(); return; } else if (e.code === 'Space' && !e.ctrlKey) { e.preventDefault(); if (isRunning) pauseTimer(); else startTimer(); return; }
     if (e.code === 'Delete') resetTimer(); if (e.code === 'Enter') { e.preventDefault(); document.body.classList.toggle('focus-active'); } if (e.code === 'Escape') document.body.classList.remove('focus-active');
 });
-
-window.addEventListener('beforeunload', () => { if (isRunning) pauseTimer(); }); document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden' && isRunning) localStorage.setItem('lastTick', Date.now().toString()); });
 
 // ==========================================
 // FUNÇÕES DE IA COM PARSER SEGURO E REPERTÓRIO
