@@ -96,9 +96,14 @@
                         </div>
                     </div>
 
-                    <div class="stat-card outline">
-                        <div class="stat-info">
-                            <h3>Estudo Hoje</h3>
+                    <div class="stat-card outline" style="position: relative;">
+                        <div class="stat-info" style="width: 100%;">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <h3>Estudo Hoje</h3>
+                                <button id="btn-open-manual-time" class="icon-btn-small" title="Adicionar Tempo Manualmente" style="border: 1px solid var(--border-color); padding: 4px 8px; font-size: 0.7rem; font-weight: 600; gap: 4px; color: var(--text-main); background: var(--surface-color);">
+                                    <svg viewBox="0 0 24 24" width="14" height="14"><path fill="currentColor" d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg> Lançar
+                                </button>
+                            </div>
                             <p id="total-time-display" class="highlight">00:00:00</p>
                             <span class="sub-text" id="sessions-display">0 sessões hoje</span>
                         </div>
@@ -314,7 +319,7 @@
             </div>
         </section>
         
-        <!-- ABA MURAL DE POST-ITS (ALINHADA CORRETAMENTE) -->
+        <!-- ABA MURAL DE POST-ITS -->
         <section id="mural" class="view">
             <div class="container" style="min-height: 75vh;">
                 <div style="display: flex; justify-content: flex-end; margin-bottom: 1.5rem;">
@@ -323,7 +328,6 @@
                     </button>
                 </div>
                 
-                <!-- Container espalhado lado a lado (Grid) -->
                 <div id="postit-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 1.5rem; align-items: start; width: 100%;">
                 </div>
             </div>
@@ -334,6 +338,38 @@
     <!-- Modais do sistema -->
     <div id="clear-modal" class="modal-overlay"><div class="modal-content" style="max-width: 400px;"><h2>Limpar Histórico</h2><p>O que você deseja apagar? Esta ação não pode ser desfeita.</p><div class="modal-options"><button id="btn-clear-today" class="btn secondary">Apagar Apenas Hoje</button><button id="btn-clear-all" class="btn danger">Zerar Tudo</button><button id="btn-cancel-clear" class="btn primary">Cancelar</button></div></div></div>
     
+    <!-- NOVO MODAL: ADICIONAR TEMPO MANUALMENTE -->
+    <div id="manual-time-modal" class="modal-overlay">
+        <div class="modal-content" style="max-width: 420px; text-align: left;">
+            <h2 style="margin-bottom: 0.5rem; font-size: 1.3rem; color: var(--text-main);">Lançar Estudo Manual</h2>
+            <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1.5rem;">Adicione horas estudadas fora do cronômetro ou recupere sessões de outros dispositivos.</p>
+            <div style="display: flex; flex-direction: column; gap: 1rem;">
+                <div>
+                    <label style="display: block; margin-bottom: 0.4rem; font-size: 0.8rem; font-weight: 600; color: var(--text-muted);">Data do Estudo</label>
+                    <input type="date" id="manual-time-date" style="width: 100%; padding: 0.8rem; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-color); color: var(--text-main); font-family: inherit;">
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                    <div>
+                        <label style="display: block; margin-bottom: 0.4rem; font-size: 0.8rem; font-weight: 600; color: var(--text-muted);">Horas</label>
+                        <input type="number" id="manual-time-hours" min="0" max="24" value="0" style="width: 100%; padding: 0.8rem; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-color); color: var(--text-main); font-family: inherit;">
+                    </div>
+                    <div>
+                        <label style="display: block; margin-bottom: 0.4rem; font-size: 0.8rem; font-weight: 600; color: var(--text-muted);">Minutos</label>
+                        <input type="number" id="manual-time-minutes" min="0" max="59" value="30" style="width: 100%; padding: 0.8rem; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-color); color: var(--text-main); font-family: inherit;">
+                    </div>
+                </div>
+                <div>
+                    <label style="display: block; margin-bottom: 0.4rem; font-size: 0.8rem; font-weight: 600; color: var(--text-muted);">Sessões Concluídas</label>
+                    <input type="number" id="manual-time-sessions" min="0" max="20" value="1" style="width: 100%; padding: 0.8rem; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-color); color: var(--text-main); font-family: inherit;">
+                </div>
+            </div>
+            <div style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: 1.8rem;">
+                <button id="btn-manual-time-cancel" class="btn secondary">Cancelar</button>
+                <button id="btn-manual-time-save" class="btn primary">Somar Tempo</button>
+            </div>
+        </div>
+    </div>
+
     <div id="manual-rev-modal" class="modal-overlay"><div class="modal-content" style="max-width: 500px; text-align: left;"><h2 style="margin-bottom: 1rem; font-size: 1.3rem; color: var(--text-main);">Registrar Novo Conteúdo</h2><p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1.5rem; line-height: 1.4;">O site criará revisões automáticas na sua agenda para os próximos 1, 7, 15, 30 e 60 dias.</p><div style="display: grid; grid-template-columns: 1fr; gap: 1rem; margin-bottom: 1rem;"><div><label style="display: block; margin-bottom: 0.5rem; font-size: 0.85rem; color: var(--text-muted); font-weight: 600;">Matéria da Revisão</label><select id="manual-rev-subject" class="sort-select" style="width: 100%; border-radius: 6px; padding: 0.8rem; border-color: var(--border-color);"><option value="">Selecione a matéria...</option></select></div><div><label style="display: block; margin-bottom: 0.5rem; font-size: 0.85rem; color: var(--text-muted); font-weight: 600;">Nome do Conteúdo / Assunto</label><input type="text" id="manual-rev-name" style="width: 100%; border-radius: 6px; padding: 0.8rem; border: 1px solid var(--border-color); background: var(--bg-color); color: var(--text-main); font-family: 'Inter', sans-serif;" placeholder="Ex: Aula 01 - Atos Administrativos"></div><div><label style="display: block; margin-bottom: 0.5rem; font-size: 0.85rem; color: var(--text-muted); font-weight: 600;">Observações (Opcional)</label><textarea id="manual-rev-notes" rows="2" style="width: 100%; padding: 0.8rem; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-color); color: var(--text-main); font-family: 'Inter', sans-serif; resize: vertical;" placeholder="Ex: Focar na tabela de prazos decadenciais da página 14."></textarea></div></div><div style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: 1.5rem;"><button id="btn-manual-rev-cancel" class="btn secondary">Cancelar</button><button id="btn-manual-rev-save" class="btn primary">Salvar na Agenda</button></div></div></div>
     
     <div id="manage-rev-modal" class="modal-overlay"><div class="modal-content" style="max-width: 900px; width: 95%; max-height: 90vh; overflow-y: auto; text-align: left; padding: 2rem;"><div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; border-bottom: 1px solid var(--border-color); padding-bottom: 1rem;"><h2 style="font-size: 1.3rem; color: var(--text-main); margin: 0;">Gerenciador de Agenda (<span id="rev-stat-total">0</span>)</h2><div style="display: flex; align-items: center; gap: 1rem;"><span style="font-size: 0.85rem; color: var(--text-muted);">Filtrar por matéria:</span><select id="filter-review-subject" class="sort-select" style="min-width: 200px; padding: 0.5rem;"><option value="all">Todas as Matérias</option></select><button id="btn-close-manage" class="icon-btn-small" style="font-size: 1.5rem; font-weight: bold; margin-left: 1rem;">&times;</button></div></div><div id="all-reviews-list" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 1rem;"></div></div></div>
